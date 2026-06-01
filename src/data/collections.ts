@@ -26,6 +26,8 @@
  *  comment    → 短评（可选，不填就删掉此行）
  *  date       → 看完的日期（可选，格式 "2024-12-25"）
  *  tags       → 标签（可选，如 ["科幻", "治愈"]）
+ *  note       → 附注（可选，显示在卡片上的额外文字）
+ *  highlight  → 高亮（可选，设为 true 会给卡片加特殊边框）
  * 
  *  ⚠️ 重要：每条用 { } 包着，中间用逗号隔开，最后一条后面不要逗号！
  *  =========================================================
@@ -33,8 +35,55 @@
 
 // ──────────────── 📺 动漫 ────────────────
 export const animeList = [
-  // 示例（去掉 // 就能用）：
-  // { name: "葬送的芙莉莲", cover: "/assets/images/xxx.jpg", status: "doing", tags: ["奇幻", "治愈"] },
+  // ★ 高亮推荐
+  { name: "君の名は。", nameCn: "你的名字。", cover: "/assets/images/kiminonawa.jpg", status: "collect", comment: "穿越时空的相遇，跨越彼岸的羁绊。", tags: ["动画电影", "新海诚", "治愈"], highlight: true },
+
+  // ── 独立作品 ──
+  { name: "四月は君の嘘", nameCn: "四月是你的谎言", cover: "/assets/images/shigatsu.jpg", status: "collect", comment: "在一个樱花飞舞的四月，你走进了我的世界。", tags: ["青春", "音乐", "催泪"] },
+  { name: "千と千尋の神隠し", nameCn: "千与千寻", cover: "/assets/images/spirited_away.jpg", status: "collect", comment: "宫崎骏的巅峰之作，童年的奇幻冒险。", tags: ["动画电影", "宫崎骏", "奇幻"] },
+  { name: "DEATH NOTE", nameCn: "死亡笔记", cover: "/assets/images/death_note.jpg", status: "collect", comment: "在这个世界上，没有什么是绝对的正义。", tags: ["悬疑", "推理", "智斗"] },
+  { name: "刺客伍六七", cover: "/assets/images/scissor_seven.jpg", status: "collect", comment: "用剪刀剪出最骚的刺客路。", tags: ["国创", "搞笑", "动作"] },
+  { name: "时光代理人 第一季", cover: "/assets/images/link_click.jpg", status: "collect", comment: "无论过去，不问将来。", tags: ["国创", "悬疑", "奇幻"] },
+  { name: "霧山五行", nameCn: "雾山五行", cover: "/assets/images/wushan.jpg", status: "collect", comment: "水墨丹青，打斗封神。", tags: ["国创", "动作", "水墨"] },
+  { name: "大理寺日志", cover: "/assets/images/dali_temple.jpg", status: "collect", comment: "少卿大人，办案了！", tags: ["国创", "搞笑", "古风"] },
+
+  // ── 大系列：只放标志性封面，附注说明含所有内容 ──
+  { name: "進撃の巨人", nameCn: "进击的巨人", cover: "/assets/images/shingeki.jpg", status: "collect",
+    comment: "献出你的心脏！人类史上最宏大的史诗。",
+    note: "含全四季 + 最终季 Part 1-3 + 剧场版", tags: ["史诗", "黑暗", "动作"] },
+  { name: "鬼滅の刃", nameCn: "鬼灭之刃", cover: "/assets/images/kimetsu.jpg", status: "collect",
+    comment: "纵使鬼途漫漫，亦有炭治郎的温暖。",
+    note: "含全四季 + 无限列车篇 + 柱稽古篇", tags: ["热血", "战斗", "治愈"] },
+
+  // ── 系列作品：逐个列出所有剧集 ──
+  // --- 辉夜大小姐想让我告白 ---
+  { name: "辉夜大小姐想让我告白 第一季", cover: "/assets/images/kaguya.jpg", status: "collect", tags: ["恋爱", "搞笑", "校园"] },
+  { name: "辉夜大小姐想让我告白 第二季", cover: "/assets/images/kaguya.jpg", status: "collect", tags: ["恋爱", "搞笑", "校园"] },
+  { name: "辉夜大小姐想让我告白 究极浪漫", cover: "/assets/images/kaguya.jpg", status: "collect", tags: ["恋爱", "搞笑", "校园"] },
+  { name: "辉夜大小姐想让我告白 初吻不会结束", cover: "/assets/images/kaguya.jpg", status: "collect", tags: ["恋爱", "搞笑", "校园"] },
+
+  // --- JOJO的奇妙冒险 ---
+  { name: "JOJO的奇妙冒险 幻影之血／战斗潮流", cover: "/assets/images/jojo.jpg", status: "collect", tags: ["热血", "战斗", "奇幻"] },
+  { name: "JOJO的奇妙冒险 星尘斗士", cover: "/assets/images/jojo.jpg", status: "collect", tags: ["热血", "战斗", "奇幻"] },
+  { name: "JOJO的奇妙冒险 不灭钻石", cover: "/assets/images/jojo.jpg", status: "collect", tags: ["热血", "战斗", "奇幻"] },
+  { name: "JOJO的奇妙冒险 黄金之风", cover: "/assets/images/jojo.jpg", status: "collect", tags: ["热血", "战斗", "奇幻"] },
+  { name: "JOJO的奇妙冒险 石之海", cover: "/assets/images/jojo.jpg", status: "collect", tags: ["热血", "战斗", "奇幻"] },
+
+  // --- 碧蓝之海 ---
+  { name: "碧蓝之海 第一季", cover: "/assets/images/grand_blue.jpg", status: "collect", tags: ["搞笑", "校园", "潜水"] },
+  { name: "碧蓝之海 第二季", cover: "/assets/images/grand_blue.jpg", status: "collect", tags: ["搞笑", "校园", "潜水"] },
+
+  // --- 罗小黑战记 ---
+  { name: "罗小黑战记 剧集", cover: "/assets/images/luoxiaohei.jpg", status: "collect", tags: ["国创", "治愈", "奇幻"] },
+  { name: "罗小黑战记 大电影", cover: "/assets/images/luoxiaohei.jpg", status: "collect", comment: "国产动画电影的骄傲，小黑萌翻了！", tags: ["国创", "治愈", "奇幻"] },
+
+  // --- 灵笼 ---
+  { name: "灵笼 第一季", cover: "/assets/images/linglong.jpg", status: "collect", tags: ["国创", "科幻", "末日"] },
+  { name: "灵笼 第二季", cover: "/assets/images/linglong.jpg", status: "collect", tags: ["国创", "科幻", "末日"] },
+
+  // --- 我的三体 ---
+  { name: "我的三体之罗辑传", cover: "/assets/images/threebody_luoji.jpg", status: "collect", comment: "面壁者罗辑，我是你的破壁人。", tags: ["国创", "科幻", "三体"] },
+  { name: "我的三体之章北海传", cover: "/assets/images/threebody_zhang.jpg", status: "collect", comment: "没关系，都一样。", tags: ["国创", "科幻", "三体"] },
 ]
 
 // ──────────────── 🎮 游戏 ────────────────

@@ -8,7 +8,6 @@
  *  只管去改 src/data/collections.ts 里面的数据就行
  *  =========================================================
  */
-import { Icon } from "astro-icon/components";
 import MainGridLayout from "@/layouts/MainGridLayout.astro";
 import {
   animeList,
@@ -21,12 +20,12 @@ import {
 
 // ── 六个分类 ──
 const categories = [
-  { id: "anime", name: "📺 动漫",          icon: "material-symbols:tv",               items: animeList },
-  { id: "game",  name: "🎮 游戏",          icon: "material-symbols:sports-esports",   items: gameList },
-  { id: "book",  name: "📚 书籍",          icon: "material-symbols:menu-book",         items: bookList },
-  { id: "music", name: "🎵 音乐",          icon: "material-symbols:music-note",        items: musicList },
-  { id: "movie", name: "🎬 银幕记忆（电影）", icon: "material-symbols:movie",          items: movieList },
-  { id: "tv",    name: "📺 剧集时光（电视剧）", icon: "material-symbols:live-tv",      items: tvList },
+  { id: "anime", label: "动漫",     accent: "bg-sky-500", items: animeList },
+  { id: "game",  label: "游戏",     accent: "bg-violet-500", items: gameList },
+  { id: "book",  label: "书籍",     accent: "bg-amber-500", items: bookList },
+  { id: "music", label: "音乐",     accent: "bg-rose-500", items: musicList },
+  { id: "movie", label: "银幕记忆", accent: "bg-fuchsia-500", items: movieList },
+  { id: "tv",    label: "剧集时光", accent: "bg-emerald-500", items: tvList },
 ];
 
 // ── 只显示有数据的分类 ──
@@ -41,33 +40,57 @@ const statusConfig: Record<string, { color: string; text: string }> = {
   drop:    { color: "bg-red-500",    text: "抛弃" },
 };
 
-const pageTitle = "我的驻足之旅";
-const pageDesc = "记录我所驻足过的点";
+const pageTitle = "驻足之旅";
+const pageDesc = "那些在记忆中刻下痕迹的作品";
 ---
 
 <MainGridLayout title={pageTitle} description={pageDesc}>
   <div class="flex w-full rounded-(--radius-large) overflow-hidden relative min-h-32">
-    <div class="card-base z-10 px-9 py-6 relative w-full">
+    <div class="card-base z-10 px-5 sm:px-9 py-6 relative w-full">
 
       {/* ===== 页面标题 ===== */}
       <div class="mb-6">
         <div class="flex items-center gap-3 mb-1">
-          <div class="h-8 w-8 rounded-lg bg-(--primary) flex items-center justify-center text-white dark:text-black/70">
-            <Icon name="material-symbols:movie" class="text-[1.5rem]" />
+          <div class="h-8 w-8 rounded-lg bg-gradient-to-br from-sky-500 to-fuchsia-500 flex items-center justify-center text-white text-sm font-bold">
+            Z
           </div>
           <div class="text-3xl font-bold text-neutral-900 dark:text-neutral-100">
             {pageTitle}
           </div>
         </div>
         <p class="text-sm text-neutral-500 dark:text-neutral-400 ml-11 mt-1">
-          那些在记忆中刻下痕迹的作品
+          {pageDesc}
         </p>
       </div>
+
+      {/* ===== 分类导航标签 ===== */}
+      {activeCategories.length > 1 && (
+        <nav class="sticky top-4 z-20 -mx-5 sm:-mx-9 px-5 sm:px-9 py-3 mb-6 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md border-b border-(--line-divider)">
+          <div class="flex flex-wrap gap-2">
+            {activeCategories.map((cat) => (
+              <a
+                href={`#cat-${cat.id}`}
+                class="group inline-flex items-center gap-2 px-3 py-1.5 rounded-lg
+                       text-sm text-neutral-600 dark:text-neutral-400
+                       hover:text-neutral-900 dark:hover:text-neutral-100
+                       hover:bg-neutral-100 dark:hover:bg-neutral-800
+                       transition-all duration-200 no-underline"
+              >
+                <span class={`h-2 w-2 rounded-full ${cat.accent} shrink-0`}></span>
+                <span>{cat.label}</span>
+                <span class="text-xs text-neutral-400 dark:text-neutral-500 ml-0.5">
+                  {cat.items.length}
+                </span>
+              </a>
+            ))}
+          </div>
+        </nav>
+      )}
 
       {/* ===== 没有数据时的提示 ===== */}
       {activeCategories.length === 0 && (
         <div class="text-center py-16">
-          <Icon name="material-symbols:search" is:inline class="text-[3rem] text-neutral-300 dark:text-neutral-600 mb-4" />
+          <div class="text-[3rem] text-neutral-300 dark:text-neutral-600 mb-4">?</div>
           <p class="text-neutral-500 dark:text-neutral-400 text-lg">
             还没有添加任何内容哦～
           </p>
@@ -79,14 +102,12 @@ const pageDesc = "记录我所驻足过的点";
 
       {/* ===== 遍历每个分类 ===== */}
       {activeCategories.map((category) => (
-        <div>
+        <section id={`cat-${category.id}`}>
           {/* 分类标题 */}
-          <div class="flex items-center gap-2 mb-4 mt-6 first:mt-0">
-            <div class="h-7 w-7 rounded-md bg-(--primary) flex items-center justify-center text-white dark:text-black/70">
-              <Icon name={category.icon} is:inline class="text-[1.1rem]" />
-            </div>
+          <div class="flex items-center gap-3 mb-4 mt-8 first:mt-0">
+            <span class={`h-5 w-1 rounded-full ${category.accent} shrink-0`}></span>
             <h2 class="text-xl font-bold text-neutral-900 dark:text-neutral-100">
-              {category.name}
+              {category.label}
             </h2>
             <span class="text-sm text-neutral-400 dark:text-neutral-500 ml-1">
               ({category.items.length})
@@ -98,23 +119,24 @@ const pageDesc = "记录我所驻足过的点";
             {category.items.map((item) => {
               const status = statusConfig[item.status] || { color: "bg-gray-500", text: item.status };
               return (
-                <div class="group relative overflow-hidden rounded-xl border border-(--line-divider) transition-all duration-300 hover:shadow-lg hover:scale-[1.02] bg-white dark:bg-neutral-900">
-                  
+                <div
+                  class={`group relative overflow-hidden rounded-xl border transition-all duration-300
+                          hover:shadow-lg hover:scale-[1.02]
+                          bg-white dark:bg-neutral-900
+                          ${item.highlight
+                            ? "border-sky-400 dark:border-sky-500 ring-2 ring-sky-400/30 dark:ring-sky-500/30 shadow-md shadow-sky-400/10"
+                            : "border-(--line-divider)"
+                          }`}
+                >
                   {/* 封面图 */}
                   <div class="aspect-[2/3] relative overflow-hidden bg-neutral-100 dark:bg-neutral-800">
-                    {item.cover ? (
-                      <img
-                        src={item.cover}
-                        alt={item.nameCn || item.name}
-                        class="w-full h-full object-cover pointer-events-none transition-transform duration-500 group-hover:scale-105"
-                        loading="lazy"
-                        decoding="async"
-                      />
-                    ) : (
-                      <div class="w-full h-full flex items-center justify-center text-neutral-300 dark:text-neutral-600">
-                        <Icon name="material-symbols:image" is:inline class="text-[2rem]" />
-                      </div>
-                    )}
+                    <img
+                      src={item.cover}
+                      alt={item.nameCn || item.name}
+                      class="w-full h-full object-cover pointer-events-none transition-transform duration-500 group-hover:scale-105"
+                      loading="lazy"
+                      decoding="async"
+                    />
 
                     {/* 状态徽章 */}
                     <div class="absolute top-2 left-2">
@@ -124,58 +146,110 @@ const pageDesc = "记录我所驻足过的点";
                         {status.text}
                       </span>
                     </div>
+
+                    {/* 附注（note） */}
+                    {item.note && (
+                      <div class="absolute bottom-0 left-0 right-0 px-2 py-1.5
+                                  bg-gradient-to-t from-black/70 to-transparent">
+                        <span class="text-[10px] text-white/90 leading-tight block">
+                          {item.note}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {/* 卡片底部信息 */}
                   <div class="p-2.5">
-                    {/* 名称 */}
-                    <div class="font-bold text-sm text-neutral-900 dark:text-neutral-100 truncate" title={item.name}>
-                      {item.nameCn || item.name}
+                    {/* 名称 + 高亮标记 */}
+                    <div class="flex items-center gap-1.5">
+                      {item.highlight && (
+                        <span class="text-[10px] px-1 py-0.5 rounded bg-sky-100 dark:bg-sky-900/50 text-sky-600 dark:text-sky-400 font-bold shrink-0">
+                          推荐
+                        </span>
+                      )}
+                      <div class="font-bold text-sm text-neutral-900 dark:text-neutral-100 truncate leading-tight">
+                        {item.nameCn || item.name}
+                      </div>
                     </div>
-                    {item.nameCn && item.nameCn !== item.name && (
-                      <div class="text-xs text-neutral-400 dark:text-neutral-500 truncate mt-0.5">
+
+                    {/* 英文名（如果有中文名） */}
+                    {item.nameCn && item.name !== item.nameCn && (
+                      <div class="text-[11px] text-neutral-400 dark:text-neutral-500 truncate mt-0.5">
                         {item.name}
                       </div>
+                    )}
+
+                    {/* 短评 */}
+                    {item.comment && (
+                      <p class="text-[12px] text-neutral-500 dark:text-neutral-400 mt-1.5 leading-relaxed line-clamp-2">
+                        {item.comment}
+                      </p>
                     )}
 
                     {/* 标签 */}
                     {item.tags && item.tags.length > 0 && (
                       <div class="flex flex-wrap gap-1 mt-1.5">
-                        {item.tags.slice(0, 3).map((tag: string) => (
-                          <span class="text-[0.6rem] px-1.5 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400">
+                        {item.tags.map((tag) => (
+                          <span
+                            class="px-1.5 py-0.5 rounded text-[10px] font-medium
+                                   bg-neutral-100 dark:bg-neutral-800
+                                   text-neutral-500 dark:text-neutral-400"
+                          >
                             {tag}
                           </span>
                         ))}
                       </div>
-                    )}
-
-                    {/* 短评（全文展示） */}
-                    {item.comment && (
-                      <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1.5 leading-relaxed">
-                        {item.comment}
-                      </p>
                     )}
                   </div>
                 </div>
               );
             })}
           </div>
-        </div>
+        </section>
       ))}
     </div>
   </div>
-
-  <style is:global>
-    .collections-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-      gap: 0.75rem;
-    }
-    @media (max-width: 640px) {
-      .collections-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 0.5rem;
-      }
-    }
-  </style>
 </MainGridLayout>
+
+<style>
+  /* 平滑滚动 */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* 网格布局 */
+  .collections-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  @media (min-width: 640px) {
+    .collections-grid {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .collections-grid {
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .collections-grid {
+      grid-template-columns: repeat(5, 1fr);
+      gap: 1rem;
+    }
+  }
+
+  /* 导航标签悬停效果 */
+  nav a {
+    text-decoration: none !important;
+  }
+  nav a:hover {
+    text-decoration: none !important;
+  }
+</style>
