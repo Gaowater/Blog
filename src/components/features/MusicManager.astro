@@ -203,6 +203,7 @@ const managerConfigStr = JSON.stringify({
     function loadTrack(index, autoPlay) {
         if (index < 0 || index >= state.playlist.length) return;
         state.currentIndex = index;
+        saveProgress();
         var track = state.playlist[index];
 
         audio.src = track.url;
@@ -307,6 +308,19 @@ const managerConfigStr = JSON.stringify({
     }
 
     // ── Audio events → broadcast ─────────────────────────────
+    // ── 保存播放进度到 localStorage ──────────────────────
+    var saveTimer = null;
+
+    function saveProgress() {
+        if (state.playlist.length === 0) return;
+        try {
+            localStorage.setItem('music-player-current-index', state.currentIndex.toString());
+            localStorage.setItem('music-player-current-time', audio.currentTime.toString());
+        } catch (e) {
+            // ignore
+        }
+    }
+
     audio.addEventListener('timeupdate', function () {
         if (isNaN(audio.duration)) return;
         var ct = audio.currentTime;
@@ -320,6 +334,14 @@ const managerConfigStr = JSON.stringify({
             currentTimeStr: formatTime(ct),
             durationStr: formatTime(dur)
         });
+
+        // 每 5 秒保存一次进度
+        if (!saveTimer) {
+            saveTimer = setTimeout(function () {
+                saveTimer = null;
+                saveProgress();
+            }, 5000);
+        }
 
         // Lyrics sync
         if (state.lyrics.length > 0) {
@@ -360,8 +382,20 @@ const managerConfigStr = JSON.stringify({
                 // Apply volume
                 audio.volume = state.volume;
 
+                // ── 恢复上次的播放位置 ──
                 var startIndex = 0;
-                if (state.playMode === 2) {
+                var savedIndex = null;
+                var savedTime = null;
+                try {
+                    var si = localStorage.getItem('music-player-current-index');
+                    var st = localStorage.getItem('music-player-current-time');
+                    if (si !== null) savedIndex = parseInt(si, 10);
+                    if (st !== null) savedTime = parseFloat(st);
+                } catch (e) { /* ignore */ }
+
+                if (savedIndex !== null && savedIndex >= 0 && savedIndex < state.playlist.length) {
+                    startIndex = savedIndex;
+                } else if (state.playMode === 2) {
                     startIndex = Math.floor(Math.random() * state.playlist.length);
                 }
 
@@ -375,6 +409,27 @@ const managerConfigStr = JSON.stringify({
                 });
 
                 loadTrack(startIndex, false);
+
+                // 恢复播放进度并自动播放
+                if (savedTime !== null && savedTime > 0) {
+                    // 音频加载完成后跳到保存的位置
+                    var seekDone = false;
+                    audio.addEventListener('canplay', function seekHandler() {
+                        if (!seekDone) {
+                            seekDone = true;
+                            audio.removeEventListener('canplay', seekHandler);
+                            audio.currentTime = savedTime;
+                            audio.play().catch(function () { /* autoplay blocked */ });
+                        }
+                    });
+                    // 如果已经加载好了（缓存），直接跳
+                    if (audio.readyState >= 2) {
+                        seekDone = true;
+                        audio.removeEventListener('canplay', seekHandler);
+                        audio.currentTime = savedTime;
+                        audio.play().catch(function () { /* autoplay blocked */ });
+                    }
+                }
             } else {
                 state.initialized = true;
                 emit('fm:init', {
