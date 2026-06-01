@@ -163,29 +163,29 @@ const pageDesc = "那些在记忆中刻下痕迹的作品";
                         </span>
                       </div>
                     )}
+                  </div>
 
-                    {/* Hover 时显示标签和短评 */}
-                    <div class="absolute inset-0 bg-black/0 group-hover:bg-black/50
-                                transition-all duration-300
-                                flex flex-col justify-center items-center px-3
-                                opacity-0 group-hover:opacity-100">
+                  {/* 底部评论区 - 永远可见 */}
+                  {(item.comment || (item.tags && item.tags.length > 0)) && (
+                    <div class="px-2.5 py-2 border-t border-(--line-divider)">
                       {item.comment && (
-                        <p class="text-xs text-white/90 text-center leading-relaxed line-clamp-3 mb-2">
+                        <p class="text-[11px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
                           {item.comment}
                         </p>
                       )}
                       {item.tags && item.tags.length > 0 && (
-                        <div class="flex flex-wrap gap-1 justify-center">
+                        <div class="flex flex-wrap gap-1 mt-1.5">
                           {item.tags.map((tag) => (
                             <span class="px-1.5 py-0.5 rounded text-[10px] font-medium
-                                        bg-white/20 text-white/90">
+                                        bg-neutral-100 dark:bg-neutral-800
+                                        text-neutral-500 dark:text-neutral-400">
                               {tag}
                             </span>
                           ))}
                         </div>
                       )}
                     </div>
-                  </div>
+                  )}
                 </div>
               );
             })}
