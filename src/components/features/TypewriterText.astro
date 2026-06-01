@@ -52,6 +52,11 @@ const textData = Array.isArray(text) ? JSON.stringify(text) : text;
       this.deleteSpeed = parseInt(element.dataset.deleteSpeed || "50");
       this.pauseTime = parseInt(element.dataset.pauseTime || "2000");
 
+      // 如果有多条文本，随机选一个作为起始句
+      if (this.texts.length > 0) {
+        this.currentTextIndex = Math.floor(Math.random() * this.texts.length);
+      }
+
       // 如果有多条文本且未启用打字机效果，随机显示一条
       if (this.texts.length > 1 && !this.isTypewriterEnabled()) {
         this.showRandomText();
