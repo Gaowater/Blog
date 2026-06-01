@@ -63,25 +63,26 @@ const pageDesc = "那些在记忆中刻下痕迹的作品";
         </p>
       </div>
 
-      {/* ===== 分类导航标签 ===== */}
+      {/* ===== 分类 Tab 导航 ===== */}
       {activeCategories.length > 1 && (
-        <nav class="sticky top-4 z-20 -mx-5 sm:-mx-9 px-5 sm:px-9 py-3 mb-6 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md border-b border-(--line-divider)">
+        <nav id="category-tabs" class="-mx-5 sm:-mx-9 px-5 sm:px-9 py-3 mb-6 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md border-b border-(--line-divider)">
           <div class="flex flex-wrap gap-2">
-            {activeCategories.map((cat) => (
-              <a
-                href={`#cat-${cat.id}`}
-                class="group inline-flex items-center gap-2 px-3 py-1.5 rounded-lg
-                       text-sm text-neutral-600 dark:text-neutral-400
-                       hover:text-neutral-900 dark:hover:text-neutral-100
-                       hover:bg-neutral-100 dark:hover:bg-neutral-800
-                       transition-all duration-200 no-underline"
+            {activeCategories.map((cat, idx) => (
+              <button
+                data-category={cat.id}
+                class={`tab-btn group inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm
+                       transition-all duration-200 cursor-pointer border-none
+                       ${idx === 0
+                         ? "text-neutral-900 dark:text-neutral-100 bg-neutral-100 dark:bg-neutral-800 font-semibold"
+                         : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                       }`}
               >
                 <span class={`h-2 w-2 rounded-full ${cat.accent} shrink-0`}></span>
                 <span>{cat.label}</span>
                 <span class="text-xs text-neutral-400 dark:text-neutral-500 ml-0.5">
                   {cat.items.length}
                 </span>
-              </a>
+              </button>
             ))}
           </div>
         </nav>
@@ -100,11 +101,15 @@ const pageDesc = "那些在记忆中刻下痕迹的作品";
         </div>
       )}
 
-      {/* ===== 遍历每个分类 ===== */}
-      {activeCategories.map((category) => (
-        <section id={`cat-${category.id}`}>
+      {/* ===== Tab 内容区 ===== */}
+      {activeCategories.map((category, idx) => (
+        <section
+          data-category={category.id}
+          class="tab-content"
+          style={`display: ${idx === 0 ? "block" : "none"}`}
+        >
           {/* 分类标题 */}
-          <div class="flex items-center gap-3 mb-4 mt-8 first:mt-0">
+          <div class="flex items-center gap-3 mb-4">
             <span class={`h-5 w-1 rounded-full ${category.accent} shrink-0`}></span>
             <h2 class="text-xl font-bold text-neutral-900 dark:text-neutral-100">
               {category.label}
@@ -172,7 +177,7 @@ const pageDesc = "那些在记忆中刻下痕迹的作品";
                       </div>
                     </div>
 
-                    {/* 英文名（如果有中文名） */}
+                    {/* 英文名 */}
                     {item.nameCn && item.name !== item.nameCn && (
                       <div class="text-[11px] text-neutral-400 dark:text-neutral-500 truncate mt-0.5">
                         {item.name}
@@ -211,12 +216,42 @@ const pageDesc = "那些在记忆中刻下痕迹的作品";
   </div>
 </MainGridLayout>
 
-<style>
-  /* 平滑滚动 */
-  html {
-    scroll-behavior: smooth;
-  }
+<script>
+  // Tab 切换逻辑
+  const tabs = document.querySelectorAll(".tab-btn");
+  const contents = document.querySelectorAll(".tab-content");
 
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      const cat = tab.dataset.category;
+
+      // 更新 tab 样式
+      tabs.forEach((t) => {
+        t.classList.remove(
+          "text-neutral-900", "dark:text-neutral-100",
+          "bg-neutral-100", "dark:bg-neutral-800",
+          "font-semibold"
+        );
+        t.classList.add(
+          "text-neutral-500", "dark:text-neutral-400"
+        );
+      });
+      tab.classList.remove("text-neutral-500", "dark:text-neutral-400");
+      tab.classList.add(
+        "text-neutral-900", "dark:text-neutral-100",
+        "bg-neutral-100", "dark:bg-neutral-800",
+        "font-semibold"
+      );
+
+      // 切换内容区
+      contents.forEach((c) => {
+        c.style.display = c.dataset.category === cat ? "block" : "none";
+      });
+    });
+  });
+</script>
+
+<style>
   /* 网格布局 */
   .collections-grid {
     display: grid;
@@ -245,11 +280,14 @@ const pageDesc = "那些在记忆中刻下痕迹的作品";
     }
   }
 
-  /* 导航标签悬停效果 */
-  nav a {
-    text-decoration: none !important;
+  /* Tab 按钮去掉默认样式 */
+  .tab-btn {
+    font-family: inherit;
+    font-size: inherit;
+    outline: none;
   }
-  nav a:hover {
-    text-decoration: none !important;
+  .tab-btn:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
   }
 </style>
