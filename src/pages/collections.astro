@@ -31,15 +31,6 @@ const categories = [
 // ── 只显示有数据的分类 ──
 const activeCategories = categories.filter((cat) => cat.items.length > 0);
 
-// ── 状态徽章 ──
-const statusConfig: Record<string, { color: string; text: string }> = {
-  wish:    { color: "bg-blue-500",  text: "想看" },
-  collect: { color: "bg-green-500", text: "看过" },
-  doing:   { color: "bg-yellow-500", text: "在看" },
-  hold:    { color: "bg-orange-500", text: "搁置" },
-  drop:    { color: "bg-red-500",    text: "抛弃" },
-};
-
 const pageTitle = "驻足之旅";
 const pageDesc = "那些在记忆中刻下痕迹的作品";
 ---
@@ -122,7 +113,6 @@ const pageDesc = "那些在记忆中刻下痕迹的作品";
           {/* 卡片网格 */}
           <div class="collections-grid">
             {category.items.map((item) => {
-              const status = statusConfig[item.status] || { color: "bg-gray-500", text: item.status };
               return (
                 <div
                   class={`group relative overflow-hidden rounded-xl border transition-all duration-300
@@ -142,15 +132,6 @@ const pageDesc = "那些在记忆中刻下痕迹的作品";
                       loading="lazy"
                       decoding="async"
                     />
-
-                    {/* 状态徽章 */}
-                    <div class="absolute top-2 left-2">
-                      <span
-                        class={`px-2 py-0.5 rounded-md text-xs font-bold text-white shadow-md ${status.color}`}
-                      >
-                        {status.text}
-                      </span>
-                    </div>
 
                     {/* 附注（note） */}
                     {item.note && (
