@@ -49,6 +49,21 @@ const pageDesc = "记录我所驻足过的点";
   <div class="flex w-full rounded-(--radius-large) overflow-hidden relative min-h-32">
     <div class="card-base z-10 px-9 py-6 relative w-full">
 
+      {/* ===== 页面标题 ===== */}
+      <div class="mb-6">
+        <div class="flex items-center gap-3 mb-1">
+          <div class="h-8 w-8 rounded-lg bg-(--primary) flex items-center justify-center text-white dark:text-black/70">
+            <Icon name="material-symbols:movie" class="text-[1.5rem]" />
+          </div>
+          <div class="text-3xl font-bold text-neutral-900 dark:text-neutral-100">
+            {pageTitle}
+          </div>
+        </div>
+        <p class="text-sm text-neutral-500 dark:text-neutral-400 ml-11 mt-1">
+          那些在记忆中刻下痕迹的作品
+        </p>
+      </div>
+
       {/* ===== 没有数据时的提示 ===== */}
       {activeCategories.length === 0 && (
         <div class="text-center py-16">
