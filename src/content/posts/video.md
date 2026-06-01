@@ -27,43 +27,43 @@ published: 2023-10-19
 <iframe width="100%" height="468" src="//player.bilibili.com/player.html?bvid=BV1fK4y1s7Qf&p=1&autoplay=0" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true" &autoplay=0> </iframe>
 
 <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
-  <video controls style="flex: 1; min-width: 40%; border-radius: 12px;">
+  <video controls preload="none" style="flex: 1; min-width: 40%; border-radius: 12px;">
     <source src="/video%20(1).mp4" type="video/mp4">
   </video>
-  <video controls style="flex: 1; min-width: 40%; border-radius: 12px;">
+  <video controls preload="none" style="flex: 1; min-width: 40%; border-radius: 12px;">
     <source src="/video%20(2).mp4" type="video/mp4">
   </video>
-  <video controls style="flex: 1; min-width: 40%; border-radius: 12px;">
+  <video controls preload="none" style="flex: 1; min-width: 40%; border-radius: 12px;">
     <source src="/video%20(3).mp4" type="video/mp4">
   </video>
-  <video controls style="flex: 1; min-width: 40%; border-radius: 12px;">
+  <video controls preload="none" style="flex: 1; min-width: 40%; border-radius: 12px;">
     <source src="/video%20(4).mp4" type="video/mp4">
   </video>
-  <video controls style="flex: 1; min-width: 40%; border-radius: 12px;">
+  <video controls preload="none" style="flex: 1; min-width: 40%; border-radius: 12px;">
     <source src="/video%20(5).mp4" type="video/mp4">
   </video>
-  <video controls style="flex: 1; min-width: 40%; border-radius: 12px;">
+  <video controls preload="none" style="flex: 1; min-width: 40%; border-radius: 12px;">
     <source src="/video%20(6).mp4" type="video/mp4">
   </video>
-  <video controls style="flex: 1; min-width: 40%; border-radius: 12px;">
+  <video controls preload="none" style="flex: 1; min-width: 40%; border-radius: 12px;">
     <source src="/video%20(7).mp4" type="video/mp4">
   </video>
-  <video controls style="flex: 1; min-width: 40%; border-radius: 12px;">
+  <video controls preload="none" style="flex: 1; min-width: 40%; border-radius: 12px;">
     <source src="/video%20(8).mp4" type="video/mp4">
   </video>
-  <video controls style="flex: 1; min-width: 40%; border-radius: 12px;">
+  <video controls preload="none" style="flex: 1; min-width: 40%; border-radius: 12px;">
     <source src="/video%20(9).mp4" type="video/mp4">
   </video>
-  <video controls style="flex: 1; min-width: 40%; border-radius: 12px;">
+  <video controls preload="none" style="flex: 1; min-width: 40%; border-radius: 12px;">
     <source src="/video%20(10).mp4" type="video/mp4">
   </video>
-  <video controls style="flex: 1; min-width: 40%; border-radius: 12px;">
+  <video controls preload="none" style="flex: 1; min-width: 40%; border-radius: 12px;">
     <source src="/video%20(11).mp4" type="video/mp4">
   </video>
-  <video controls style="flex: 1; min-width: 40%; border-radius: 12px;">
+  <video controls preload="none" style="flex: 1; min-width: 40%; border-radius: 12px;">
     <source src="/video%20(12).mp4" type="video/mp4">
   </video>
-  <video controls style="flex: 1; min-width: 40%; border-radius: 12px;">
+  <video controls preload="none" style="flex: 1; min-width: 40%; border-radius: 12px;">
     <source src="/video%20(13).mp4" type="video/mp4">
   </video>
 </div>
