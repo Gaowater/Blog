@@ -1,0 +1,174 @@
+---
+/**
+ * =========================================================
+ *  📄 驻足之旅 - 手动维护页面
+ *  =========================================================
+ *  
+ *  你不用动这个文件！
+ *  只管去改 src/data/collections.ts 里面的数据就行
+ *  =========================================================
+ */
+import { Icon } from "astro-icon/components";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+import MainGridLayout from "@/layouts/MainGridLayout.astro";
+import {
+  animeList,
+  gameList,
+  bookList,
+  musicList,
+  realList,
+} from "@/data/collections";
+
+// ── 五个分类 ──
+const categories = [
+  { id: "anime", name: i18n(I18nKey.bangumiCategoryAnime), icon: "material-symbols:tv",          items: animeList },
+  { id: "game",  name: i18n(I18nKey.bangumiCategoryGame),  icon: "material-symbols:sports-esports", items: gameList },
+  { id: "book",  name: i18n(I18nKey.bangumiCategoryBook),  icon: "material-symbols:menu-book",     items: bookList },
+  { id: "music", name: i18n(I18nKey.bangumiCategoryMusic), icon: "material-symbols:music-note",    items: musicList },
+  { id: "real",  name: i18n(I18nKey.bangumiCategoryReal),  icon: "material-symbols:movie",         items: realList },
+];
+
+// ── 只显示有数据的分类 ──
+const activeCategories = categories.filter((cat) => cat.items.length > 0);
+
+// ── 状态徽章 ──
+const statusConfig = {
+  wish:    { color: "bg-blue-500",  text: "想看" },
+  collect: { color: "bg-green-500", text: "看过" },
+  doing:   { color: "bg-yellow-500", text: "在看" },
+  hold:    { color: "bg-orange-500", text: "搁置" },
+  drop:    { color: "bg-red-500",    text: "抛弃" },
+};
+
+const pageTitle = "我的驻足之旅";
+const pageDesc = "记录我所驻足过的点";
+---
+
+<MainGridLayout title={pageTitle} description={pageDesc}>
+  <div class="flex w-full rounded-(--radius-large) overflow-hidden relative min-h-32">
+    <div class="card-base z-10 px-9 py-6 relative w-full">
+
+      {/* ===== 没有数据时的提示 ===== */}
+      {activeCategories.length === 0 && (
+        <div class="text-center py-16">
+          <Icon name="material-symbols:search" is:inline class="text-[3rem] text-neutral-300 dark:text-neutral-600 mb-4" />
+          <p class="text-neutral-500 dark:text-neutral-400 text-lg">
+            还没有添加任何内容哦～
+          </p>
+          <p class="text-neutral-400 dark:text-neutral-500 text-sm mt-2">
+            去 <code class="text-(--primary) bg-(--btn-regular-bg) px-1.5 py-0.5 rounded text-sm">src/data/collections.ts</code> 添加你的第一条记录吧！
+          </p>
+        </div>
+      )}
+
+      {/* ===== 遍历每个分类 ===== */}
+      {activeCategories.map((category) => (
+        <div>
+          {/* 分类标题 */}
+          <div class="flex items-center gap-2 mb-4 mt-6 first:mt-0">
+            <div class="h-7 w-7 rounded-md bg-(--primary) flex items-center justify-center text-white dark:text-black/70">
+              <Icon name={category.icon} is:inline class="text-[1.1rem]" />
+            </div>
+            <h2 class="text-xl font-bold text-neutral-900 dark:text-neutral-100">
+              {category.name}
+            </h2>
+            <span class="text-sm text-neutral-400 dark:text-neutral-500 ml-1">
+              ({category.items.length})
+            </span>
+          </div>
+
+          {/* 卡片网格 */}
+          <div class="collections-grid">
+            {category.items.map((item) => {
+              const status = statusConfig[item.status as keyof typeof statusConfig] || { color: "bg-gray-500", text: item.status };
+              return (
+                <div class="group relative overflow-hidden rounded-xl border border-(--line-divider) transition-all duration-300 hover:shadow-lg hover:scale-[1.02] bg-white dark:bg-neutral-900">
+                  
+                  {/* 封面图 */}
+                  <div class="aspect-[2/3] relative overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+                    {item.cover ? (
+                      <img
+                        src={item.cover}
+                        alt={item.nameCn || item.name}
+                        class="w-full h-full object-cover pointer-events-none transition-transform duration-500 group-hover:scale-105"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    ) : (
+                      <div class="w-full h-full flex items-center justify-center text-neutral-300 dark:text-neutral-600">
+                        <Icon name="material-symbols:image" is:inline class="text-[2rem]" />
+                      </div>
+                    )}
+
+                    {/* 状态徽章 */}
+                    <div class="absolute top-2 left-2">
+                      <span
+                        class={`px-2 py-0.5 rounded-md text-xs font-bold text-white shadow-md ${status.color}`}
+                      >
+                        {status.text}
+                      </span>
+                    </div>
+
+                    {/* 评分 */}
+                    {item.score != null && item.score > 0 && (
+                      <div class="absolute bottom-2 right-2">
+                        <span class="px-1.5 py-0.5 rounded-md text-xs font-bold bg-black/60 text-white backdrop-blur-sm">
+                          {item.score}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 卡片底部信息 */}
+                  <div class="p-2.5">
+                    <div class="font-bold text-sm text-neutral-900 dark:text-neutral-100 truncate" title={item.name}>
+                      {item.nameCn || item.name}
+                    </div>
+                    {item.nameCn && item.nameCn !== item.name && (
+                      <div class="text-xs text-neutral-400 dark:text-neutral-500 truncate mt-0.5">
+                        {item.name}
+                      </div>
+                    )}
+
+                    {/* 标签 */}
+                    {item.tags && item.tags.length > 0 && (
+                      <div class="flex flex-wrap gap-1 mt-1.5">
+                        {item.tags.slice(0, 3).map((tag: string) => (
+                          <span class="text-[0.6rem] px-1.5 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* 短评 */}
+                    {item.comment && (
+                      <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1.5 line-clamp-2">
+                        {item.comment}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+
+  <style is:global>
+    .collections-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 0.75rem;
+    }
+    @media (max-width: 640px) {
+      .collections-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+      }
+    }
+  </style>
+</MainGridLayout>

@@ -6,6 +6,7 @@ import { Icon } from "astro-icon/components";
 import DisplaySettings from "@/components/controls/DisplaySettingsIntegrated.svelte";
 import LightDarkSwitch from "@/components/controls/LightDarkSwitch.svelte";
 import Search from "@/components/controls/Search.svelte";
+import MoodPicker from "@/components/controls/MoodPicker.astro";
 import MusicPlayer from "@/components/features/MusicPlayer.astro";
 import { backgroundWallpaper, navBarConfig, siteConfig } from "@/config";
 import { musicPlayerConfig } from "@/config/musicConfig";
@@ -135,6 +136,7 @@ if (isLocalSrcLogo) {
             </div>
             <div class="flex col-start-3 justify-self-end">
                 <!--<SearchPanel client:load>-->
+                <MoodPicker />
                 <Search
                     client:load
                 />

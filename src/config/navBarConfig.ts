@@ -37,8 +37,16 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 			// 根据配置决定是否添加相册，在siteConfig关闭pages.gallery时导航栏不显示相册
 			...(siteConfig.pages.gallery ? [LinkPreset.Gallery] : []),
 
-			// 根据配置决定是否添加番组计划，在siteConfig关闭pages.bangumi时导航栏不显示番组计划
-			...(siteConfig.pages.bangumi ? [LinkPreset.Bangumi] : []),
+			// ─────────────────────────────────────────────
+			// 📁 驻足之旅（手动维护，不再使用 Bangumi API）
+			// 数据文件：src/data/collections.ts
+			// 修改那个文件里的数据就行
+			// ─────────────────────────────────────────────
+			{
+				name: "驻足之旅",
+				url: "/collections/",
+				icon: "material-symbols:movie",
+			},
 		],
 	});
 
