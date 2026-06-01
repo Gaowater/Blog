@@ -9,31 +9,31 @@
  *  =========================================================
  */
 import { Icon } from "astro-icon/components";
-import I18nKey from "@/i18n/i18nKey";
-import { i18n } from "@/i18n/translation";
 import MainGridLayout from "@/layouts/MainGridLayout.astro";
 import {
   animeList,
   gameList,
   bookList,
   musicList,
-  realList,
+  movieList,
+  tvList,
 } from "@/data/collections";
 
-// ── 五个分类 ──
+// ── 六个分类 ──
 const categories = [
-  { id: "anime", name: i18n(I18nKey.bangumiCategoryAnime), icon: "material-symbols:tv",          items: animeList },
-  { id: "game",  name: i18n(I18nKey.bangumiCategoryGame),  icon: "material-symbols:sports-esports", items: gameList },
-  { id: "book",  name: i18n(I18nKey.bangumiCategoryBook),  icon: "material-symbols:menu-book",     items: bookList },
-  { id: "music", name: i18n(I18nKey.bangumiCategoryMusic), icon: "material-symbols:music-note",    items: musicList },
-  { id: "real",  name: i18n(I18nKey.bangumiCategoryReal),  icon: "material-symbols:movie",         items: realList },
+  { id: "anime", name: "📺 动漫",          icon: "material-symbols:tv",               items: animeList },
+  { id: "game",  name: "🎮 游戏",          icon: "material-symbols:sports-esports",   items: gameList },
+  { id: "book",  name: "📚 书籍",          icon: "material-symbols:menu-book",         items: bookList },
+  { id: "music", name: "🎵 音乐",          icon: "material-symbols:music-note",        items: musicList },
+  { id: "movie", name: "🎬 银幕记忆（电影）", icon: "material-symbols:movie",          items: movieList },
+  { id: "tv",    name: "📺 剧集时光（电视剧）", icon: "material-symbols:live-tv",      items: tvList },
 ];
 
 // ── 只显示有数据的分类 ──
 const activeCategories = categories.filter((cat) => cat.items.length > 0);
 
 // ── 状态徽章 ──
-const statusConfig = {
+const statusConfig: Record<string, { color: string; text: string }> = {
   wish:    { color: "bg-blue-500",  text: "想看" },
   collect: { color: "bg-green-500", text: "看过" },
   doing:   { color: "bg-yellow-500", text: "在看" },
@@ -96,7 +96,7 @@ const pageDesc = "记录我所驻足过的点";
           {/* 卡片网格 */}
           <div class="collections-grid">
             {category.items.map((item) => {
-              const status = statusConfig[item.status as keyof typeof statusConfig] || { color: "bg-gray-500", text: item.status };
+              const status = statusConfig[item.status] || { color: "bg-gray-500", text: item.status };
               return (
                 <div class="group relative overflow-hidden rounded-xl border border-(--line-divider) transition-all duration-300 hover:shadow-lg hover:scale-[1.02] bg-white dark:bg-neutral-900">
                   
@@ -124,19 +124,11 @@ const pageDesc = "记录我所驻足过的点";
                         {status.text}
                       </span>
                     </div>
-
-                    {/* 评分 */}
-                    {item.score != null && item.score > 0 && (
-                      <div class="absolute bottom-2 right-2">
-                        <span class="px-1.5 py-0.5 rounded-md text-xs font-bold bg-black/60 text-white backdrop-blur-sm">
-                          {item.score}
-                        </span>
-                      </div>
-                    )}
                   </div>
 
                   {/* 卡片底部信息 */}
                   <div class="p-2.5">
+                    {/* 名称 */}
                     <div class="font-bold text-sm text-neutral-900 dark:text-neutral-100 truncate" title={item.name}>
                       {item.nameCn || item.name}
                     </div>
@@ -157,9 +149,9 @@ const pageDesc = "记录我所驻足过的点";
                       </div>
                     )}
 
-                    {/* 短评 */}
+                    {/* 短评（全文展示） */}
                     {item.comment && (
-                      <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1.5 line-clamp-2">
+                      <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1.5 leading-relaxed">
                         {item.comment}
                       </p>
                     )}
