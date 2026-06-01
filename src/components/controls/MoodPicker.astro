@@ -45,7 +45,10 @@ const defaultIcon = "fa7-brands:gratipay";
 
   <div
     id="mood-picker-panel"
-    class="float-panel float-panel-closed absolute right-0 top-full mt-2 p-3 w-72 z-50"
+    class="float-panel float-panel-closed absolute top-full mt-2 p-3 z-50
+           w-72 max-sm:w-64
+           max-sm:left-1/2 max-sm:-translate-x-1/2 max-sm:right-auto
+           sm:right-0"
   >
     <div class="grid grid-cols-3 gap-1.5">
       {moods.map((mood) => (
