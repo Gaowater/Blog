@@ -63,7 +63,7 @@ export const animeList = [
 
   // --- 碧蓝之海 ---
   { name: "碧蓝之海 系列", cover: "/assets/images/grand_blue.jpg", status: "collect",
-    note: "含第一季 + 第二季", tags: ["搞笑", "校园", "潜水"] },
+    note: "含第一季 + 第二季", tags: ["搞笑", "校园", "潜水"], highlight: true },
 
   // --- 灵笼 ---
   { name: "灵笼 系列", cover: "/assets/images/灵笼.jpg", status: "collect",
@@ -83,7 +83,7 @@ export const animeList = [
   { name: "罗小黑战记 剧集", cover: "/assets/images/罗小黑战记.jpg", status: "collect",
     tags: ["国创", "治愈", "奇幻"] },
   { name: "罗小黑战记 大电影", cover: "/assets/images/luoxiaohei_movie.jpg", status: "collect",
-    comment: "国产动画电影的骄傲，小黑萌翻了！", tags: ["国创", "治愈", "奇幻"] },
+    comment: "国产动画电影的骄傲，小黑萌翻了！", tags: ["国创", "治愈", "奇幻"], highlight: true },
 
   // ── JOJO的奇妙冒险 全6季 ──
   { name: "JOJO的奇妙冒险 幻影之血", cover: "/assets/images/jojo1.jpg", status: "collect",
@@ -123,7 +123,7 @@ export const musicList = [
 export const movieList = [
   { name: "The Shawshank Redemption", nameCn: "肖申克的救赎",            cover: "/assets/images/shawshank.jpg",    status: "collect", comment: "恐惧让你沦为囚犯，希望让你重获自由。一部关于希望与自由的经典，每次看都有新的感悟。", tags: ["经典", "剧情", "励志"] },
   { name: "Interstellar",             nameCn: "星际穿越",                cover: "/assets/images/interstellar.jpg",  status: "collect", comment: "爱是我们能感知的唯一超越时空维度的东西。", tags: ["科幻", "太空", "诺兰"] },
-  { name: "Titanic",                  nameCn: "泰坦尼克号",              cover: "/assets/images/titanic.jpg",       status: "collect", comment: "经典之所以是经典，是因为它无论过去多少年依然能打动人心。", tags: ["经典", "爱情", "灾难"] },
+  { name: "Titanic",                  nameCn: "泰坦尼克号",              cover: "/assets/images/titanic.jpg",       status: "collect", comment: "经典之所以是经典，是因为它无论过去多少年依然能打动人心。", tags: ["经典", "爱情", "灾难"], highlight: true },
   { name: "流浪地球2",                                                   cover: "/assets/images/wandering2.jpg",   status: "collect", comment: "中国科幻电影的制作标杆，格局与情感并存。", tags: ["科幻", "国产", "灾难"] },
   { name: "F1",                       nameCn: "F1：狂飙赛车",            cover: "/assets/images/f1-2025.jpg",       status: "collect", comment: "速度与激情的极致体现，引擎轰鸣就是最好的配乐。", tags: ["赛车", "动作"] },
   { name: "飞驰人生3",                                                    cover: "/assets/images/飞驰人生3.jpg",    status: "collect", comment: "韩寒镜头下的赛车世界，热血中带着幽默。", tags: ["国产", "赛车", "喜剧"] },
