@@ -95,7 +95,7 @@ export const animeList = [
   { name: "JOJO的奇妙冒险 不灭钻石", cover: "/assets/images/jojo4.jpg", status: "collect",
     comment: "杜王町的日常与疯狂，吉良吉影的压迫感。", tags: ["热血", "战斗", "奇幻"] },
   { name: "JOJO的奇妙冒险 黄金之风", cover: "/assets/images/jojo5.jpg", status: "collect",
-    comment: "布加拉提才是真正的主角！滚石篇封神。", tags: ["热血", "战斗", "奇幻"] },
+    comment: "所谓的觉悟，就是在漆黑的荒野上开辟出理应前行的道路。", tags: ["热血", "战斗", "奇幻"] },
   { name: "JOJO的奇妙冒险 石之海", cover: "/assets/images/jojo6.jpg", status: "collect",
     comment: "徐伦的勇气与自由，JOJO宇宙的终章。", tags: ["热血", "战斗", "奇幻"] },
 
