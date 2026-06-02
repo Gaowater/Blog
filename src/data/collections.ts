@@ -59,15 +59,15 @@ export const animeList = [
 
   // --- 辉夜大小姐想让我告白 ---
   { name: "辉夜大小姐想让我告白 系列", cover: "/assets/images/kaguya.jpg", status: "collect",
-    note: "含全四季", tags: ["恋爱", "搞笑", "校园"] },
+    comment: "书记的舞我能看一百遍。", note: "含全四季", tags: ["恋爱", "搞笑", "校园"] },
 
   // --- 碧蓝之海 ---
   { name: "碧蓝之海 系列", cover: "/assets/images/grand_blue.jpg", status: "collect",
-    note: "含第一季 + 第二季", tags: ["搞笑", "校园", "潜水"], highlight: true },
+    comment: "唯一一部让我笑到腹肌疼的番。", note: "含第一季 + 第二季", tags: ["搞笑", "校园", "潜水"], highlight: true },
 
   // --- 灵笼 ---
   { name: "灵笼 系列", cover: "/assets/images/灵笼.jpg", status: "collect",
-    note: "含第一季 + 第二季", tags: ["国创", "科幻", "末日"] },
+    comment: "末日废土下的国漫之光，制作精良。", note: "含第一季 + 第二季", tags: ["国创", "科幻", "末日"] },
 
   // --- 进击的巨人 ---
   { name: "進撃の巨人", nameCn: "进击的巨人", cover: "/assets/images/shingeki.jpg", status: "collect",
@@ -81,27 +81,27 @@ export const animeList = [
 
   // --- 罗小黑战记（剧集+电影分开）---
   { name: "罗小黑战记 剧集", cover: "/assets/images/罗小黑战记.jpg", status: "collect",
-    tags: ["国创", "治愈", "奇幻"] },
+    comment: "治愈系国漫的天花板，每一帧都是壁纸。", tags: ["国创", "治愈", "奇幻"] },
   { name: "罗小黑战记 大电影", cover: "/assets/images/luoxiaohei_movie.jpg", status: "collect",
     comment: "国产动画电影的骄傲，小黑萌翻了！", tags: ["国创", "治愈", "奇幻"], highlight: true },
 
   // ── JOJO的奇妙冒险 全6季 ──
   { name: "JOJO的奇妙冒险 幻影之血", cover: "/assets/images/jojo1.jpg", status: "collect",
-    tags: ["热血", "战斗", "奇幻"] },
+    comment: "一切的开始，DIO的恶之华。", tags: ["热血", "战斗", "奇幻"] },
   { name: "JOJO的奇妙冒险 战斗潮流", cover: "/assets/images/jojo2.jpg", status: "collect",
-    tags: ["热血", "战斗", "奇幻"] },
+    comment: "西————萨！！波纹战士的巅峰对决。", tags: ["热血", "战斗", "奇幻"] },
   { name: "JOJO的奇妙冒险 星尘斗士", cover: "/assets/images/jojo3.jpg", status: "collect",
-    tags: ["热血", "战斗", "奇幻"] },
+    comment: "替身时代的开启，欧拉欧拉欧拉！", tags: ["热血", "战斗", "奇幻"] },
   { name: "JOJO的奇妙冒险 不灭钻石", cover: "/assets/images/jojo4.jpg", status: "collect",
-    tags: ["热血", "战斗", "奇幻"] },
+    comment: "杜王町的日常与疯狂，吉良吉影的压迫感。", tags: ["热血", "战斗", "奇幻"] },
   { name: "JOJO的奇妙冒险 黄金之风", cover: "/assets/images/jojo5.jpg", status: "collect",
-    tags: ["热血", "战斗", "奇幻"] },
+    comment: "布加拉提才是真正的主角！滚石篇封神。", tags: ["热血", "战斗", "奇幻"] },
   { name: "JOJO的奇妙冒险 石之海", cover: "/assets/images/jojo6.jpg", status: "collect",
-    tags: ["热血", "战斗", "奇幻"] },
+    comment: "徐伦的勇气与自由，JOJO宇宙的终章。", tags: ["热血", "战斗", "奇幻"] },
 
   // --- 火影忍者 ---
   { name: "NARUTO -ナルト-", nameCn: "火影忍者", cover: "/assets/images/naruto.jpg", status: "doing",
-    comment: "我 никогда 不会放弃！", tags: ["热血", "战斗", "成长"] },
+    comment: "有话直说，说到做到，这就是我的忍道！", tags: ["热血", "战斗", "成长"] },
 ]
 
 // ──────────────── 🎮 游戏 ────────────────
