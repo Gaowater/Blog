@@ -4,86 +4,104 @@
  *  =========================================================
  *  
  *  🧑‍💻 怎么添加新条目？
- *  往下翻，找到对应的分类（动漫、游戏、书籍、音乐、电影、电视剧）
- *  在数组里加一个 { } 就行了，像这样：
- * 
- *    { name: "葬送的芙莉莲", cover: "/assets/images/xxx.jpg", status: "collect" }
+ *  往下翻，找到对应的分类，在数组里加一个 { } 就行了。
  * 
  *  =========================================================
  *  📝 每个字段说明：
  * 
  *  name       → 作品名称（必填）
- *  nameCn     → 中文译名（可选，不填就留空 ""）
- *  cover      → 封面图路径（必填）
- *                本地图片: "/assets/images/xxx.jpg"
- *                网络图片: "https://..."
- *  status     → 状态（必填），选一个：
- *     "wish"    → 想看/想玩/想读/想听
- *     "collect" → 已看/已玩/已读/已听
- *     "doing"   → 在看/在玩/在读/在听
- *     "hold"    → 搁置
- *     "drop"    → 抛弃
- *  comment    → 短评（可选，不填就删掉此行）
+ *  nameCn     → 中文译名（可选）
+ *  cover      → 封面图路径（必填，本地图片 "/assets/images/xxx.jpg"）
+ *  status     → 状态（必填）："wish"/"collect"/"doing"/"hold"/"drop"
+ *  comment    → 短评（可选）
  *  date       → 看完的日期（可选，格式 "2024-12-25"）
  *  tags       → 标签（可选，如 ["科幻", "治愈"]）
- *  note       → 附注（可选，显示在卡片上的额外文字）
- *  highlight  → 高亮（可选，设为 true 会给卡片加特殊边框）
+ *  note       → 附注（可选，显示在卡片上的额外文字，如 "含全四季"）
+ *  highlight  → 高亮（可选，true 给卡片加特殊边框）
  * 
- *  ⚠️ 重要：每条用 { } 包着，中间用逗号隔开，最后一条后面不要逗号！
+ *  ⚠️ 重要：每条用 { } 包着，逗号隔开，最后一条不要逗号！
  *  =========================================================
  */
 
 // ──────────────── 📺 动漫 ────────────────
 export const animeList = [
   // ★ 高亮推荐
-  { name: "君の名は。", nameCn: "你的名字。", cover: "/assets/images/kiminonawa.jpg", status: "collect", comment: "穿越时空的相遇，跨越彼岸的羁绊。", tags: ["动画电影", "新海诚", "治愈"], highlight: true },
+  { name: "君の名は。", nameCn: "你的名字。", cover: "/assets/images/kiminonawa.jpg", status: "collect",
+    comment: "穿越时空的相遇，跨越彼岸的羁绊。", tags: ["动画电影", "新海诚", "治愈"], highlight: true },
 
   // ── 独立作品 ──
-  { name: "四月は君の嘘", nameCn: "四月是你的谎言", cover: "/assets/images/shigatsu.jpg", status: "collect", comment: "在一个樱花飞舞的四月，你走进了我的世界。", tags: ["青春", "音乐", "催泪"] },
-  { name: "千と千尋の神隠し", nameCn: "千与千寻", cover: "/assets/images/spirited_away.jpg", status: "collect", comment: "宫崎骏的巅峰之作，童年的奇幻冒险。", tags: ["动画电影", "宫崎骏", "奇幻"] },
-  { name: "DEATH NOTE", nameCn: "死亡笔记", cover: "/assets/images/death_note.jpg", status: "collect", comment: "在这个世界上，没有什么是绝对的正义。", tags: ["悬疑", "推理", "智斗"] },
-  { name: "刺客伍六七", cover: "/assets/images/scissor_seven.jpg", status: "collect", comment: "用剪刀剪出最骚的刺客路。", tags: ["国创", "搞笑", "动作"] },
-  { name: "时光代理人 第一季", cover: "/assets/images/link_click.jpg", status: "collect", comment: "无论过去，不问将来。", tags: ["国创", "悬疑", "奇幻"] },
-  { name: "霧山五行", nameCn: "雾山五行", cover: "/assets/images/wushan.jpg", status: "collect", comment: "水墨丹青，打斗封神。", tags: ["国创", "动作", "水墨"] },
-  { name: "大理寺日志", cover: "/assets/images/dali_temple.jpg", status: "collect", comment: "少卿大人，办案了！", tags: ["国创", "搞笑", "古风"] },
+  { name: "四月は君の嘘", nameCn: "四月是你的谎言", cover: "/assets/images/shigatsu.jpg", status: "collect",
+    comment: "在一个樱花飞舞的四月，你走进了我的世界。", tags: ["青春", "音乐", "催泪"] },
+  { name: "千と千尋の神隠し", nameCn: "千与千寻", cover: "/assets/images/spirited_away.jpg", status: "collect",
+    comment: "宫崎骏的巅峰之作，童年的奇幻冒险。", tags: ["动画电影", "宫崎骏", "奇幻"] },
+  { name: "DEATH NOTE", nameCn: "死亡笔记", cover: "/assets/images/death_note.jpg", status: "collect",
+    comment: "在这个世界上，没有什么是绝对的正义。", tags: ["悬疑", "推理", "智斗"] },
+  { name: "大理寺日志", cover: "/assets/images/大理寺日志.jpg", status: "collect",
+    comment: "少卿大人，办案了！", tags: ["国创", "搞笑", "古风"] },
+  { name: "我的三体之罗辑传", cover: "/assets/images/threebody_luoji.jpg", status: "collect",
+    comment: "面壁者罗辑，我是你的破壁人。", tags: ["国创", "科幻", "三体"] },
+  { name: "我的三体之章北海传", cover: "/assets/images/threebody_zhang.jpg", status: "collect",
+    comment: "没关系，都一样。", tags: ["国创", "科幻", "三体"] },
 
-  // ── 大系列：只放标志性封面，附注说明含所有内容 ──
+  // ── 系列作品（合并为一个格子，附注说明含所有内容）──
+
+  // --- 刺客伍六七 ---
+  { name: "刺客伍六七 系列", cover: "/assets/images/scissor_seven.jpg", status: "collect",
+    comment: "用剪刀剪出最骚的刺客路。", note: "含全四季 + 大电影", tags: ["国创", "搞笑", "动作"] },
+
+  // --- 时光代理人 ---
+  { name: "时光代理人 系列", cover: "/assets/images/link_click.jpg", status: "collect",
+    comment: "无论过去，不问将来。", note: "含第一季 + 第二季", tags: ["国创", "悬疑", "奇幻"] },
+
+  // --- 雾山五行 ---
+  { name: "雾山五行 系列", cover: "/assets/images/wushan.jpg", status: "collect",
+    comment: "水墨丹青，打斗封神。", note: "含第一季 + 第二季", tags: ["国创", "动作", "水墨"] },
+
+  // --- 辉夜大小姐想让我告白 ---
+  { name: "辉夜大小姐想让我告白 系列", cover: "/assets/images/kaguya.jpg", status: "collect",
+    note: "含全四季", tags: ["恋爱", "搞笑", "校园"] },
+
+  // --- 碧蓝之海 ---
+  { name: "碧蓝之海 系列", cover: "/assets/images/grand_blue.jpg", status: "collect",
+    note: "含第一季 + 第二季", tags: ["搞笑", "校园", "潜水"] },
+
+  // --- 灵笼 ---
+  { name: "灵笼 系列", cover: "/assets/images/灵笼.jpg", status: "collect",
+    note: "含第一季 + 第二季", tags: ["国创", "科幻", "末日"] },
+
+  // --- 进击的巨人 ---
   { name: "進撃の巨人", nameCn: "进击的巨人", cover: "/assets/images/shingeki.jpg", status: "collect",
     comment: "献出你的心脏！人类史上最宏大的史诗。",
     note: "含全四季 + 最终季 Part 1-3 + 剧场版", tags: ["史诗", "黑暗", "动作"] },
+
+  // --- 鬼灭之刃 ---
   { name: "鬼滅の刃", nameCn: "鬼灭之刃", cover: "/assets/images/kimetsu.jpg", status: "collect",
     comment: "纵使鬼途漫漫，亦有炭治郎的温暖。",
     note: "含全四季 + 无限列车篇 + 柱稽古篇", tags: ["热血", "战斗", "治愈"] },
 
-  // ── 系列作品：逐个列出所有剧集 ──
-  // --- 辉夜大小姐想让我告白 ---
-  { name: "辉夜大小姐想让我告白 第一季", cover: "/assets/images/kaguya.jpg", status: "collect", tags: ["恋爱", "搞笑", "校园"] },
-  { name: "辉夜大小姐想让我告白 第二季", cover: "/assets/images/kaguya.jpg", status: "collect", tags: ["恋爱", "搞笑", "校园"] },
-  { name: "辉夜大小姐想让我告白 究极浪漫", cover: "/assets/images/kaguya.jpg", status: "collect", tags: ["恋爱", "搞笑", "校园"] },
-  { name: "辉夜大小姐想让我告白 初吻不会结束", cover: "/assets/images/kaguya.jpg", status: "collect", tags: ["恋爱", "搞笑", "校园"] },
+  // --- 罗小黑战记（剧集+电影分开）---
+  { name: "罗小黑战记 剧集", cover: "/assets/images/罗小黑战记.jpg", status: "collect",
+    tags: ["国创", "治愈", "奇幻"] },
+  { name: "罗小黑战记 大电影", cover: "/assets/images/luoxiaohei_movie.jpg", status: "collect",
+    comment: "国产动画电影的骄傲，小黑萌翻了！", tags: ["国创", "治愈", "奇幻"] },
 
-  // --- JOJO的奇妙冒险 ---
-  { name: "JOJO的奇妙冒险 幻影之血／战斗潮流", cover: "/assets/images/jojo.jpg", status: "collect", tags: ["热血", "战斗", "奇幻"] },
-  { name: "JOJO的奇妙冒险 星尘斗士", cover: "/assets/images/jojo.jpg", status: "collect", tags: ["热血", "战斗", "奇幻"] },
-  { name: "JOJO的奇妙冒险 不灭钻石", cover: "/assets/images/jojo.jpg", status: "collect", tags: ["热血", "战斗", "奇幻"] },
-  { name: "JOJO的奇妙冒险 黄金之风", cover: "/assets/images/jojo.jpg", status: "collect", tags: ["热血", "战斗", "奇幻"] },
-  { name: "JOJO的奇妙冒险 石之海", cover: "/assets/images/jojo.jpg", status: "collect", tags: ["热血", "战斗", "奇幻"] },
+  // ── JOJO的奇妙冒险 全6季 ──
+  { name: "JOJO的奇妙冒险 幻影之血", cover: "/assets/images/jojo1.jpg", status: "collect",
+    tags: ["热血", "战斗", "奇幻"] },
+  { name: "JOJO的奇妙冒险 战斗潮流", cover: "/assets/images/jojo2.jpg", status: "collect",
+    tags: ["热血", "战斗", "奇幻"] },
+  { name: "JOJO的奇妙冒险 星尘斗士", cover: "/assets/images/jojo3.jpg", status: "collect",
+    tags: ["热血", "战斗", "奇幻"] },
+  { name: "JOJO的奇妙冒险 不灭钻石", cover: "/assets/images/jojo4.jpg", status: "collect",
+    tags: ["热血", "战斗", "奇幻"] },
+  { name: "JOJO的奇妙冒险 黄金之风", cover: "/assets/images/jojo5.jpg", status: "collect",
+    tags: ["热血", "战斗", "奇幻"] },
+  { name: "JOJO的奇妙冒险 石之海", cover: "/assets/images/jojo6.jpg", status: "collect",
+    tags: ["热血", "战斗", "奇幻"] },
 
-  // --- 碧蓝之海 ---
-  { name: "碧蓝之海 第一季", cover: "/assets/images/grand_blue.jpg", status: "collect", tags: ["搞笑", "校园", "潜水"] },
-  { name: "碧蓝之海 第二季", cover: "/assets/images/grand_blue.jpg", status: "collect", tags: ["搞笑", "校园", "潜水"] },
-
-  // --- 罗小黑战记 ---
-  { name: "罗小黑战记 剧集", cover: "/assets/images/luoxiaohei.jpg", status: "collect", tags: ["国创", "治愈", "奇幻"] },
-  { name: "罗小黑战记 大电影", cover: "/assets/images/luoxiaohei.jpg", status: "collect", comment: "国产动画电影的骄傲，小黑萌翻了！", tags: ["国创", "治愈", "奇幻"] },
-
-  // --- 灵笼 ---
-  { name: "灵笼 第一季", cover: "/assets/images/linglong.jpg", status: "collect", tags: ["国创", "科幻", "末日"] },
-  { name: "灵笼 第二季", cover: "/assets/images/linglong.jpg", status: "collect", tags: ["国创", "科幻", "末日"] },
-
-  // --- 我的三体 ---
-  { name: "我的三体之罗辑传", cover: "/assets/images/threebody_luoji.jpg", status: "collect", comment: "面壁者罗辑，我是你的破壁人。", tags: ["国创", "科幻", "三体"] },
-  { name: "我的三体之章北海传", cover: "/assets/images/threebody_zhang.jpg", status: "collect", comment: "没关系，都一样。", tags: ["国创", "科幻", "三体"] },
+  // --- 火影忍者 ---
+  { name: "NARUTO -ナルト-", nameCn: "火影忍者", cover: "/assets/images/naruto.jpg", status: "doing",
+    comment: "我 никогда 不会放弃！", tags: ["热血", "战斗", "成长"] },
 ]
 
 // ──────────────── 🎮 游戏 ────────────────
@@ -118,7 +136,7 @@ export const movieList = [
 // ──────────────── 📺 剧集时光（电视剧）─────
 export const tvList = [
   { name: "大明王朝1566",  cover: "/assets/images/大明王朝1566.jpg", status: "collect", comment: "国产历史剧的巅峰，每个角色都是权谋棋盘上的一颗棋子。", tags: ["国产", "历史", "权谋"] },
-  { name: "The Boys", nameCn: "黑袍纠察队", cover: "/assets/images/the-boys.jpg", status: "collect", comment: "把超级英雄拉下神坛，黑暗、血腥又荒诞。", tags: ["美剧", "超级英雄", "黑暗"] },
+  { name: "黑袍纠察队 系列", nameCn: "The Boys", cover: "/assets/images/黑袍纠察队.jpg", status: "collect", note: "含全四季", comment: "把超级英雄拉下神坛，黑暗、血腥又荒诞。", tags: ["美剧", "超级英雄", "黑暗"] },
   { name: "狂飙",          cover: "/assets/images/狂飙.jpg",        status: "collect", comment: "高启强这个角色塑造得太绝了，从底层鱼贩到黑道大佬的浮沉录。", tags: ["国产", "犯罪", "剧情"] },
   { name: "开端",          cover: "/assets/images/开端.jpg",        status: "collect", comment: "无限循环的设定玩出了新花样，国产悬疑剧的惊喜之作。", tags: ["国产", "悬疑", "科幻"] },
   { name: "隐秘的角落",    cover: "/assets/images/隐秘的角落.jpg",  status: "collect", comment: "一起爬山吗？国产悬疑剧的封神之作，全员演技在线。", tags: ["国产", "悬疑", "犯罪"] },
