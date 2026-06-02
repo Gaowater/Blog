@@ -25,9 +25,13 @@
 
 // ──────────────── 📺 动漫 ────────────────
 export const animeList = [
-  // ★ 高亮推荐
+  // ⭐ 加框推荐（置顶）
   { name: "君の名は。", nameCn: "你的名字。", cover: "/assets/images/kiminonawa.jpg", status: "collect",
     comment: "穿越时空的相遇，跨越彼岸的羁绊。", tags: ["动画电影", "新海诚", "治愈"], highlight: true },
+  { name: "碧蓝之海 系列", cover: "/assets/images/grand_blue.jpg", status: "collect",
+    comment: "唯一一部让我笑到腹肌疼的番。", note: "含第一季 + 第二季", tags: ["搞笑", "校园", "潜水"], highlight: true },
+  { name: "罗小黑战记 大电影", cover: "/assets/images/luoxiaohei_movie.jpg", status: "collect",
+    comment: "国产动画电影的骄傲，小黑萌翻了！", tags: ["国创", "治愈", "奇幻"], highlight: true },
 
   // ── 独立作品 ──
   { name: "四月は君の嘘", nameCn: "四月是你的谎言", cover: "/assets/images/shigatsu.jpg", status: "collect",
@@ -61,10 +65,6 @@ export const animeList = [
   { name: "辉夜大小姐想让我告白 系列", cover: "/assets/images/kaguya.jpg", status: "collect",
     comment: "书记的舞我能看一百遍。", note: "含全四季", tags: ["恋爱", "搞笑", "校园"] },
 
-  // --- 碧蓝之海 ---
-  { name: "碧蓝之海 系列", cover: "/assets/images/grand_blue.jpg", status: "collect",
-    comment: "唯一一部让我笑到腹肌疼的番。", note: "含第一季 + 第二季", tags: ["搞笑", "校园", "潜水"], highlight: true },
-
   // --- 灵笼 ---
   { name: "灵笼 系列", cover: "/assets/images/灵笼.jpg", status: "collect",
     comment: "末日废土下的国漫之光，制作精良。", note: "含第一季 + 第二季", tags: ["国创", "科幻", "末日"] },
@@ -79,11 +79,9 @@ export const animeList = [
     comment: "纵使鬼途漫漫，亦有炭治郎的温暖。",
     note: "含全四季 + 无限列车篇 + 柱稽古篇", tags: ["热血", "战斗", "治愈"] },
 
-  // --- 罗小黑战记（剧集+电影分开）---
+  // --- 罗小黑战记 剧集 ---
   { name: "罗小黑战记 剧集", cover: "/assets/images/罗小黑战记.jpg", status: "collect",
     comment: "治愈系国漫的天花板，每一帧都是壁纸。", tags: ["国创", "治愈", "奇幻"] },
-  { name: "罗小黑战记 大电影", cover: "/assets/images/luoxiaohei_movie.jpg", status: "collect",
-    comment: "国产动画电影的骄傲，小黑萌翻了！", tags: ["国创", "治愈", "奇幻"], highlight: true },
 
   // ── JOJO的奇妙冒险 全6季 ──
   { name: "JOJO的奇妙冒险 幻影之血", cover: "/assets/images/jojo1.jpg", status: "collect",
@@ -121,9 +119,12 @@ export const musicList = [
 
 // ──────────────── 🎬 银幕记忆（电影）────────
 export const movieList = [
+  // ⭐ 加框推荐（置顶）
+  { name: "Titanic",                  nameCn: "泰坦尼克号",              cover: "/assets/images/titanic.jpg",       status: "collect", comment: "经典之所以是经典，是因为它无论过去多少年依然能打动人心。", tags: ["经典", "爱情", "灾难"], highlight: true },
+
+  // ── 其他电影 ──
   { name: "The Shawshank Redemption", nameCn: "肖申克的救赎",            cover: "/assets/images/shawshank.jpg",    status: "collect", comment: "恐惧让你沦为囚犯，希望让你重获自由。一部关于希望与自由的经典，每次看都有新的感悟。", tags: ["经典", "剧情", "励志"] },
   { name: "Interstellar",             nameCn: "星际穿越",                cover: "/assets/images/interstellar.jpg",  status: "collect", comment: "爱是我们能感知的唯一超越时空维度的东西。", tags: ["科幻", "太空", "诺兰"] },
-  { name: "Titanic",                  nameCn: "泰坦尼克号",              cover: "/assets/images/titanic.jpg",       status: "collect", comment: "经典之所以是经典，是因为它无论过去多少年依然能打动人心。", tags: ["经典", "爱情", "灾难"], highlight: true },
   { name: "流浪地球2",                                                   cover: "/assets/images/wandering2.jpg",   status: "collect", comment: "中国科幻电影的制作标杆，格局与情感并存。", tags: ["科幻", "国产", "灾难"] },
   { name: "F1",                       nameCn: "F1：狂飙赛车",            cover: "/assets/images/f1-2025.jpg",       status: "collect", comment: "速度与激情的极致体现，引擎轰鸣就是最好的配乐。", tags: ["赛车", "动作"] },
   { name: "飞驰人生3",                                                    cover: "/assets/images/飞驰人生3.jpg",    status: "collect", comment: "韩寒镜头下的赛车世界，热血中带着幽默。", tags: ["国产", "赛车", "喜剧"] },
