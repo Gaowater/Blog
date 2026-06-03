@@ -1,45 +1,42 @@
 ---
 import { Icon } from "astro-icon/components";
 
-// 12 个心情选项
+// 12 个心情选项（emoji 是纯文字，不依赖彩色图标）
 const moods = [
-  { icon: "fa7-regular:face-grin-beam", label: "愉悦" },
-  { icon: "fa7-regular:face-smile-beam", label: "悠闲" },
-  { icon: "fa7-regular:face-laugh-squint", label: "期待" },
-  { icon: "fa7-regular:face-laugh-beam", label: "自由" },
-  { icon: "fa7-regular:face-frown", label: "悲伤" },
-  { icon: "fa7-regular:face-meh-blank", label: "孤独" },
-  { icon: "fa7-regular:face-grimace", label: "愤怒" },
-  { icon: "fa7-regular:face-frown-open", label: "遗憾" },
-  { icon: "fa7-regular:face-meh", label: "无聊" },
-  { icon: "fa7-regular:face-rolling-eyes", label: "空虚" },
-  { icon: "fa7-regular:face-grin-stars", label: "发癫" },
+  { icon: "fa7-regular:face-grin-beam", label: "愉悦", emoji: "😁" },
+  { icon: "fa7-regular:face-smile-beam", label: "悠闲", emoji: "😊" },
+  { icon: "fa7-regular:face-laugh-squint", label: "期待", emoji: "😆" },
+  { icon: "fa7-regular:face-laugh-beam", label: "自由", emoji: "😄" },
+  { icon: "fa7-regular:face-frown", label: "悲伤", emoji: "😢" },
+  { icon: "fa7-regular:face-meh-blank", label: "孤独", emoji: "😶" },
+  { icon: "fa7-regular:face-grimace", label: "愤怒", emoji: "😬" },
+  { icon: "fa7-regular:face-frown-open", label: "遗憾", emoji: "😟" },
+  { icon: "fa7-regular:face-meh", label: "无聊", emoji: "😐" },
+  { icon: "fa7-regular:face-rolling-eyes", label: "空虚", emoji: "🙄" },
+  { icon: "fa7-regular:face-grin-stars", label: "发癫", emoji: "🤩" },
 ];
 
 const defaultIcon = "fa7-brands:gratipay";
 ---
 
 <div id="mood-picker" class="relative inline-flex">
-  <!-- ═══ 触发按钮（心形图标） ═══ -->
+  <!-- ═══ 触发按钮（默认心形，选中后变对应 emoji） ═══ -->
   <button
     id="mood-picker-btn"
     class="btn-plain scale-animation rounded-lg h-11 w-11 active:scale-90 cursor-pointer"
     aria-label="选择心情"
     title="选择心情"
   >
-    <Icon
-      name={defaultIcon}
-      is:inline
-      class="mood-icon-elem text-[1.25rem]"
-      data-mood-key="fa7-brands:gratipay"
-    />
+    <!-- 默认：Iconify 心形 -->
+    <span class="mood-icon-elem text-[1.25rem]" data-mood-key="fa7-brands:gratipay">
+      <Icon name={defaultIcon} is:inline class="text-[1.25rem]" />
+    </span>
+    <!-- 选中后：纯文字 emoji（通过 CSS 切换显示） -->
     {moods.map((mood) => (
-      <Icon
-        name={mood.icon}
-        is:inline
+      <span
         class="mood-icon-elem hidden text-[1.25rem]"
         data-mood-key={mood.icon}
-      />
+      >{mood.emoji}</span>
     ))}
   </button>
 
@@ -92,7 +89,7 @@ const defaultIcon = "fa7-brands:gratipay";
         </button>
       </div>
 
-      <!-- 心情选择网格 -->
+      <!-- 心情选择网格（纯 emoji 文字，不依赖彩色图标） -->
       <div class="grid grid-cols-3 gap-1.5">
         {moods.map((mood) => (
           <button
@@ -100,7 +97,7 @@ const defaultIcon = "fa7-brands:gratipay";
             data-mood-label={mood.label}
             class="mood-option flex flex-col items-center justify-center gap-0.5 rounded-lg py-2 px-1 transition hover:bg-(--btn-regular-bg) active:scale-90 cursor-pointer"
           >
-            <Icon name={mood.icon} is:inline class="text-[1.375rem] text-neutral-900 dark:text-neutral-100" />
+            <span class="text-[1.375rem] leading-none">{mood.emoji}</span>
             <span class="text-[0.7rem] leading-tight text-neutral-900 dark:text-neutral-100 whitespace-nowrap">{mood.label}</span>
           </button>
         ))}
@@ -116,6 +113,9 @@ const defaultIcon = "fa7-brands:gratipay";
           重置
         </button>
       </div>
+
+      <!-- ═══ 底部提示 ═══ -->
+      <p class="mt-2 text-center text-[0.6rem] text-neutral-400 dark:text-neutral-500">选完心情后记得刷新一下哦</p>
     </div>
   </div>
 </div>
@@ -138,6 +138,19 @@ const defaultIcon = "fa7-brands:gratipay";
       "fa7-regular:face-meh": "无聊",
       "fa7-regular:face-rolling-eyes": "空虚",
       "fa7-regular:face-grin-stars": "发癫",
+    };
+    var moodEmojis = {
+      "fa7-regular:face-grin-beam": "😁",
+      "fa7-regular:face-smile-beam": "😊",
+      "fa7-regular:face-laugh-squint": "😆",
+      "fa7-regular:face-laugh-beam": "😄",
+      "fa7-regular:face-frown": "😢",
+      "fa7-regular:face-meh-blank": "😶",
+      "fa7-regular:face-grimace": "😬",
+      "fa7-regular:face-frown-open": "😟",
+      "fa7-regular:face-meh": "😐",
+      "fa7-regular:face-rolling-eyes": "🙄",
+      "fa7-regular:face-grin-stars": "🤩",
     };
 
     function initMoodPicker() {
@@ -185,29 +198,12 @@ const defaultIcon = "fa7-brands:gratipay";
         var labelEl = document.getElementById("mood-" + which + "-label");
         if (!iconEl || !labelEl) return;
         if (iconKey && moodLabels[iconKey]) {
-          iconEl.textContent = moodToEmoji(iconKey);
+          iconEl.textContent = moodEmojis[iconKey] || "❤️";
           labelEl.textContent = moodLabels[iconKey];
         } else {
           iconEl.textContent = "—";
           labelEl.textContent = "未设置";
         }
-      }
-
-      function moodToEmoji(iconKey) {
-        var map = {
-          "fa7-regular:face-grin-beam": "😁",
-          "fa7-regular:face-smile-beam": "😊",
-          "fa7-regular:face-laugh-squint": "😆",
-          "fa7-regular:face-laugh-beam": "😄",
-          "fa7-regular:face-frown": "😢",
-          "fa7-regular:face-meh-blank": "😶",
-          "fa7-regular:face-grimace": "😬",
-          "fa7-regular:face-frown-open": "😟",
-          "fa7-regular:face-meh": "😐",
-          "fa7-regular:face-rolling-eyes": "🙄",
-          "fa7-regular:face-grin-stars": "🤩",
-        };
-        return map[iconKey] || "❤️";
       }
 
       function saveMood(user, iconKey) {
@@ -256,7 +252,6 @@ const defaultIcon = "fa7-brands:gratipay";
         e.stopPropagation();
         panel.classList.toggle("float-panel-closed");
         if (!panel.classList.contains("float-panel-closed")) {
-          // 每次打开面板时，如果已绑定则刷新数据
           if (activeUser) fetchMoods();
         }
       }, true);
