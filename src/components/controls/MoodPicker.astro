@@ -75,75 +75,91 @@ const defaultIcon = "fa7-brands:gratipay";
 
 <script data-astro-rerun>
   (function () {
+    // 防止重复初始化（布局层组件在 Swup 切换时脚本会反复执行）
+    if (window._moodPickerDone) return;
+    window._moodPickerDone = true;
+
     const STORAGE_KEY = "mood-picker-selection";
     const defaultIcon = "fa7-brands:gratipay";
 
-    const btn = document.getElementById("mood-picker-btn");
-    const panel = document.getElementById("mood-picker-panel");
-    const iconElems = document.querySelectorAll("#mood-picker .mood-icon-elem");
-
-    if (!btn || !panel || !iconElems.length) return;
-
     /**
-     * 显示指定图标，隐藏其余
+     * 等待元素出现后再初始化（兼容 Swup 切换时序）
      */
-    function showIcon(iconKey) {
-      iconElems.forEach(function (el) {
-        if (el.getAttribute("data-mood-key") === iconKey) {
-          el.classList.remove("hidden");
-        } else {
-          el.classList.add("hidden");
-        }
-      });
-    }
+    function initMoodPicker() {
+      const btn = document.getElementById("mood-picker-btn");
+      const panel = document.getElementById("mood-picker-panel");
+      const iconElems = document.querySelectorAll("#mood-picker .mood-icon-elem");
 
-    // 读取已保存的心情
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      showIcon(saved);
-    }
+      if (!btn || !panel || !iconElems.length) return;
 
-    // 切换面板
-    btn.addEventListener("click", function (e) {
-      e.stopPropagation();
-      panel.classList.toggle("float-panel-closed");
-    });
-
-    // 选择心情
-    document.querySelectorAll("#mood-picker .mood-option").forEach(function (el) {
-      el.addEventListener("click", function (e) {
-        e.stopPropagation();
-        const icon = el.getAttribute("data-mood-icon");
-        if (icon) {
-          showIcon(icon);
-          localStorage.setItem(STORAGE_KEY, icon);
-          panel.classList.add("float-panel-closed");
-        }
-      });
-    });
-
-    // 重置为默认图标
-    const resetBtn = document.getElementById("mood-reset-btn");
-    if (resetBtn) {
-      resetBtn.addEventListener("click", function (e) {
-        e.stopPropagation();
-        showIcon(defaultIcon);
-        localStorage.removeItem(STORAGE_KEY);
-        panel.classList.add("float-panel-closed");
-      });
-    }
-
-    // 点击面板外部关闭
-    document.addEventListener("click", function (e) {
-      if (!panel.classList.contains("float-panel-closed")) {
-        if (
-          e.target instanceof Node &&
-          !panel.contains(e.target) &&
-          !btn.contains(e.target)
-        ) {
-          panel.classList.add("float-panel-closed");
-        }
+      /**
+       * 显示指定图标，隐藏其余
+       */
+      function showIcon(iconKey) {
+        iconElems.forEach(function (el) {
+          if (el.getAttribute("data-mood-key") === iconKey) {
+            el.classList.remove("hidden");
+          } else {
+            el.classList.add("hidden");
+          }
+        });
       }
-    });
+
+      // 读取已保存的心情
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        showIcon(saved);
+      }
+
+      // 切换面板
+      btn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        panel.classList.toggle("float-panel-closed");
+      });
+
+      // 选择心情
+      document.querySelectorAll("#mood-picker .mood-option").forEach(function (el) {
+        el.addEventListener("click", function (e) {
+          e.stopPropagation();
+          const icon = el.getAttribute("data-mood-icon");
+          if (icon) {
+            showIcon(icon);
+            localStorage.setItem(STORAGE_KEY, icon);
+            panel.classList.add("float-panel-closed");
+          }
+        });
+      });
+
+      // 重置为默认图标
+      const resetBtn = document.getElementById("mood-reset-btn");
+      if (resetBtn) {
+        resetBtn.addEventListener("click", function (e) {
+          e.stopPropagation();
+          showIcon(defaultIcon);
+          localStorage.removeItem(STORAGE_KEY);
+          panel.classList.add("float-panel-closed");
+        });
+      }
+
+      // 点击面板外部关闭
+      document.addEventListener("click", function (e) {
+        if (!panel.classList.contains("float-panel-closed")) {
+          if (
+            e.target instanceof Node &&
+            !panel.contains(e.target) &&
+            !btn.contains(e.target)
+          ) {
+            panel.classList.add("float-panel-closed");
+          }
+        }
+      });
+    }
+
+    // 首次加载 → DOM 就绪后执行
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", initMoodPicker);
+    } else {
+      initMoodPicker();
+    }
   })();
 </script>
