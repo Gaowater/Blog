@@ -17,11 +17,6 @@ const moods = [
 ];
 
 const defaultIcon = "fa7-brands:gratipay";
-
-// 传给 JS 用的心情标签映射
-const moodLabelsJson = JSON.stringify(
-  moods.reduce((acc, m) => { acc[m.icon] = m.label; return acc; }, {})
-);
 ---
 
 <div id="mood-picker" class="relative inline-flex">
@@ -117,7 +112,19 @@ const moodLabelsJson = JSON.stringify(
     var USER_KEY = "mood-active-user";
     var defaultIcon = "fa7-brands:gratipay";
     var API = "/api/mood";
-    var moodLabels = {moodLabelsJson};
+    var moodLabels = {
+      "fa7-regular:face-grin-beam": "愉悦",
+      "fa7-regular:face-smile-beam": "悠闲",
+      "fa7-regular:face-laugh-squint": "期待",
+      "fa7-regular:face-laugh-beam": "自由",
+      "fa7-regular:face-frown": "悲伤",
+      "fa7-regular:face-meh-blank": "孤独",
+      "fa7-regular:face-grimace": "愤怒",
+      "fa7-regular:face-frown-open": "遗憾",
+      "fa7-regular:face-meh": "无聊",
+      "fa7-regular:face-rolling-eyes": "空虚",
+      "fa7-regular:face-grin-stars": "发癫",
+    };
 
     function initMoodPicker() {
       var btn = document.getElementById("mood-picker-btn");
