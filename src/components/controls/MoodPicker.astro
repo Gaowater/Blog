@@ -17,6 +17,11 @@ const moods = [
 ];
 
 const defaultIcon = "fa7-brands:gratipay";
+
+// 传给 JS 用的心情标签映射
+const moodLabelsJson = JSON.stringify(
+  moods.reduce((acc, m) => { acc[m.icon] = m.label; return acc; }, {})
+);
 ---
 
 <div id="mood-picker" class="relative inline-flex">
@@ -27,7 +32,6 @@ const defaultIcon = "fa7-brands:gratipay";
     title="选择心情"
   >
     <Icon
-      id="mood-icon-default"
       name={defaultIcon}
       is:inline
       class="mood-icon-elem text-[1.25rem]"
@@ -50,10 +54,44 @@ const defaultIcon = "fa7-brands:gratipay";
            max-sm:left-1/2 max-sm:-translate-x-1/2 max-sm:right-auto
            sm:right-0"
   >
+    <!-- ═══ 两人心情状态 ═══ -->
+    <div id="mood-status" class="mb-3">
+      <div class="flex items-center justify-center gap-3 text-sm">
+        <span class="text-xs text-neutral-500 dark:text-neutral-400">我的心情</span>
+        <span id="mood-mine-icon" class="text-[1.1rem]">—</span>
+        <span id="mood-mine-label" class="text-[0.65rem] text-neutral-500 dark:text-neutral-400">未设置</span>
+      </div>
+      <div class="flex items-center justify-center gap-3 text-sm mt-1">
+        <span class="text-xs text-neutral-500 dark:text-neutral-400">对方的心情</span>
+        <span id="mood-theirs-icon" class="text-[1.1rem]">—</span>
+        <span id="mood-theirs-label" class="text-[0.65rem] text-neutral-500 dark:text-neutral-400">未设置</span>
+      </div>
+    </div>
+
+    <!-- ═══ 用户切换 + 刷新 ═══ -->
+    <div class="mb-2 flex items-center justify-between border-t border-(--btn-regular-bg) pt-2">
+      <div class="flex gap-1">
+        <button id="user-toggle-mouhe" data-user="mouhe"
+          class="user-toggle-btn rounded-lg px-2.5 py-1 text-xs transition bg-(--btn-regular-bg) font-semibold"
+        >牧老</button>
+        <button id="user-toggle-yiliu" data-user="yiliu"
+          class="user-toggle-btn rounded-lg px-2.5 py-1 text-xs transition text-neutral-500 dark:text-neutral-400"
+        >伊琉</button>
+      </div>
+      <button id="mood-refresh-btn"
+        class="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-neutral-500 dark:text-neutral-400 transition hover:bg-(--btn-regular-bg) cursor-pointer"
+        title="刷新心情"
+      >
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+      </button>
+    </div>
+
+    <!-- ═══ 心情选择网格 ═══ -->
     <div class="grid grid-cols-3 gap-1.5">
       {moods.map((mood) => (
         <button
           data-mood-icon={mood.icon}
+          data-mood-label={mood.label}
           class="mood-option flex flex-col items-center justify-center gap-0.5 rounded-lg py-2 px-1 transition hover:bg-(--btn-regular-bg) active:scale-90 cursor-pointer"
         >
           <Icon name={mood.icon} is:inline class="text-[1.375rem] text-neutral-900 dark:text-neutral-100" />
@@ -80,21 +118,25 @@ const defaultIcon = "fa7-brands:gratipay";
     window._moodPickerDone = true;
 
     const STORAGE_KEY = "mood-picker-selection";
+    const USER_KEY = "mood-active-user";
     const defaultIcon = "fa7-brands:gratipay";
+    const API = "/api/mood";
+
+    // 心情图标 → 标签 映射
+    var moodLabels = {moodLabelsJson};
 
     /**
-     * 等待元素出现后再初始化（兼容 Swup 切换时序）
+     * 等待元素出现后再初始化
      */
     function initMoodPicker() {
-      const btn = document.getElementById("mood-picker-btn");
-      const panel = document.getElementById("mood-picker-panel");
-      const iconElems = document.querySelectorAll("#mood-picker .mood-icon-elem");
-
+      var btn = document.getElementById("mood-picker-btn");
+      var panel = document.getElementById("mood-picker-panel");
+      var iconElems = document.querySelectorAll("#mood-picker .mood-icon-elem");
       if (!btn || !panel || !iconElems.length) return;
 
-      /**
-       * 显示指定图标，隐藏其余
-       */
+      var activeUser = localStorage.getItem(USER_KEY) || "mouhe";
+
+      /* ── 显示/隐藏图标 ── */
       function showIcon(iconKey) {
         iconElems.forEach(function (el) {
           if (el.getAttribute("data-mood-key") === iconKey) {
@@ -105,43 +147,150 @@ const defaultIcon = "fa7-brands:gratipay";
         });
       }
 
-      // 读取已保存的心情
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        showIcon(saved);
+      /* ── 从 API 获取两人心情并更新状态栏 ── */
+      function fetchMoods() {
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", API, true);
+        xhr.onload = function () {
+          if (xhr.status === 200) {
+            var data = JSON.parse(xhr.responseText);
+            refreshStatus(data);
+          }
+        };
+        xhr.send();
       }
 
-      // 切换面板
+      function refreshStatus(data) {
+        // 根据 activeUser 决定 "我" 和 "对方" 分别是谁
+        var mineKey = activeUser;               // "mouhe" 或 "yiliu"
+        var theirsKey = activeUser === "mouhe" ? "yiliu" : "mouhe";
+        updateMoodDisplay("mine", data[mineKey]);
+        updateMoodDisplay("theirs", data[theirsKey]);
+      }
+
+      function updateMoodDisplay(which, iconKey) {
+        var iconEl = document.getElementById("mood-" + which + "-icon");
+        var labelEl = document.getElementById("mood-" + which + "-label");
+        if (!iconEl || !labelEl) return;
+        if (iconKey && moodLabels[iconKey]) {
+          iconEl.textContent = moodToEmoji(iconKey);
+          labelEl.textContent = moodLabels[iconKey];
+        } else {
+          iconEl.textContent = "—";
+          labelEl.textContent = "未设置";
+        }
+      }
+
+      /* ── 心情图标 → 简单 emoji 映射 ── */
+      function moodToEmoji(iconKey) {
+        var map = {
+          "fa7-regular:face-grin-beam": "😁",
+          "fa7-regular:face-smile-beam": "😊",
+          "fa7-regular:face-laugh-squint": "😆",
+          "fa7-regular:face-laugh-beam": "😄",
+          "fa7-regular:face-frown": "😢",
+          "fa7-regular:face-meh-blank": "😶",
+          "fa7-regular:face-grimace": "😬",
+          "fa7-regular:face-frown-open": "😟",
+          "fa7-regular:face-meh": "😐",
+          "fa7-regular:face-rolling-eyes": "🙄",
+          "fa7-regular:face-grin-stars": "🤩",
+        };
+        return map[iconKey] || "❤️";
+      }
+
+      /* ── 保存心情到 API ── */
+      function saveMood(user, iconKey) {
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", API, true);
+        xhr.setRequestHeader("Content-Type", "application/json");
+        xhr.onload = function () {
+          if (xhr.status === 200) fetchMoods(); // 保存后拉取最新
+        };
+        xhr.send(JSON.stringify({ user: user, mood: iconKey }));
+      }
+
+      /* ── 更新用户切换按钮的高亮 ── */
+      function updateUserToggle(user) {
+        document.querySelectorAll(".user-toggle-btn").forEach(function (el) {
+          var u = el.getAttribute("data-user");
+          if (u === user) {
+            el.classList.add("bg-(--btn-regular-bg)", "font-semibold");
+            el.classList.remove("text-neutral-500", "dark:text-neutral-400");
+          } else {
+            el.classList.remove("bg-(--btn-regular-bg)", "font-semibold");
+            el.classList.add("text-neutral-500", "dark:text-neutral-400");
+          }
+        });
+      }
+
+      // 初始化：恢复上次选的心情
+      var saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) showIcon(saved);
+
+      // 初始化：设置用户切换状态
+      updateUserToggle(activeUser);
+
+      // 初始化：拉取两人心情
+      fetchMoods();
+
+      /* ── 面板切换 ── */
       btn.addEventListener("click", function (e) {
         e.stopPropagation();
         panel.classList.toggle("float-panel-closed");
+        if (!panel.classList.contains("float-panel-closed")) {
+          fetchMoods(); // 打开时刷新
+        }
       });
 
-      // 选择心情
+      /* ── 用户切换 ── */
+      document.querySelectorAll(".user-toggle-btn").forEach(function (el) {
+        el.addEventListener("click", function (e) {
+          e.stopPropagation();
+          var user = el.getAttribute("data-user");
+          activeUser = user;
+          localStorage.setItem(USER_KEY, user);
+          updateUserToggle(user);
+          fetchMoods(); // 刷新显示（"我"和"对方"会互换）
+        });
+      });
+
+      /* ── 选择心情 ── */
       document.querySelectorAll("#mood-picker .mood-option").forEach(function (el) {
         el.addEventListener("click", function (e) {
           e.stopPropagation();
-          const icon = el.getAttribute("data-mood-icon");
+          var icon = el.getAttribute("data-mood-icon");
           if (icon) {
             showIcon(icon);
             localStorage.setItem(STORAGE_KEY, icon);
+            saveMood(activeUser, icon); // 保存后自动刷新显示
             panel.classList.add("float-panel-closed");
           }
         });
       });
 
-      // 重置为默认图标
-      const resetBtn = document.getElementById("mood-reset-btn");
+      /* ── 重置 ── */
+      var resetBtn = document.getElementById("mood-reset-btn");
       if (resetBtn) {
         resetBtn.addEventListener("click", function (e) {
           e.stopPropagation();
           showIcon(defaultIcon);
           localStorage.removeItem(STORAGE_KEY);
+          saveMood(activeUser, ""); // 重置后自动刷新显示
           panel.classList.add("float-panel-closed");
         });
       }
 
-      // 点击面板外部关闭
+      /* ── 刷新按钮 ── */
+      var refreshBtn = document.getElementById("mood-refresh-btn");
+      if (refreshBtn) {
+        refreshBtn.addEventListener("click", function (e) {
+          e.stopPropagation();
+          fetchMoods();
+        });
+      }
+
+      /* ── 点击外部关闭 ── */
       document.addEventListener("click", function (e) {
         if (!panel.classList.contains("float-panel-closed")) {
           if (
@@ -155,7 +304,6 @@ const defaultIcon = "fa7-brands:gratipay";
       });
     }
 
-    // 首次加载 → DOM 就绪后执行
     if (document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", initMoodPicker);
     } else {

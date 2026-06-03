@@ -1,8 +1,7 @@
-name = "firefly"
-compatibility_date = "2026-5-26" # 更为今日
+name = "mood-api"
+compatibility_date = "2025-01-01"
+main = "workers/mood.js"
 
-[assets]
-directory = "./dist"
-
-[vars]
-NODE_VERSION = "22"
+[[kv_namespaces]]
+binding = "MOOD_KV"
+id = "b81ead880c7b4645b35c48933ee10d28"

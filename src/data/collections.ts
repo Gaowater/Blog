@@ -117,8 +117,6 @@ export const gameList = [
     comment: "国产独立解谜游戏，时间回溯的玩法有新意。", note: "约3小时", tags: ["国产", "解谜", "独立"], highlight: true },
 
   // ── 独立作品 ──
-  { name: "R.E.P.O.", cover: "/assets/images/repo.jpg", status: "collect",
-    comment: "和朋友一起玩简直笑到岔气，物理引擎太搞了。", note: "约80小时", tags: ["合作", "搞笑", "物理"] },
   { name: "Dead Cells", nameCn: "死亡细胞", cover: "/assets/images/dead_cells.jpg", status: "collect",
     comment: "RogueLike动作游戏的标杆，死了还想再来一把。", note: "约23小时", tags: ["RogueLike", "动作", "像素"] },
   { name: "Cities: Skylines", nameCn: "城市：天际线", cover: "/assets/images/cities_skylines.jpg", status: "collect",

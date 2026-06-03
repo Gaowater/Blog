@@ -198,23 +198,25 @@ const pageDesc = "那些在记忆中刻下痕迹的作品";
 
 <script data-astro-rerun>
   /**
-   * 用 MutationObserver 监视 DOM，等 Tab 按钮出现后再绑定事件。
-   * 兼容 Swup 页面切换和首次直接加载。
+   * 事件委托：在 #swup-container 上监听 click，不直接给按钮绑事件。
+   * Swup 切页后无需重新绑定，因为委托监听的是一个不变的元素。
    */
-  function initTabs() {
-    var tabs = document.querySelectorAll(".tab-btn");
-    var contents = document.querySelectorAll(".tab-content");
-    if (!tabs.length || !contents.length) return;
+  (function () {
+    if (window._collectionsTabDone) return;
+    window._collectionsTabDone = true;
 
-    tabs.forEach(function (tab) {
-      tab.removeEventListener("click", tabClickHandler);
-      tab.addEventListener("click", tabClickHandler);
-    });
+    var container = document.getElementById("swup-container");
+    if (!container) return;
 
-    function tabClickHandler() {
-      var cat = this.dataset.category;
+    container.addEventListener("click", function (e) {
+      var tab = e.target.closest(".tab-btn");
+      if (!tab) return;
 
-      tabs.forEach(function (t) {
+      var cat = tab.dataset.category;
+      if (!cat) return;
+
+      // 更新所有 tab 样式
+      document.querySelectorAll(".tab-btn").forEach(function (t) {
         t.classList.remove(
           "text-neutral-900", "dark:text-neutral-100",
           "bg-neutral-100", "dark:bg-neutral-800",
@@ -222,30 +224,19 @@ const pageDesc = "那些在记忆中刻下痕迹的作品";
         );
         t.classList.add("text-neutral-500", "dark:text-neutral-400");
       });
-      this.classList.remove("text-neutral-500", "dark:text-neutral-400");
-      this.classList.add(
+      tab.classList.remove("text-neutral-500", "dark:text-neutral-400");
+      tab.classList.add(
         "text-neutral-900", "dark:text-neutral-100",
         "bg-neutral-100", "dark:bg-neutral-800",
         "font-semibold"
       );
 
-      contents.forEach(function (c) {
+      // 切换内容区
+      document.querySelectorAll(".tab-content").forEach(function (c) {
         c.style.display = c.dataset.category === cat ? "block" : "none";
       });
-    }
-  }
-
-  // 1) 先试一次（首次加载 DOM 已就绪的情况）
-  initTabs();
-
-  // 2) 再用 MutationObserver 监视，等 Tab 出现再绑（Swup 切页时用）
-  var observer = new MutationObserver(function () {
-    if (document.querySelectorAll(".tab-btn").length > 0) {
-      initTabs();
-      observer.disconnect(); // 绑上了就停止监视
-    }
-  });
-  observer.observe(document.body, { childList: true, subtree: true });
+    });
+  })();
 </script>
 
 <style>
