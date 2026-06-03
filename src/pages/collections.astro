@@ -197,13 +197,16 @@ const pageDesc = "那些在记忆中刻下痕迹的作品";
 </MainGridLayout>
 
 <script data-astro-rerun>
+  /**
+   * 用 MutationObserver 监视 DOM，等 Tab 按钮出现后再绑定事件。
+   * 兼容 Swup 页面切换和首次直接加载。
+   */
   function initTabs() {
     var tabs = document.querySelectorAll(".tab-btn");
     var contents = document.querySelectorAll(".tab-content");
     if (!tabs.length || !contents.length) return;
 
     tabs.forEach(function (tab) {
-      // 移除旧监听避免重复绑定
       tab.removeEventListener("click", tabClickHandler);
       tab.addEventListener("click", tabClickHandler);
     });
@@ -232,14 +235,17 @@ const pageDesc = "那些在记忆中刻下痕迹的作品";
     }
   }
 
-  // Astro View Transitions 页面切换后触发
-  document.addEventListener("astro:page-load", initTabs);
-  // 首次直接加载页面
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initTabs);
-  } else {
-    initTabs();
-  }
+  // 1) 先试一次（首次加载 DOM 已就绪的情况）
+  initTabs();
+
+  // 2) 再用 MutationObserver 监视，等 Tab 出现再绑（Swup 切页时用）
+  var observer = new MutationObserver(function () {
+    if (document.querySelectorAll(".tab-btn").length > 0) {
+      initTabs();
+      observer.disconnect(); // 绑上了就停止监视
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
 </script>
 
 <style>

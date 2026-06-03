@@ -109,8 +109,6 @@ export const gameList = [
     comment: "踏碎凌霄，放肆桀骜。国产3A的里程碑之作。", note: "约105小时", tags: ["动作RPG", "国产", "神话"], highlight: true },
   { name: "Red Dead Redemption 2", nameCn: "荒野大镖客2", cover: "/assets/images/rdr2.jpg", status: "collect",
     comment: "西部世界的最后一抹余晖，亚瑟·摩根的故事让人动容。", note: "约81小时", tags: ["开放世界", "剧情", "西部"], highlight: true },
-  { name: "R.E.P.O.", cover: "/assets/images/repo.jpg", status: "collect",
-    comment: "和朋友一起玩简直笑到岔气，物理引擎太搞了。", note: "约80小时", tags: ["合作", "搞笑", "物理"], highlight: true },
   { name: "Ori and the Will of the Wisps", nameCn: "奥日与精灵意志", cover: "/assets/images/ori_will_wisps.jpg", status: "collect",
     comment: "画面和音乐都美到窒息，玩的时候截图比打怪多。", note: "约25小时", tags: ["平台跳跃", "治愈", "神级配乐"], highlight: true },
   { name: "Detroit: Become Human", nameCn: "底特律：化身为人", cover: "/assets/images/detroit_become_human.jpg", status: "collect",
@@ -119,6 +117,8 @@ export const gameList = [
     comment: "国产独立解谜游戏，时间回溯的玩法有新意。", note: "约3小时", tags: ["国产", "解谜", "独立"], highlight: true },
 
   // ── 独立作品 ──
+  { name: "R.E.P.O.", cover: "/assets/images/repo.jpg", status: "collect",
+    comment: "和朋友一起玩简直笑到岔气，物理引擎太搞了。", note: "约80小时", tags: ["合作", "搞笑", "物理"] },
   { name: "Dead Cells", nameCn: "死亡细胞", cover: "/assets/images/dead_cells.jpg", status: "collect",
     comment: "RogueLike动作游戏的标杆，死了还想再来一把。", note: "约23小时", tags: ["RogueLike", "动作", "像素"] },
   { name: "Cities: Skylines", nameCn: "城市：天际线", cover: "/assets/images/cities_skylines.jpg", status: "collect",
