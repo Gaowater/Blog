@@ -110,17 +110,19 @@ export const gameList = [
   { name: "Red Dead Redemption 2", nameCn: "荒野大镖客2", cover: "/assets/images/rdr2.jpg", status: "collect",
     comment: "西部世界的最后一抹余晖，亚瑟·摩根的故事让人动容。", note: "约81小时", tags: ["开放世界", "剧情", "西部"], highlight: true },
   { name: "R.E.P.O.", cover: "/assets/images/repo.jpg", status: "collect",
-    comment: "和朋友一起玩简直笑到岔气，物理引擎太搞了。", note: "约80小时", tags: ["合作", "搞笑", "物理"] },
-
-  // ── 独立作品 ──
+    comment: "和朋友一起玩简直笑到岔气，物理引擎太搞了。", note: "约80小时", tags: ["合作", "搞笑", "物理"], highlight: true },
   { name: "Ori and the Will of the Wisps", nameCn: "奥日与精灵意志", cover: "/assets/images/ori_will_wisps.jpg", status: "collect",
     comment: "画面和音乐都美到窒息，玩的时候截图比打怪多。", note: "约25小时", tags: ["平台跳跃", "治愈", "神级配乐"], highlight: true },
+  { name: "Detroit: Become Human", nameCn: "底特律：化身为人", cover: "/assets/images/detroit_become_human.jpg", status: "collect",
+    comment: "每一次选择都沉重而有分量，仿生人的自我觉醒之路。", note: "约16小时", tags: ["互动电影", "科幻", "剧情"], highlight: true },
+  { name: "Aliya: Timelink", nameCn: "阿莉雅：时空联结", cover: "/assets/images/aliya_timelink.jpg", status: "collect",
+    comment: "国产独立解谜游戏，时间回溯的玩法有新意。", note: "约3小时", tags: ["国产", "解谜", "独立"], highlight: true },
+
+  // ── 独立作品 ──
   { name: "Dead Cells", nameCn: "死亡细胞", cover: "/assets/images/dead_cells.jpg", status: "collect",
     comment: "RogueLike动作游戏的标杆，死了还想再来一把。", note: "约23小时", tags: ["RogueLike", "动作", "像素"] },
   { name: "Cities: Skylines", nameCn: "城市：天际线", cover: "/assets/images/cities_skylines.jpg", status: "collect",
     comment: "一玩就忘了时间，我的城市规划梦。", note: "约17小时", tags: ["模拟经营", "城市建设"] },
-  { name: "Detroit: Become Human", nameCn: "底特律：化身为人", cover: "/assets/images/detroit_become_human.jpg", status: "collect",
-    comment: "每一次选择都沉重而有分量，仿生人的自我觉醒之路。", note: "约16小时", tags: ["互动电影", "科幻", "剧情"], highlight: true },
   { name: "Left 4 Dead 2", nameCn: "求生之路2", cover: "/assets/images/left4dead2.jpg", status: "collect",
     comment: "经典永不褪色，和朋友们一起打丧尸的快乐。", note: "约14小时", tags: ["合作", "丧尸", "经典"] },
   { name: "Firework", nameCn: "烟火", cover: "/assets/images/firework.jpg", status: "collect",
@@ -133,8 +135,6 @@ export const gameList = [
     comment: "华丽的连招系统，但丁和尼禄帅炸了。", note: "约3小时", tags: ["动作", "华丽连招"] },
   { name: "Riders Republic", nameCn: "极限国度", cover: "/assets/images/riders_republic.jpg", status: "collect",
     comment: "开放世界极限运动，骑着自行车从山顶冲下来很解压。", note: "约3小时", tags: ["体育", "开放世界"] },
-  { name: "Aliya: Timelink", nameCn: "阿莉雅：时空联结", cover: "/assets/images/aliya_timelink.jpg", status: "collect",
-    comment: "国产独立解谜游戏，时间回溯的玩法有新意。", note: "约3小时", tags: ["国产", "解谜", "独立"], highlight: true },
   { name: "Frostpunk", nameCn: "冰汽时代", cover: "/assets/images/frostpunk.jpg", status: "collect",
     comment: "在末日严寒中艰难求存，每一次抉择都拷问人性。", note: "约2.5小时", tags: ["策略", "生存", "模拟经营"] },
   { name: "Resident Evil 4", nameCn: "生化危机4", cover: "/assets/images/re4.jpg", status: "collect",
