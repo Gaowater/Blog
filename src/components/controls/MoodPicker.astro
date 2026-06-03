@@ -27,7 +27,7 @@ const moodLabelsJson = JSON.stringify(
 <div id="mood-picker" class="relative inline-flex">
   <button
     id="mood-picker-btn"
-    class="btn-plain scale-animation rounded-lg h-11 w-11 active:scale-90"
+    class="btn-plain scale-animation rounded-lg h-11 w-11 active:scale-90 cursor-pointer"
     aria-label="选择心情"
     title="选择心情"
   >
@@ -71,12 +71,12 @@ const moodLabelsJson = JSON.stringify(
     <!-- ═══ 用户切换 + 刷新 ═══ -->
     <div class="mb-2 flex items-center justify-between border-t border-(--btn-regular-bg) pt-2">
       <div class="flex gap-1">
-        <button id="user-toggle-mouhe" data-user="mouhe"
+        <button id="user-toggle-mh" data-user="mouhe"
           class="user-toggle-btn rounded-lg px-2.5 py-1 text-xs transition bg-(--btn-regular-bg) font-semibold"
-        >牧老</button>
-        <button id="user-toggle-yiliu" data-user="yiliu"
+        >MH</button>
+        <button id="user-toggle-hyl" data-user="yiliu"
           class="user-toggle-btn rounded-lg px-2.5 py-1 text-xs transition text-neutral-500 dark:text-neutral-400"
-        >伊琉</button>
+        >HYL</button>
       </div>
       <button id="mood-refresh-btn"
         class="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-neutral-500 dark:text-neutral-400 transition hover:bg-(--btn-regular-bg) cursor-pointer"
@@ -113,21 +113,12 @@ const moodLabelsJson = JSON.stringify(
 
 <script data-astro-rerun>
   (function () {
-    // 防止重复初始化（布局层组件在 Swup 切换时脚本会反复执行）
-    if (window._moodPickerDone) return;
-    window._moodPickerDone = true;
-
-    const STORAGE_KEY = "mood-picker-selection";
-    const USER_KEY = "mood-active-user";
-    const defaultIcon = "fa7-brands:gratipay";
-    const API = "/api/mood";
-
-    // 心情图标 → 标签 映射
+    var STORAGE_KEY = "mood-picker-selection";
+    var USER_KEY = "mood-active-user";
+    var defaultIcon = "fa7-brands:gratipay";
+    var API = "/api/mood";
     var moodLabels = {moodLabelsJson};
 
-    /**
-     * 等待元素出现后再初始化
-     */
     function initMoodPicker() {
       var btn = document.getElementById("mood-picker-btn");
       var panel = document.getElementById("mood-picker-panel");
@@ -136,7 +127,6 @@ const moodLabelsJson = JSON.stringify(
 
       var activeUser = localStorage.getItem(USER_KEY) || "mouhe";
 
-      /* ── 显示/隐藏图标 ── */
       function showIcon(iconKey) {
         iconElems.forEach(function (el) {
           if (el.getAttribute("data-mood-key") === iconKey) {
@@ -147,7 +137,6 @@ const moodLabelsJson = JSON.stringify(
         });
       }
 
-      /* ── 从 API 获取两人心情并更新状态栏 ── */
       function fetchMoods() {
         var xhr = new XMLHttpRequest();
         xhr.open("GET", API, true);
@@ -161,8 +150,7 @@ const moodLabelsJson = JSON.stringify(
       }
 
       function refreshStatus(data) {
-        // 根据 activeUser 决定 "我" 和 "对方" 分别是谁
-        var mineKey = activeUser;               // "mouhe" 或 "yiliu"
+        var mineKey = activeUser;
         var theirsKey = activeUser === "mouhe" ? "yiliu" : "mouhe";
         updateMoodDisplay("mine", data[mineKey]);
         updateMoodDisplay("theirs", data[theirsKey]);
@@ -181,7 +169,6 @@ const moodLabelsJson = JSON.stringify(
         }
       }
 
-      /* ── 心情图标 → 简单 emoji 映射 ── */
       function moodToEmoji(iconKey) {
         var map = {
           "fa7-regular:face-grin-beam": "😁",
@@ -199,18 +186,16 @@ const moodLabelsJson = JSON.stringify(
         return map[iconKey] || "❤️";
       }
 
-      /* ── 保存心情到 API ── */
       function saveMood(user, iconKey) {
         var xhr = new XMLHttpRequest();
         xhr.open("POST", API, true);
         xhr.setRequestHeader("Content-Type", "application/json");
         xhr.onload = function () {
-          if (xhr.status === 200) fetchMoods(); // 保存后拉取最新
+          if (xhr.status === 200) fetchMoods();
         };
         xhr.send(JSON.stringify({ user: user, mood: iconKey }));
       }
 
-      /* ── 更新用户切换按钮的高亮 ── */
       function updateUserToggle(user) {
         document.querySelectorAll(".user-toggle-btn").forEach(function (el) {
           var u = el.getAttribute("data-user");
@@ -224,26 +209,22 @@ const moodLabelsJson = JSON.stringify(
         });
       }
 
-      // 初始化：恢复上次选的心情
+      // ── 初始化状态 ──
       var saved = localStorage.getItem(STORAGE_KEY);
       if (saved) showIcon(saved);
-
-      // 初始化：设置用户切换状态
       updateUserToggle(activeUser);
-
-      // 初始化：拉取两人心情
       fetchMoods();
 
-      /* ── 面板切换 ── */
+      // ── 面板切换（捕获阶段监听，避免 Swup 干扰） ──
       btn.addEventListener("click", function (e) {
         e.stopPropagation();
         panel.classList.toggle("float-panel-closed");
         if (!panel.classList.contains("float-panel-closed")) {
-          fetchMoods(); // 打开时刷新
+          fetchMoods();
         }
-      });
+      }, true);
 
-      /* ── 用户切换 ── */
+      // ── 用户切换 ──
       document.querySelectorAll(".user-toggle-btn").forEach(function (el) {
         el.addEventListener("click", function (e) {
           e.stopPropagation();
@@ -251,11 +232,11 @@ const moodLabelsJson = JSON.stringify(
           activeUser = user;
           localStorage.setItem(USER_KEY, user);
           updateUserToggle(user);
-          fetchMoods(); // 刷新显示（"我"和"对方"会互换）
-        });
+          fetchMoods();
+        }, true);
       });
 
-      /* ── 选择心情 ── */
+      // ── 选择心情 ──
       document.querySelectorAll("#mood-picker .mood-option").forEach(function (el) {
         el.addEventListener("click", function (e) {
           e.stopPropagation();
@@ -263,34 +244,34 @@ const moodLabelsJson = JSON.stringify(
           if (icon) {
             showIcon(icon);
             localStorage.setItem(STORAGE_KEY, icon);
-            saveMood(activeUser, icon); // 保存后自动刷新显示
+            saveMood(activeUser, icon);
             panel.classList.add("float-panel-closed");
           }
-        });
+        }, true);
       });
 
-      /* ── 重置 ── */
+      // ── 重置 ──
       var resetBtn = document.getElementById("mood-reset-btn");
       if (resetBtn) {
         resetBtn.addEventListener("click", function (e) {
           e.stopPropagation();
           showIcon(defaultIcon);
           localStorage.removeItem(STORAGE_KEY);
-          saveMood(activeUser, ""); // 重置后自动刷新显示
+          saveMood(activeUser, "");
           panel.classList.add("float-panel-closed");
-        });
+        }, true);
       }
 
-      /* ── 刷新按钮 ── */
+      // ── 刷新按钮 ──
       var refreshBtn = document.getElementById("mood-refresh-btn");
       if (refreshBtn) {
         refreshBtn.addEventListener("click", function (e) {
           e.stopPropagation();
           fetchMoods();
-        });
+        }, true);
       }
 
-      /* ── 点击外部关闭 ── */
+      // ── 点击外部关闭 ──
       document.addEventListener("click", function (e) {
         if (!panel.classList.contains("float-panel-closed")) {
           if (
@@ -301,9 +282,10 @@ const moodLabelsJson = JSON.stringify(
             panel.classList.add("float-panel-closed");
           }
         }
-      });
+      }, true);
     }
 
+    // DOM 就绪后初始化
     if (document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", initMoodPicker);
     } else {
