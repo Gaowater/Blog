@@ -202,8 +202,9 @@ const managerConfigStr = JSON.stringify({
     // ── Track loading ────────────────────────────────────────
     function loadTrack(index, autoPlay) {
         if (index < 0 || index >= state.playlist.length) return;
-        state.currentIndex = index;
+        // 先存当前进度（旧索引 + 旧时间），再切歌
         saveProgress();
+        state.currentIndex = index;
         var track = state.playlist[index];
 
         audio.src = track.url;
@@ -234,6 +235,7 @@ const managerConfigStr = JSON.stringify({
             });
         } else {
             audio.pause();
+            saveProgress();
             state.isPlaying = false;
             emit('fm:play-state', { isPlaying: false });
         }
