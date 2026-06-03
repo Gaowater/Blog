@@ -20,6 +20,7 @@ const defaultIcon = "fa7-brands:gratipay";
 ---
 
 <div id="mood-picker" class="relative inline-flex">
+  <!-- ═══ 触发按钮（心形图标） ═══ -->
   <button
     id="mood-picker-btn"
     class="btn-plain scale-animation rounded-lg h-11 w-11 active:scale-90 cursor-pointer"
@@ -42,6 +43,7 @@ const defaultIcon = "fa7-brands:gratipay";
     ))}
   </button>
 
+  <!-- ═══ 下拉面板 ═══ -->
   <div
     id="mood-picker-panel"
     class="float-panel float-panel-closed absolute top-full mt-2 p-3 z-50
@@ -49,59 +51,71 @@ const defaultIcon = "fa7-brands:gratipay";
            max-sm:left-1/2 max-sm:-translate-x-1/2 max-sm:right-auto
            sm:right-0"
   >
-    <!-- ═══ 两人心情状态 ═══ -->
-    <div id="mood-status" class="mb-3">
-      <div class="flex items-center justify-center gap-3 text-sm">
-        <span class="text-xs text-neutral-500 dark:text-neutral-400">我的心情</span>
-        <span id="mood-mine-icon" class="text-[1.1rem]">—</span>
-        <span id="mood-mine-label" class="text-[0.65rem] text-neutral-500 dark:text-neutral-400">未设置</span>
-      </div>
-      <div class="flex items-center justify-center gap-3 text-sm mt-1">
-        <span class="text-xs text-neutral-500 dark:text-neutral-400">对方的心情</span>
-        <span id="mood-theirs-icon" class="text-[1.1rem]">—</span>
-        <span id="mood-theirs-label" class="text-[0.65rem] text-neutral-500 dark:text-neutral-400">未设置</span>
-      </div>
-    </div>
-
-    <!-- ═══ 用户切换 + 刷新 ═══ -->
-    <div class="mb-2 flex items-center justify-between border-t border-(--btn-regular-bg) pt-2">
-      <div class="flex gap-1">
-        <button id="user-toggle-mh" data-user="mouhe"
-          class="user-toggle-btn rounded-lg px-2.5 py-1 text-xs transition bg-(--btn-regular-bg) font-semibold"
+    <!-- ═══ 初次使用：身份选择 ═══ -->
+    <div id="mood-setup" class="hidden">
+      <p class="text-sm text-center mb-3 text-neutral-700 dark:text-neutral-300">你是谁？</p>
+      <div class="flex justify-center gap-3">
+        <button id="setup-mh" data-user="mouhe"
+          class="rounded-lg px-6 py-2 text-sm font-semibold transition
+                 bg-(--btn-regular-bg) hover:opacity-80 active:scale-90 cursor-pointer"
         >MH</button>
-        <button id="user-toggle-hyl" data-user="yiliu"
-          class="user-toggle-btn rounded-lg px-2.5 py-1 text-xs transition text-neutral-500 dark:text-neutral-400"
+        <button id="setup-hyl" data-user="yiliu"
+          class="rounded-lg px-6 py-2 text-sm font-semibold transition
+                 bg-(--btn-regular-bg) hover:opacity-80 active:scale-90 cursor-pointer"
         >HYL</button>
       </div>
-      <button id="mood-refresh-btn"
-        class="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-neutral-500 dark:text-neutral-400 transition hover:bg-(--btn-regular-bg) cursor-pointer"
-        title="刷新心情"
-      >
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-      </button>
     </div>
 
-    <!-- ═══ 心情选择网格 ═══ -->
-    <div class="grid grid-cols-3 gap-1.5">
-      {moods.map((mood) => (
-        <button
-          data-mood-icon={mood.icon}
-          data-mood-label={mood.label}
-          class="mood-option flex flex-col items-center justify-center gap-0.5 rounded-lg py-2 px-1 transition hover:bg-(--btn-regular-bg) active:scale-90 cursor-pointer"
+    <!-- ═══ 正式面板（身份绑定后显示） ═══ -->
+    <div id="mood-main" class="hidden">
+      <!-- 两人心情状态 -->
+      <div id="mood-status" class="mb-3">
+        <div class="flex items-center justify-center gap-3 text-sm">
+          <span class="text-xs text-neutral-500 dark:text-neutral-400">你的心情</span>
+          <span id="mood-mine-icon" class="text-[1.1rem]">—</span>
+          <span id="mood-mine-label" class="text-[0.65rem] text-neutral-500 dark:text-neutral-400">未设置</span>
+        </div>
+        <div class="flex items-center justify-center gap-3 text-sm mt-1">
+          <span class="text-xs text-neutral-500 dark:text-neutral-400">对方的心情</span>
+          <span id="mood-theirs-icon" class="text-[1.1rem]">—</span>
+          <span id="mood-theirs-label" class="text-[0.65rem] text-neutral-500 dark:text-neutral-400">未设置</span>
+        </div>
+      </div>
+
+      <!-- 刷新按钮 -->
+      <div class="mb-2 flex justify-end border-t border-(--btn-regular-bg) pt-2">
+        <button id="mood-refresh-btn"
+          class="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-neutral-500 dark:text-neutral-400 transition hover:bg-(--btn-regular-bg) cursor-pointer"
+          title="刷新心情"
         >
-          <Icon name={mood.icon} is:inline class="text-[1.375rem] text-neutral-900 dark:text-neutral-100" />
-          <span class="text-[0.7rem] leading-tight text-neutral-900 dark:text-neutral-100 whitespace-nowrap">{mood.label}</span>
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
         </button>
-      ))}
-    </div>
-    <div class="mt-2 flex justify-center border-t border-(--btn-regular-bg) pt-2">
-      <button
-        id="mood-reset-btn"
-        class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-neutral-900 dark:text-neutral-100 transition hover:bg-(--btn-regular-bg) active:scale-90 cursor-pointer"
-      >
-        <Icon name="fa7-solid:arrow-rotate-left" is:inline class="text-[0.875rem] text-neutral-900 dark:text-neutral-100" />
-        重置
-      </button>
+      </div>
+
+      <!-- 心情选择网格 -->
+      <div class="grid grid-cols-3 gap-1.5">
+        {moods.map((mood) => (
+          <button
+            data-mood-icon={mood.icon}
+            data-mood-label={mood.label}
+            class="mood-option flex flex-col items-center justify-center gap-0.5 rounded-lg py-2 px-1 transition hover:bg-(--btn-regular-bg) active:scale-90 cursor-pointer"
+          >
+            <Icon name={mood.icon} is:inline class="text-[1.375rem] text-neutral-900 dark:text-neutral-100" />
+            <span class="text-[0.7rem] leading-tight text-neutral-900 dark:text-neutral-100 whitespace-nowrap">{mood.label}</span>
+          </button>
+        ))}
+      </div>
+
+      <!-- 重置 -->
+      <div class="mt-2 flex justify-center border-t border-(--btn-regular-bg) pt-2">
+        <button
+          id="mood-reset-btn"
+          class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-neutral-900 dark:text-neutral-100 transition hover:bg-(--btn-regular-bg) active:scale-90 cursor-pointer"
+        >
+          <Icon name="fa7-solid:arrow-rotate-left" is:inline class="text-[0.875rem] text-neutral-900 dark:text-neutral-100" />
+          重置
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -129,10 +143,13 @@ const defaultIcon = "fa7-brands:gratipay";
     function initMoodPicker() {
       var btn = document.getElementById("mood-picker-btn");
       var panel = document.getElementById("mood-picker-panel");
+      var setupEl = document.getElementById("mood-setup");
+      var mainEl = document.getElementById("mood-main");
       var iconElems = document.querySelectorAll("#mood-picker .mood-icon-elem");
-      if (!btn || !panel || !iconElems.length) return;
+      if (!btn || !panel || !setupEl || !mainEl || !iconElems.length) return;
 
-      var activeUser = localStorage.getItem(USER_KEY) || "mouhe";
+      /* ── 读取已绑定的身份（若无则为 null） ── */
+      var activeUser = localStorage.getItem(USER_KEY);
 
       function showIcon(iconKey) {
         iconElems.forEach(function (el) {
@@ -203,50 +220,62 @@ const defaultIcon = "fa7-brands:gratipay";
         xhr.send(JSON.stringify({ user: user, mood: iconKey }));
       }
 
-      function updateUserToggle(user) {
-        document.querySelectorAll(".user-toggle-btn").forEach(function (el) {
-          var u = el.getAttribute("data-user");
-          if (u === user) {
-            el.classList.add("bg-(--btn-regular-bg)", "font-semibold");
-            el.classList.remove("text-neutral-500", "dark:text-neutral-400");
-          } else {
-            el.classList.remove("bg-(--btn-regular-bg)", "font-semibold");
-            el.classList.add("text-neutral-500", "dark:text-neutral-400");
-          }
-        });
+      /* ── 切换面板显示模式（设置 / 正式） ── */
+      function enterSetupMode() {
+        setupEl.classList.remove("hidden");
+        mainEl.classList.add("hidden");
+      }
+      function enterMainMode() {
+        setupEl.classList.add("hidden");
+        mainEl.classList.remove("hidden");
       }
 
-      // ── 初始化状态 ──
-      var saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) showIcon(saved);
-      updateUserToggle(activeUser);
-      fetchMoods();
+      /* ── 绑定身份 ── */
+      function bindUser(user) {
+        activeUser = user;
+        localStorage.setItem(USER_KEY, user);
+        enterMainMode();
+        // 恢复之前保存的心情图标
+        var saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) showIcon(saved);
+        fetchMoods();
+      }
 
-      // ── 面板切换（捕获阶段监听，避免 Swup 干扰） ──
+      /* ── 首次打开时判断是否已绑定 ── */
+      if (activeUser) {
+        enterMainMode();
+        var saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) showIcon(saved);
+        fetchMoods();
+      } else {
+        enterSetupMode();
+      }
+
+      /* ── 面板切换（捕获阶段监听，避免 Swup 干扰） ── */
       btn.addEventListener("click", function (e) {
         e.stopPropagation();
         panel.classList.toggle("float-panel-closed");
         if (!panel.classList.contains("float-panel-closed")) {
-          fetchMoods();
+          // 每次打开面板时，如果已绑定则刷新数据
+          if (activeUser) fetchMoods();
         }
       }, true);
 
-      // ── 用户切换 ──
-      document.querySelectorAll(".user-toggle-btn").forEach(function (el) {
-        el.addEventListener("click", function (e) {
-          e.stopPropagation();
-          var user = el.getAttribute("data-user");
-          activeUser = user;
-          localStorage.setItem(USER_KEY, user);
-          updateUserToggle(user);
-          fetchMoods();
-        }, true);
-      });
+      /* ── 身份选择按钮 ── */
+      document.getElementById("setup-mh").addEventListener("click", function (e) {
+        e.stopPropagation();
+        bindUser("mouhe");
+      }, true);
+      document.getElementById("setup-hyl").addEventListener("click", function (e) {
+        e.stopPropagation();
+        bindUser("yiliu");
+      }, true);
 
-      // ── 选择心情 ──
+      /* ── 选择心情（只允许修改自己的） ── */
       document.querySelectorAll("#mood-picker .mood-option").forEach(function (el) {
         el.addEventListener("click", function (e) {
           e.stopPropagation();
+          if (!activeUser) return;
           var icon = el.getAttribute("data-mood-icon");
           if (icon) {
             showIcon(icon);
@@ -257,11 +286,12 @@ const defaultIcon = "fa7-brands:gratipay";
         }, true);
       });
 
-      // ── 重置 ──
+      /* ── 重置 ── */
       var resetBtn = document.getElementById("mood-reset-btn");
       if (resetBtn) {
         resetBtn.addEventListener("click", function (e) {
           e.stopPropagation();
+          if (!activeUser) return;
           showIcon(defaultIcon);
           localStorage.removeItem(STORAGE_KEY);
           saveMood(activeUser, "");
@@ -269,16 +299,16 @@ const defaultIcon = "fa7-brands:gratipay";
         }, true);
       }
 
-      // ── 刷新按钮 ──
+      /* ── 刷新按钮 ── */
       var refreshBtn = document.getElementById("mood-refresh-btn");
       if (refreshBtn) {
         refreshBtn.addEventListener("click", function (e) {
           e.stopPropagation();
-          fetchMoods();
+          if (activeUser) fetchMoods();
         }, true);
       }
 
-      // ── 点击外部关闭 ──
+      /* ── 点击外部关闭 ── */
       document.addEventListener("click", function (e) {
         if (!panel.classList.contains("float-panel-closed")) {
           if (
