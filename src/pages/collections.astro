@@ -21,11 +21,11 @@ import {
 // ── 六个分类 ──
 const categories = [
   { id: "anime", label: "动漫",     accent: "bg-sky-500", items: animeList },
-  { id: "game",  label: "游戏",     accent: "bg-violet-500", items: gameList },
   { id: "book",  label: "书籍",     accent: "bg-amber-500", items: bookList },
   { id: "music", label: "音乐",     accent: "bg-rose-500", items: musicList },
   { id: "movie", label: "银幕记忆", accent: "bg-fuchsia-500", items: movieList },
   { id: "tv",    label: "剧集时光", accent: "bg-emerald-500", items: tvList },
+  { id: "game",  label: "游戏",     accent: "bg-violet-500", items: gameList },
 ];
 
 // ── 只显示有数据的分类 ──
@@ -197,38 +197,49 @@ const pageDesc = "那些在记忆中刻下痕迹的作品";
 </MainGridLayout>
 
 <script data-astro-rerun>
-  // Tab 切换逻辑
-  const tabs = document.querySelectorAll(".tab-btn");
-  const contents = document.querySelectorAll(".tab-content");
+  function initTabs() {
+    var tabs = document.querySelectorAll(".tab-btn");
+    var contents = document.querySelectorAll(".tab-content");
+    if (!tabs.length || !contents.length) return;
 
-  tabs.forEach((tab) => {
-    tab.addEventListener("click", () => {
-      const cat = tab.dataset.category;
+    tabs.forEach(function (tab) {
+      // 移除旧监听避免重复绑定
+      tab.removeEventListener("click", tabClickHandler);
+      tab.addEventListener("click", tabClickHandler);
+    });
 
-      // 更新 tab 样式
-      tabs.forEach((t) => {
+    function tabClickHandler() {
+      var cat = this.dataset.category;
+
+      tabs.forEach(function (t) {
         t.classList.remove(
           "text-neutral-900", "dark:text-neutral-100",
           "bg-neutral-100", "dark:bg-neutral-800",
           "font-semibold"
         );
-        t.classList.add(
-          "text-neutral-500", "dark:text-neutral-400"
-        );
+        t.classList.add("text-neutral-500", "dark:text-neutral-400");
       });
-      tab.classList.remove("text-neutral-500", "dark:text-neutral-400");
-      tab.classList.add(
+      this.classList.remove("text-neutral-500", "dark:text-neutral-400");
+      this.classList.add(
         "text-neutral-900", "dark:text-neutral-100",
         "bg-neutral-100", "dark:bg-neutral-800",
         "font-semibold"
       );
 
-      // 切换内容区
-      contents.forEach((c) => {
+      contents.forEach(function (c) {
         c.style.display = c.dataset.category === cat ? "block" : "none";
       });
-    });
-  });
+    }
+  }
+
+  // Astro View Transitions 页面切换后触发
+  document.addEventListener("astro:page-load", initTabs);
+  // 首次直接加载页面
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initTabs);
+  } else {
+    initTabs();
+  }
 </script>
 
 <style>
