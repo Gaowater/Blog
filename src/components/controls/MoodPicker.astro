@@ -69,12 +69,22 @@ const defaultIcon = "fa7-brands:gratipay";
       <div id="mood-status" class="mb-3">
         <div class="flex items-center justify-center gap-3 text-sm">
           <span class="text-xs text-neutral-500 dark:text-neutral-400">你的心情</span>
-          <span id="mood-mine-icon" class="text-[1.1rem]">—</span>
+          <span id="mood-mine-icons" class="inline-flex items-center">
+            <span id="mood-mine-default" class="text-[1.1rem]">—</span>
+            {moods.map((mood) => (
+              <Icon name={mood.icon} is:inline class="mood-mine-icon hidden text-[1.1rem] text-neutral-900 dark:text-neutral-100" data-mood-icon={mood.icon} />
+            ))}
+          </span>
           <span id="mood-mine-label" class="text-[0.65rem] text-neutral-500 dark:text-neutral-400">未设置</span>
         </div>
         <div class="flex items-center justify-center gap-3 text-sm mt-1">
           <span class="text-xs text-neutral-500 dark:text-neutral-400">对方的心情</span>
-          <span id="mood-theirs-icon" class="text-[1.1rem]">—</span>
+          <span id="mood-theirs-icons" class="inline-flex items-center">
+            <span id="mood-theirs-default" class="text-[1.1rem]">—</span>
+            {moods.map((mood) => (
+              <Icon name={mood.icon} is:inline class="mood-theirs-icon hidden text-[1.1rem] text-neutral-900 dark:text-neutral-100" data-mood-icon={mood.icon} />
+            ))}
+          </span>
           <span id="mood-theirs-label" class="text-[0.65rem] text-neutral-500 dark:text-neutral-400">未设置</span>
         </div>
       </div>
@@ -139,19 +149,6 @@ const defaultIcon = "fa7-brands:gratipay";
       "fa7-regular:face-rolling-eyes": "空虚",
       "fa7-regular:face-grin-stars": "发癫",
     };
-    var moodEmojis = {
-      "fa7-regular:face-grin-beam": "😁",
-      "fa7-regular:face-smile-beam": "😊",
-      "fa7-regular:face-laugh-squint": "😆",
-      "fa7-regular:face-laugh-beam": "😄",
-      "fa7-regular:face-frown": "😢",
-      "fa7-regular:face-meh-blank": "😶",
-      "fa7-regular:face-grimace": "😬",
-      "fa7-regular:face-frown-open": "😟",
-      "fa7-regular:face-meh": "😐",
-      "fa7-regular:face-rolling-eyes": "🙄",
-      "fa7-regular:face-grin-stars": "🤩",
-    };
 
     function initMoodPicker() {
       var btn = document.getElementById("mood-picker-btn");
@@ -194,14 +191,21 @@ const defaultIcon = "fa7-brands:gratipay";
       }
 
       function updateMoodDisplay(which, iconKey) {
-        var iconEl = document.getElementById("mood-" + which + "-icon");
+        var defaultEl = document.getElementById("mood-" + which + "-default");
         var labelEl = document.getElementById("mood-" + which + "-label");
-        if (!iconEl || !labelEl) return;
+        if (!defaultEl || !labelEl) return;
+        // 隐藏所有图标
+        document.querySelectorAll(".mood-" + which + "-icon").forEach(function (el) {
+          el.classList.add("hidden");
+        });
         if (iconKey && moodLabels[iconKey]) {
-          iconEl.textContent = moodEmojis[iconKey] || "❤️";
+          // 显示对应的图标
+          var iconEl = document.querySelector(".mood-" + which + "-icon[data-mood-icon=\"" + iconKey + "\"]");
+          if (iconEl) iconEl.classList.remove("hidden");
+          defaultEl.classList.add("hidden");
           labelEl.textContent = moodLabels[iconKey];
         } else {
-          iconEl.textContent = "—";
+          defaultEl.classList.remove("hidden");
           labelEl.textContent = "未设置";
         }
       }
