@@ -29,11 +29,11 @@ export const galleryConfig: GalleryConfig = {
 			cover: "gallery/encrypted-test/cover.相册封面.avif",
 			name: "加密相册",
 			description:
-				"这是一个加密相册，设置了访问密码，只有输入正确的密码才能查看相册内容哦~",
+				"这是一个加密相册，目前还没想好放什么~",
 			location: "保密",
 			date: "2026-05-28",
 			tags: ["加密相册"],
-			password: "123456",
+			password: "20080503",
 		},
 	],
 
