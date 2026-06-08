@@ -624,6 +624,19 @@ const bannerCarouselInterval = Math.max(
                             {backgroundWallpaper.common.homeText.title}
                         </div>
                     )}
+                    <!-- 相识天数计数器：从 2026-02-07 开始 -->
+                    <div id="banner-day-counter" class="font-bold text-white/80 leading-tight mb-2 lg:mb-4" style="font-size: calc(var(--banner-title-size, 3rem) * 0.72)"></div>
+                    <script is:inline data-astro-rerun>
+                        (function() {
+                            const el = document.getElementById('banner-day-counter');
+                            if (!el) return;
+                            const start = new Date('2026-02-07T00:00:00+08:00');
+                            const now = new Date();
+                            const diffMs = now.getTime() - start.getTime();
+                            const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                            el.textContent = '与你相识的第 ' + days + ' 天';
+                        })();
+                    </script>
                     {backgroundWallpaper.common?.homeText?.subtitle && (
                         <div id="banner-subtitle" class="banner-subtitle text-white/90 leading-snug" style={{ fontSize: backgroundWallpaper.common.homeText.subtitleSize || "1.5rem" }} data-subtitles={JSON.stringify(backgroundWallpaper.common.homeText.subtitle)}>
                             {backgroundWallpaper.common.homeText.typewriter?.enable ? (
