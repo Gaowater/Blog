@@ -292,8 +292,7 @@ export const en: Translation = {
 	[Key.calendarOctober]: "Oct",
 	[Key.calendarNovember]: "Nov",
 	[Key.calendarDecember]: "Dec",
-
-	[Key.shareArticle]: "Share",
+	[Key.memorableDates]: "Memorable Days",
 	[Key.generatingPoster]: "Generating Poster...",
 	[Key.copied]: "Copied",
 	[Key.copyLink]: "Copy Link",
