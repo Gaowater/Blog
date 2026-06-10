@@ -35,6 +35,14 @@ export const galleryConfig: GalleryConfig = {
 			tags: ["加密相册"],
 			password: "20080503",
 		},
+		{
+			id: "videos",
+			name: "你的视频",
+			description: "铛铛！你的每一个瞬间都想好好珍藏 🎬",
+			date: "2026-05-28",
+			tags: ["视频", "依琳", "回忆"],
+			type: "video",
+		},
 	],
 
 	// 瀑布流最小列宽(px)，浏览器根据容器宽度自动计算列数，默认 240

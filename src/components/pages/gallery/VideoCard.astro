@@ -1,0 +1,70 @@
+---
+interface Props {
+	src: string;
+	albumId: string;
+	index: number;
+}
+
+const { src, albumId, index } = Astro.props;
+const videoId = `video-${albumId}-${index}`;
+---
+
+<div class="video-card rounded-xl overflow-hidden bg-neutral-100 dark:bg-neutral-800 relative group cursor-pointer" id={videoId}>
+  <!-- 占位封面：点击前只显示播放按钮，不加载视频 -->
+  <div class="video-placeholder aspect-video flex items-center justify-center text-neutral-400 dark:text-neutral-500 select-none">
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="20" />
+      <polygon points="20,15 20,33 34,24" fill="currentColor" stroke="none" />
+    </svg>
+  </div>
+  <!-- 视频元素（初始不加载） -->
+  <video
+    controls
+    preload="none"
+    class="hidden w-full h-full absolute inset-0 object-contain bg-black rounded-xl"
+  >
+    <source src={src} type="video/mp4" />
+  </video>
+</div>
+
+<script is:inline>
+  (function() {
+    const card = document.getElementById('{videoId}');
+    if (!card) return;
+
+    const placeholder = card.querySelector('.video-placeholder');
+    const video = card.querySelector('video');
+
+    function playVideo() {
+      if (!video) return;
+      placeholder?.classList.add('hidden');
+      video.classList.remove('hidden');
+      video.load();  // 点击后才开始加载视频
+      video.play().catch(() => {});  // 自动播放
+    }
+
+    card.addEventListener('click', playVideo);
+    // 支持 Swup 页面切换后重新绑定
+    card.addEventListener('swup:contentReplaced', function() {
+      // 重新挂载
+    });
+  })();
+</script>
+
+<style is:inline>
+  .video-card {
+    transition: transform 0.2s ease;
+  }
+  .video-card:hover {
+    transform: scale(1.01);
+  }
+  .video-card .video-placeholder {
+    transition: opacity 0.3s ease;
+  }
+  .video-card .video-placeholder.hidden {
+    display: none;
+  }
+  .video-card video::-webkit-media-controls {
+    border-radius: 12px;
+  }
+</style>

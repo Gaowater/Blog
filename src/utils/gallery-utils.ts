@@ -51,6 +51,19 @@ export function scanAlbumPhotos(albumId: string): string[] {
 }
 
 /**
+ * 扫描相册目录中的所有视频文件
+ */
+export function scanAlbumVideos(albumId: string): string[] {
+	const dir = path.join(process.cwd(), "public", "gallery", albumId);
+	if (!fs.existsSync(dir)) return [];
+	const files = fs
+		.readdirSync(dir)
+		.filter((f) => /\.(mp4|webm|ogg|mov)$/i.test(f))
+		.sort();
+	return files.map((f) => withBase(`/gallery/${albumId}/${f}`));
+}
+
+/**
  * 获取相册封面图
  * 优先级：手动指定 > cover.* 文件 > 第一张图片
  */
@@ -58,4 +71,14 @@ export function getAlbumCover(album: GalleryAlbum, photos: string[]): string {
 	if (album.cover) return withBase(album.cover);
 	const coverFile = photos.find((p) => /\/cover\./i.test(p));
 	return coverFile || photos[0] || "";
+}
+
+/**
+ * 获取视频相册封面图（视频用播放图标占位）
+ */
+export function getAlbumCoverForVideo(album: GalleryAlbum): string {
+	// 如果有手动指定封面则用
+	if (album.cover) return withBase(album.cover);
+	// 视频相册没有图片作为封面，返回空
+	return "";
 }
