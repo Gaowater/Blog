@@ -112,10 +112,10 @@ const memorableDatesJson = JSON.stringify(memorableDates);
     <div id="memorable-dates-card" class="mt-3 hidden">
       <div class="border-t border-pink-200 dark:border-pink-900/40 mb-2"></div>
       <div id="memorable-header" class="flex items-center justify-between cursor-pointer select-none">
-        <div class="text-xs font-semibold text-pink-500 dark:text-pink-400">
+        <div class="text-xs font-semibold text-pink-300 dark:text-pink-300">
           <span id="memorable-title">{memorableTitle}</span>
         </div>
-        <span id="memorable-arrow" class="text-pink-400 dark:text-pink-500 transition-transform duration-200 inline-flex items-center">
+        <span id="memorable-arrow" class="text-pink-300 dark:text-pink-300 transition-transform duration-200 inline-flex items-center">
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M3.5 1.5L7 5L3.5 8.5"/>
           </svg>
@@ -299,7 +299,7 @@ const memorableDatesJson = JSON.stringify(memorableDates);
       // 纪念日标记：粉色小圆点（和文章点类似）
       var memorialDot = '';
       if (isMemorable) {
-        memorialDot = '<span class="absolute bottom-0 left-1/2 -translate-x-1/2 ' + (hasPost ? '-translate-y-[9px]' : '') + ' w-1 h-1 rounded-full bg-pink-400 dark:bg-pink-400"></span>';
+        memorialDot = '<span class="absolute bottom-0 left-1/2 -translate-x-1/2 ' + (hasPost ? '-translate-y-[9px]' : '') + ' w-1 h-1 rounded-full bg-pink-300 dark:bg-pink-300"></span>';
       }
       
       return `
