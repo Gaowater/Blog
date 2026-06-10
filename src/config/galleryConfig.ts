@@ -38,7 +38,7 @@ export const galleryConfig: GalleryConfig = {
 		{
 			id: "videos",
 			name: "你的视频",
-			description: "铛铛！你的每一个瞬间都想好好珍藏 🎬",
+			description: "铛铛！你的每一个瞬间都想好好珍藏",
 			date: "2026-05-28",
 			tags: ["视频", "依琳", "回忆"],
 			type: "video",
