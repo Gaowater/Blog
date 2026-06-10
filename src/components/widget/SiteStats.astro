@@ -62,6 +62,10 @@ const lastPostDate = latestPost
 	? (latestPost.data.updated || latestPost.data.published).toISOString()
 	: null;
 
+// 以构建时间作为"最后活动"时间
+// 因为每次 git push → Cloudflare 重新构建，构建时间就是你最后一次推送的时间
+const buildTime = new Date().toISOString();
+
 const todayText = i18n(I18nKey.today);
 
 const stats = [
@@ -135,7 +139,7 @@ const stats = [
   </div>
 </WidgetLayout>
 
-<script is:inline define:vars={{ siteStartDate, lastPostDate, todayText }}>
+<script is:inline define:vars={{ siteStartDate, lastPostDate, buildTime, todayText }}>
   function updateDynamicStats() {
     const today = new Date();
 
@@ -149,11 +153,11 @@ const stats = [
       element.textContent = diffDays.toString();
     });
 
-    // 更新最后活动时间
-    if (lastPostDate) {
-      const lastPost = new Date(lastPostDate);
-      const timeSinceLastPost = Math.abs(today.getTime() - lastPost.getTime());
-      const daysSinceLastUpdate = Math.floor(timeSinceLastPost / (1000 * 60 * 60 * 24));
+    // 更新最后活动时间（以构建时间为准 = 最后一次推送的时间）
+    if (buildTime) {
+      const lastUpdate = new Date(buildTime);
+      const timeSinceLastUpdate = Math.abs(today.getTime() - lastUpdate.getTime());
+      const daysSinceLastUpdate = Math.floor(timeSinceLastUpdate / (1000 * 60 * 60 * 24));
 
       const lastUpdateElements = document.querySelectorAll('[data-stat-id="last-update"]');
       lastUpdateElements.forEach((element) => {
