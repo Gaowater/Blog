@@ -50,13 +50,16 @@ function formatNumber(num: number): string {
 }
 
 // 获取最新文章日期（用于客户端计算）
+// 取每篇文章的"最后修改时间"：如果有 updated 字段则用它，否则用 published
 const latestPost = posts.reduce((latest, post) => {
+	const postDate = post.data.updated || post.data.published;
 	if (!latest) return post;
-	return post.data.published > latest.data.published ? post : latest;
+	const latestDate = latest.data.updated || latest.data.published;
+	return postDate > latestDate ? post : latest;
 }, posts[0]);
 
 const lastPostDate = latestPost
-	? latestPost.data.published.toISOString()
+	? (latestPost.data.updated || latestPost.data.published).toISOString()
 	: null;
 
 const todayText = i18n(I18nKey.today);
