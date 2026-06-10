@@ -10,33 +10,34 @@ const videoId = `video-${albumId}-${index}`;
 ---
 
 <div
-  class="video-card rounded-xl overflow-hidden bg-neutral-900 relative group cursor-pointer aspect-[9/16]"
+  class="video-card rounded-xl overflow-hidden bg-black relative group cursor-pointer aspect-[9/16]"
   data-video-id={videoId}
 >
-  <!-- 占位封面：点击前只显示播放按钮，不加载视频 -->
-  <div class="video-placeholder w-full h-full flex items-center justify-center text-white/60 select-none">
-    <div class="flex flex-col items-center gap-2">
-      <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="24" cy="24" r="20" />
-        <polygon points="20,15 20,33 34,24" fill="currentColor" stroke="none" />
-      </svg>
-      <span class="text-xs text-white/40">点击播放</span>
-    </div>
-  </div>
-  <!-- 视频元素（metadata模式：加载第一帧作为封面，不下载全片） -->
+  <!-- 视频本身始终可见，让浏览器加载首帧作为封面 -->
   <video
-    controls
     preload="metadata"
     playsinline
-    class="hidden w-full h-full absolute inset-0 object-contain bg-black rounded-xl"
+    muted
+    class="w-full h-full object-cover rounded-xl"
   >
     <source src={src} type="video/mp4" />
   </video>
+
+  <!-- 播放按钮覆盖层（点击后消失） -->
+  <div class="video-placeholder absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/10 transition-colors duration-200 z-10">
+    <div class="flex flex-col items-center gap-2">
+      <div class="w-14 h-14 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+          <polygon points="8,5 8,19 19,12" />
+        </svg>
+      </div>
+      <span class="text-xs text-white/70">点击播放</span>
+    </div>
+  </div>
 </div>
 
 <script is:inline>
   (function() {
-    // 用 data 属性查找，避免 Astro 模板变量问题
     var cards = document.querySelectorAll('[data-video-id]');
     cards.forEach(function(card) {
       var placeholder = card.querySelector('.video-placeholder');
@@ -45,10 +46,10 @@ const videoId = `video-${albumId}-${index}`;
       function playVideo() {
         if (!video || !placeholder) return;
         placeholder.style.display = 'none';
-        video.classList.remove('hidden');
+        video.muted = false;
+        video.setAttribute('controls', '');
         video.load();
         video.play().catch(function() {});
-        card.removeEventListener('click', playVideo);
       }
 
       card.addEventListener('click', playVideo);
