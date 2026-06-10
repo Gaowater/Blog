@@ -428,34 +428,10 @@ const memorableDatesJson = JSON.stringify(memorableDates);
     var list = document.getElementById('memorable-dates-list');
     if (!card || !list) return;
 
-    // 只显示当月和未来的纪念日（不显示已过去的）
-    var now = new Date();
-    var currentYear = now.getFullYear();
-    var currentMonth = now.getMonth();
-    
-    var visibleDates = memorableDateList.filter(function(item) {
-      if (!item || !item.date) return false;
-      var parts = item.date.split('-');
-      if (parts.length < 3) return false;
-      var m = parseInt(parts[1], 10) - 1;
-      // 显示当月及之后的纪念日（跨年份：比如 1 月也在当前 12 月之后显示）
-      if (m >= currentMonth) return true;
-      // 如果是今年之前的月份就不显示，或者跨年处理
-      return false;
+    // 显示所有配置的纪念日，按日期排序
+    var visibleDates = memorableDateList.slice().sort(function(a, b) {
+      return a.date.localeCompare(b.date);
     });
-
-    // 如果当月没有，也显示全部当年的纪念日
-    if (visibleDates.length === 0) {
-      visibleDates = memorableDateList.filter(function(item) {
-        if (!item || !item.date) return false;
-        var parts = item.date.split('-');
-        if (parts.length < 3) return false;
-        var year = parseInt(parts[0], 10);
-        var m = parseInt(parts[1], 10) - 1;
-        // 今年所有的都显示
-        return year >= currentYear && m >= 0;
-      });
-    }
 
     if (visibleDates.length === 0) {
       card.classList.add('hidden');
@@ -463,9 +439,6 @@ const memorableDatesJson = JSON.stringify(memorableDates);
     }
 
     card.classList.remove('hidden');
-    
-    // 按日期排序
-    visibleDates.sort(function(a, b) { return a.date.localeCompare(b.date); });
 
     list.innerHTML = visibleDates.map(function(item) {
       var parts = item.date.split('-');
