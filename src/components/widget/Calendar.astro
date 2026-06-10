@@ -449,6 +449,22 @@ const memorableDatesJson = JSON.stringify(memorableDates);
       '</div>';
     }).join('');
 
+    // 在列表最前面插入年份标题
+    var yearGroup = '';
+    var lastYear = '';
+    visibleDates.forEach(function(item) {
+      var year = item.date.split('-')[0];
+      if (year !== lastYear) {
+        yearGroup += '<div class="text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 px-2 pt-2 pb-1">' + year + '年</div>';
+        lastYear = year;
+      }
+    });
+
+    // 如果有多年的数据，将年份标题插入到列表前面
+    if (yearGroup) {
+      list.innerHTML = yearGroup + list.innerHTML;
+    }
+
     // 默认折叠
     list.classList.add('hidden');
 
