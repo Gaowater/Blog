@@ -23,10 +23,10 @@ const videoId = `video-${albumId}-${index}`;
       <span class="text-xs text-white/40">点击播放</span>
     </div>
   </div>
-  <!-- 视频元素（初始不加载） -->
+  <!-- 视频元素（metadata模式：加载第一帧作为封面，不下载全片） -->
   <video
     controls
-    preload="none"
+    preload="metadata"
     playsinline
     class="hidden w-full h-full absolute inset-0 object-contain bg-black rounded-xl"
   >
