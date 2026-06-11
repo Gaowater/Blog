@@ -233,9 +233,18 @@ const managerConfigStr = JSON.stringify({
     var pendingPlay = false;
 
     function togglePlay() {
-        // 如果还没初始化完成，标记为"等待播放"，init 完成后会自动播放
+        // 如果还没初始化完成，标记为"等待播放"，用户点第二次时生效
         if (!state.initialized) {
             pendingPlay = true;
+            return;
+        }
+        // 初始化期间点过播放 → 这次点击立即播放
+        if (pendingPlay) {
+            pendingPlay = false;
+            audio.play().then(function () {
+                state.isPlaying = true;
+                emit('fm:play-state', { isPlaying: true });
+            }).catch(function () {});
             return;
         }
         if (audio.paused) {
@@ -432,40 +441,25 @@ const managerConfigStr = JSON.stringify({
                 // 先加载曲目（此时不标记初始化），避免 loadTrack 里的 saveProgress() 覆盖 localStorage
                 loadTrack(startIndex, false);
 
-                // 标记初始化完成
+                // 恢复进度：seek 到上次播放位置，但不自动播放（浏览器会阻止）
+                if (savedTime !== null && savedTime > 0) {
+                    audio.addEventListener('canplay', function seekTo() {
+                        audio.removeEventListener('canplay', seekTo);
+                        audio.currentTime = savedTime;
+                    });
+                    if (audio.readyState >= 2) {
+                        audio.currentTime = savedTime;
+                    }
+                }
+
+                // 标记初始化完成（必须在 loadTrack 之后！）
                 state.initialized = true;
 
-                // 恢复播放进度并自动播放
-                if (savedTime !== null && savedTime > 0) {
-                    // 音频加载完成后跳到保存的位置
-                    var seekDone = false;
-                    audio.addEventListener('canplay', function seekHandler() {
-                        if (!seekDone) {
-                            seekDone = true;
-                            audio.removeEventListener('canplay', seekHandler);
-                            audio.currentTime = savedTime;
-                            audio.play().catch(function () { /* autoplay blocked */ });
-                        }
-                    });
-                    // 如果已经加载好了（缓存），直接跳
-                    if (audio.readyState >= 2) {
-                        seekDone = true;
-                        audio.removeEventListener('canplay', seekHandler);
-                        audio.currentTime = savedTime;
-                        audio.play().catch(function () { /* autoplay blocked */ });
-                    }
-                } else if (pendingPlay) {
-                    // 用户等待时点了播放 → 初始化完成后自动播放
+                // 如果用户在初始化期间点了播放，现在执行
+                if (pendingPlay) {
                     pendingPlay = false;
-                    // 音频可能已经缓存好了（readyState >= 2），此时 canplay 不会触发
-                    if (audio.readyState >= 2) {
-                        audio.play().catch(function () {});
-                    } else {
-                        audio.addEventListener('canplay', function autoPlayOnce() {
-                            audio.removeEventListener('canplay', autoPlayOnce);
-                            audio.play().catch(function () {});
-                        });
-                    }
+                    // 直接播放（此时已经在用户手势上下文之外，但 togglePlay 处理后续点击）
+                    // 这里不主动 play，让用户点击按钮触发（浏览器 autoplay 策略）
                 }
             } else {
                 state.initialized = true;
