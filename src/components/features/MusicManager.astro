@@ -202,8 +202,10 @@ const managerConfigStr = JSON.stringify({
     // ── Track loading ────────────────────────────────────────
     function loadTrack(index, autoPlay) {
         if (index < 0 || index >= state.playlist.length) return;
-        // 先存当前进度（旧索引 + 旧时间），再切歌
-        saveProgress();
+        // 只在已初始化后保存进度（避免在 init 恢复进度时覆盖 localStorage 的有效数据）
+        if (state.initialized) {
+            saveProgress();
+        }
         state.currentIndex = index;
         var track = state.playlist[index];
 
