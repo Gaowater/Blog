@@ -38,7 +38,7 @@ if (footerConfig.enable) {
     <div class="mb-2">
       {customFooterHtml && <div set:html={customFooterHtml} />}
     </div>
-    <div class="m-0.5">
+    <div class="m-0.5 hidden">
       &copy; <span id="copyright-year">{currentYear}</span>
       {profileConfig.name}. All Rights Reserved. /
       <a
@@ -52,7 +52,7 @@ if (footerConfig.enable) {
         href={url("sitemap-index.xml")}>Sitemap</a
       >
     </div>
-    <div class="m-0.5">
+    <div class="m-0.5 hidden">
       Powered by
       <a
         class="transition link text-(--primary) font-medium"
