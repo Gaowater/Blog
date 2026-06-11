@@ -10,9 +10,10 @@ import { url } from "@/utils/url-utils";
 interface Props {
 	class?: string;
 	style?: string;
+	instanceId?: string; // 多实例支持，避免ID冲突
 }
 
-const { class: className, style } = Astro.props;
+const { class: className, style, instanceId = "calendar-widget" } = Astro.props;
 
 // 月份名称（使用 i18n）
 const monthNames = [
@@ -56,7 +57,7 @@ const memorableTitle = i18n(I18nKey.memorableDates);
 const memorableDatesJson = JSON.stringify(memorableDates);
 ---
 
-<WidgetLayout id="calendar-widget" class={className} style={style}>
+<WidgetLayout id={instanceId} class={className} style={style}>
   <div class="calendar-container">
     <div class="flex justify-between items-center mb-4">
         <button id="prev-month-btn" class="btn-plain rounded-lg w-8 h-8 flex items-center justify-center hover:bg-(--btn-plain-bg-hover) transition-colors" aria-label="Previous Month">
@@ -128,8 +129,12 @@ const memorableDatesJson = JSON.stringify(memorableDates);
   </div>
 </WidgetLayout>
 
-<script is:inline data-swup-ignore-script define:vars={{ monthNames, weekDays, yearText, currentLang, calendarDataUrl, postUrlPrefix, memorableDatesJson, memorableTitle }}>
-  // State variables
+<script is:inline data-swup-ignore-script define:vars={{ instanceId, monthNames, weekDays, yearText, currentLang, calendarDataUrl, postUrlPrefix, memorableDatesJson, memorableTitle }}>
+  // 域内查询：只查当前实例容器内的元素，避免多实例 ID 冲突
+  function qs(id) {
+    var container = document.getElementById(instanceId);
+    return container ? container.querySelector('#' + CSS.escape(id)) : null;
+  }
   let displayYear = new Date().getFullYear();
   let displayMonth = new Date().getMonth();
   let currentView = 'day'; // 'day' | 'month' | 'year'
@@ -182,10 +187,10 @@ const memorableDatesJson = JSON.stringify(memorableDates);
 
   // 客户端动态渲染日历
   function renderCalendar() {
-    const container = document.getElementById('calendar-view-container');
-    const monthContainer = document.getElementById('month-view-container');
-    const yearContainer = document.getElementById('year-view-container');
-    const postsContainer = document.getElementById('calendar-posts');
+    const container = qs('calendar-view-container');
+    const monthContainer = qs('month-view-container');
+    const yearContainer = qs('year-view-container');
+    const postsContainer = qs('calendar-posts');
     
     // Update visibility
     if (container) container.style.display = currentView === 'day' ? 'block' : 'none';
@@ -208,10 +213,10 @@ const memorableDatesJson = JSON.stringify(memorableDates);
   }
 
   function updateHeader() {
-    const navDisplay = document.getElementById('current-month-display');
-    const resetBtn = document.getElementById('reset-month-btn');
-    const prevBtn = document.getElementById('prev-month-btn');
-    const nextBtn = document.getElementById('next-month-btn');
+    const navDisplay = qs('current-month-display');
+    const resetBtn = qs('reset-month-btn');
+    const prevBtn = qs('prev-month-btn');
+    const nextBtn = qs('next-month-btn');
     
     if (navDisplay) {
       if (currentView === 'day') {
@@ -252,7 +257,7 @@ const memorableDatesJson = JSON.stringify(memorableDates);
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
     
     // 生成日历格子
-    const calendarGrid = document.getElementById('calendar-grid');
+    const calendarGrid = qs('calendar-grid');
     if (!calendarGrid) return;
     
     const calendarDays = [];
@@ -330,7 +335,7 @@ const memorableDatesJson = JSON.stringify(memorableDates);
   }
 
   function renderMonthView() {
-    const container = document.getElementById('month-view-container');
+    const container = qs('month-view-container');
     if (!container) return;
 
     // Calculate which months have posts for the currently displayed year
@@ -369,7 +374,7 @@ const memorableDatesJson = JSON.stringify(memorableDates);
   }
 
   function renderYearView() {
-    const container = document.getElementById('year-view-container');
+    const container = qs('year-view-container');
     if (!container) return;
 
     container.innerHTML = availableYears.map(year => {
@@ -396,9 +401,9 @@ const memorableDatesJson = JSON.stringify(memorableDates);
   
   // 显示当月所有文章
   function showMonthlyPosts(currentMonthPosts) {
-    const postsWrapper = document.getElementById('calendar-posts');
-    const postsList = document.getElementById('calendar-posts-list');
-    const divider = document.getElementById('calendar-posts-divider');
+    const postsWrapper = qs('calendar-posts');
+    const postsList = qs('calendar-posts-list');
+    const divider = qs('calendar-posts-divider');
 
     if (postsWrapper) {
       postsWrapper.style.display = currentMonthPosts.length > 0 ? 'block' : 'none';
@@ -424,8 +429,8 @@ const memorableDatesJson = JSON.stringify(memorableDates);
   
   // 渲染纪念日卡片
   function renderMemorableDates() {
-    var card = document.getElementById('memorable-dates-card');
-    var list = document.getElementById('memorable-dates-list');
+    var card = qs('memorable-dates-card');
+    var list = qs('memorable-dates-list');
     if (!card || !list) return;
 
     // 显示所有配置的纪念日，按日期排序
@@ -469,8 +474,8 @@ const memorableDatesJson = JSON.stringify(memorableDates);
     list.classList.add('hidden');
 
     // 点击标题展开/折叠
-    var header = document.getElementById('memorable-header');
-    var arrow = document.getElementById('memorable-arrow');
+    var header = qs('memorable-header');
+    var arrow = qs('memorable-arrow');
     if (header && arrow) {
       // 清除之前绑定的（防止重复），用 replace 方式
       header.onclick = function() {
@@ -483,10 +488,10 @@ const memorableDatesJson = JSON.stringify(memorableDates);
 
   // 设置日历格子点击事件
   function setupClickHandlers(currentMonthPosts) {
-    const postsWrapper = document.getElementById('calendar-posts');
+    const postsWrapper = qs('calendar-posts');
     const calendarDays = document.querySelectorAll('.calendar-day[data-date]');
-    const postsList = document.getElementById('calendar-posts-list');
-    const divider = document.getElementById('calendar-posts-divider');
+    const postsList = qs('calendar-posts-list');
+    const divider = qs('calendar-posts-divider');
     
     let currentSelectedDay = null;
     
@@ -576,10 +581,10 @@ const memorableDatesJson = JSON.stringify(memorableDates);
       fetchData();
       
       // Bind events
-      const prevBtn = document.getElementById('prev-month-btn');
-      const nextBtn = document.getElementById('next-month-btn');
-      const resetBtn = document.getElementById('reset-month-btn');
-      const navDisplay = document.getElementById('current-month-display');
+      const prevBtn = qs('prev-month-btn');
+      const nextBtn = qs('next-month-btn');
+      const resetBtn = qs('reset-month-btn');
+      const navDisplay = qs('current-month-display');
       
       if (prevBtn) prevBtn.onclick = () => changeMonth(-1);
       if (nextBtn) nextBtn.onclick = () => changeMonth(1);
@@ -624,7 +629,7 @@ const memorableDatesJson = JSON.stringify(memorableDates);
 
   /* 移动端日历不被 overflow-hidden 裁切 */
   @media (max-width: 767px) {
-    :global(#calendar-widget.collapse-wrapper) {
+    :global(.calendar-container) {
       overflow: visible !important;
     }
   }
