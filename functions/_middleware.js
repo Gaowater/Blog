@@ -1,5 +1,5 @@
 // Cloudflare Pages Functions — 密码保护中间件
-// 访问任何页面都需要密码
+// 密码从环境变量 PASSWORD 读取，不在代码中硬编码
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
@@ -10,17 +10,18 @@ export async function onRequest(context) {
     return env.ASSETS.fetch(request);
   }
 
-  // 静态资源 → 放行（否则密码页的样式图片加载不了）
+  // 静态资源 → 放行
   if (url.pathname.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|woff2?|ttf|mp4|webp|avif)$/)) {
     return env.ASSETS.fetch(request);
   }
 
+  // 获取密码（从环境变量）
+  const PASSWORD = env.PASSWORD || "853697"; // 没有环境变量时用默认值兜底
+
   // ─── 处理登录 ───
-  // 用户输入密码后跳转到 /auth?p=xxx
-  // 这里检查参数，正确则设 cookie 并用 meta refresh 跳回首页
   if (url.pathname === "/auth") {
     const pass = url.searchParams.get("p");
-    if (pass === "853697") {
+    if (pass === PASSWORD) {
       const html = '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=/"></head><body></body></html>';
       const resp = new Response(html, {
         headers: { "Content-Type": "text/html;charset=utf-8" }
@@ -31,7 +32,6 @@ export async function onRequest(context) {
       );
       return resp;
     }
-    // 密码错误 → 跳回首页带上错误标记
     return Response.redirect(url.origin + "/?err=1", 302);
   }
 
