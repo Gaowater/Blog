@@ -1,5 +1,5 @@
 // Cloudflare Pages Functions — 密码保护中间件
-// 所有请求先过这里，没登录显示密码页
+// 访问任何页面都需要密码，密码通过 URL 参数或 cookie 验证
 export async function onRequest(context) {
   const { request, next } = context;
   const url = new URL(request.url);
@@ -13,40 +13,20 @@ export async function onRequest(context) {
     return next();
   }
 
-  // 处理密码提交
-  if (url.pathname === "/auth" && request.method === "POST") {
-    try {
-      const text = await request.text();
-      // 手动解析 form 数据: password=xxx
-      var pass = "";
-      text.split("&").forEach(function(pair) {
-        var parts = pair.split("=");
-        if (parts[0] === "password") pass = decodeURIComponent(parts[1] || "");
-      });
-
-      if (pass === "853697") {
-        // 密码正确 → 设置 cookie (30天)，重定向首页
-        const resp = Response.redirect(url.origin + "/", 302);
-        resp.headers.set(
-          "Set-Cookie",
-          "blog_auth=p; Max-Age=2592000; Path=/; SameSite=Lax; HttpOnly"
-        );
-        return resp;
-      }
-
-      // 密码错误
-      return new Response(getLoginPage("密码错误，再试一次"), {
-        headers: { "Content-Type": "text/html;charset=utf-8" }
-      });
-    } catch(e) {
-      return new Response(getLoginPage("出错了，请重试"), {
-        headers: { "Content-Type": "text/html;charset=utf-8" }
-      });
-    }
+  // 检查 URL 参数 ?p=853697 → 正确则设置 cookie 并跳转
+  const pass = url.searchParams.get("p");
+  if (pass === "853697") {
+    const dest = url.pathname + url.hash;
+    const resp = Response.redirect(url.origin + dest, 302);
+    resp.headers.set(
+      "Set-Cookie",
+      "blog_auth=p; Max-Age=2592000; Path=/; SameSite=Lax; HttpOnly"
+    );
+    return resp;
   }
 
   // 没登录 → 显示密码页
-  return new Response(getLoginPage(), {
+  return new Response(getLoginPage(pass ? "密码错误，再试一次" : ""), {
     headers: { "Content-Type": "text/html;charset=utf-8" }
   });
 }
@@ -83,10 +63,9 @@ button:hover{background:#a07d64}
   <h2>🌸</h2>
   <p class="sub">输入密码进入</p>
   ${error ? '<p class="error">'+error+'</p>' : ''}
-  <form method="post" action="/auth">
-    <input type="password" name="password" placeholder="密码" autofocus>
-    <button type="submit">进入</button>
-  </form>
+  <input type="password" id="pwd" placeholder="密码" autofocus
+    onkeydown="if(event.key==='Enter'){var v=this.value;if(v)location.href=location.pathname+'?p='+encodeURIComponent(v)}">
+  <button onclick="var v=document.getElementById('pwd').value;if(v)location.href=location.pathname+'?p='+encodeURIComponent(v)">进入</button>
   <p class="hint">仅限受邀访客</p>
 </div>
 </body>
