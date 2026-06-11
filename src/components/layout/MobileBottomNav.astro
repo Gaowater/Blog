@@ -39,39 +39,84 @@ const navItems = [
 
 <script is:inline>
   (function() {
+    var primaryColor = '';
+    function getPrimary() {
+      if (!primaryColor) {
+        primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
+      }
+      return primaryColor;
+    }
+
+    // 给某个导航项上色（视觉反馈）
+    function paintNavItem(item) {
+      var color = getPrimary();
+      item.style.color = color;
+      item.style.transition = 'color 0s'; // 瞬间变色，不等过渡
+    }
+
+    // 清除所有导航项的高亮
+    function clearAllNav() {
+      document.querySelectorAll('.mobile-nav-item').forEach(function(item) {
+        item.style.color = '';
+        item.style.transition = '';
+      });
+    }
+
+    // 更新导航高亮（匹配当前路由）
     function updateActiveNav() {
       var currentPath = window.location.pathname;
       var items = document.querySelectorAll('.mobile-nav-item');
-      var primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
+
+      clearAllNav();
 
       items.forEach(function(item) {
         var href = item.getAttribute('href');
 
-        // 按钮类（日历）不参与高亮
-        if (!href) {
-          item.style.color = '';
-          return;
-        }
+        // 日历按钮：通过 IntersectionObserver 单独控制，此处跳过
+        if (!href) return;
 
         var isActive = false;
-
         if (href === '/') {
           isActive = currentPath === '/' || currentPath === '';
-        } else if (href && href.startsWith('#')) {
-          isActive = false;
         } else {
-          isActive = currentPath.startsWith(href);
+          isActive = href !== '#' && currentPath.startsWith(href);
         }
 
         if (isActive) {
-          item.style.color = primaryColor;
-        } else {
-          item.style.color = '';
+          item.style.color = getPrimary();
+          item.style.transition = '';
         }
       });
     }
 
-    // 从其他页跳回首页后，如果有滚动日历标记，居中滚动
+    // 检测日历 section 是否可见（控制日历图标高亮）
+    var calendarObserver;
+    function watchCalendarSection() {
+      var section = document.getElementById('calendar-section');
+      var calBtn = document.querySelector('.mobile-nav-item[data-scroll-id="calendar-section"]');
+      if (!section || !calBtn) return;
+
+      if (calendarObserver) calendarObserver.disconnect();
+
+      calendarObserver = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting) {
+            calBtn.style.color = getPrimary();
+            calBtn.style.transition = '';
+          } else {
+            // 只在非点击状态下移除高亮（防止点击后闪烁移除）
+            if (!calBtn._clicked) {
+              calBtn.style.color = '';
+              calBtn.style.transition = '';
+            }
+          }
+        });
+      }, { threshold: 0.15 });
+
+      calendarObserver.observe(section);
+    }
+
+    // 日历居中滚动
     function scrollToCalendar() {
       var target = document.getElementById('calendar-section');
       if (!target) return;
@@ -80,51 +125,89 @@ const navItems = [
       var viewH = window.innerHeight;
       var targetH = target.offsetHeight;
       var scrollTo = targetTop - (viewH - targetH) / 2 - viewH * 0.08;
-
       window.scrollTo({ top: Math.max(0, scrollTo), behavior: 'smooth' });
     }
 
-    // 日历按钮
+    // ─── 统一点击处理：先变色，再跳转 ───
     document.addEventListener('click', function(e) {
-      var btn = e.target.closest('[data-scroll-id]');
-      if (!btn) return;
+      var item = e.target.closest('.mobile-nav-item');
+      if (!item) return;
 
-      e.preventDefault();
+      // 1. 先上色（瞬间显示反馈）
+      paintNavItem(item);
+      item._clicked = true;
 
-      var targetId = btn.getAttribute('data-scroll-id');
-      var target = document.getElementById(targetId);
+      // 2. 清除其他项的 _clicked 标记
+      document.querySelectorAll('.mobile-nav-item').forEach(function(other) {
+        if (other !== item) other._clicked = false;
+      });
 
-      if (!target) {
-        // 不在首页 → 用 sessionStorage 标记，跳回首页后自动居中
-        sessionStorage.setItem('scrollToCalendar', 'true');
-        window.location.href = '/';
+      // 3. 处理日历按钮
+      var scrollId = item.getAttribute('data-scroll-id');
+      if (scrollId) {
+        e.preventDefault();
+
+        var target = document.getElementById(scrollId);
+        if (!target) {
+          // 不在首页 → 标记后跳转
+          sessionStorage.setItem('scrollToCalendar', 'true');
+          window.location.href = '/';
+          return;
+        }
+
+        // 在首页 → 延迟一下让颜色能显示，再滚动
+        setTimeout(function() {
+          scrollToCalendar();
+          // 滚动后保持高亮一小段时间
+          setTimeout(function() {
+            item._clicked = false;
+          }, 1000);
+        }, 100);
         return;
       }
 
-      // 在首页 → 直接居中
-      var targetTop = target.getBoundingClientRect().top + window.scrollY;
-      var viewH = window.innerHeight;
-      var targetH = target.offsetHeight;
-      var scrollTo = targetTop - (viewH - targetH) / 2 - viewH * 0.08;
-      window.scrollTo({ top: Math.max(0, scrollTo), behavior: 'smooth' });
+      // 4. 处理普通链接：延迟跳转让颜色显示
+      var href = item.getAttribute('href');
+      if (href && !href.startsWith('#') && !href.startsWith('javascript:')) {
+        e.preventDefault();
+        var targetUrl = href;
+        // 如果是相对路径，用 Swup 或者直接跳转
+        setTimeout(function() {
+          item._clicked = false;
+          window.location.href = targetUrl;
+        }, 120);
+      }
     });
 
+    // ─── 初始化 ───
     updateActiveNav();
+    watchCalendarSection();
 
-    // 检查 sessionStorage 标记并滚动
+    // 跨页跳转后恢复日历标记
     if (sessionStorage.getItem('scrollToCalendar') === 'true') {
       sessionStorage.removeItem('scrollToCalendar');
-      // 等 DOM 渲染完再滚动
       setTimeout(scrollToCalendar, 200);
+      // 给日历按钮上色
+      var calBtn = document.querySelector('.mobile-nav-item[data-scroll-id="calendar-section"]');
+      if (calBtn) {
+        setTimeout(function() {
+          calBtn.style.color = getPrimary();
+          calBtn.style.transition = '';
+        }, 100);
+      }
     }
 
+    // Swup 页面切换后重新初始化
     document.addEventListener('swup:contentReplaced', function() {
-      setTimeout(updateActiveNav, 50);
-      // Swup 切回首页时也检查标记
-      if (sessionStorage.getItem('scrollToCalendar') === 'true') {
-        sessionStorage.removeItem('scrollToCalendar');
-        setTimeout(scrollToCalendar, 200);
-      }
+      setTimeout(function() {
+        updateActiveNav();
+        watchCalendarSection();
+        // 检查滚动标记
+        if (sessionStorage.getItem('scrollToCalendar') === 'true') {
+          sessionStorage.removeItem('scrollToCalendar');
+          setTimeout(scrollToCalendar, 200);
+        }
+      }, 50);
     });
   })();
 </script>
