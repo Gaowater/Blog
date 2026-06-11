@@ -199,41 +199,53 @@ const pageDesc = "那些在记忆中刻下痕迹的作品";
 <script data-astro-rerun>
   /**
    * Tab 切换逻辑。
-   * 每次页面加载（含 Swup 切页）都把监听挂到 #category-tabs 上。
-   * Swup 替换 DOM 后旧监听自动消失，不会重复。
+   * data-astro-rerun 保证 Swup 切页时重跑脚本，
+   * 每次执行只往 #category-tabs 上挂监听。
+   * 用 _tabHandler 存引用，避免重复监听。
    */
   (function () {
-    var tabsEl = document.getElementById("category-tabs");
-    if (!tabsEl) return;
+    function initCollectionsTabs() {
+      var tabsEl = document.getElementById("category-tabs");
+      if (!tabsEl) return;
 
-    tabsEl.addEventListener("click", function (e) {
-      var tab = e.target.closest(".tab-btn");
-      if (!tab) return;
+      // 移除旧监听（如果元素上还挂着之前的）
+      if (tabsEl._tabHandler) {
+        tabsEl.removeEventListener("click", tabsEl._tabHandler);
+      }
 
-      var cat = tab.dataset.category;
-      if (!cat) return;
+      tabsEl._tabHandler = function (e) {
+        var tab = e.target.closest(".tab-btn");
+        if (!tab) return;
 
-      // 更新所有 tab 样式
-      document.querySelectorAll(".tab-btn").forEach(function (t) {
-        t.classList.remove(
+        var cat = tab.dataset.category;
+        if (!cat) return;
+
+        // 更新所有 tab 样式
+        document.querySelectorAll(".tab-btn").forEach(function (t) {
+          t.classList.remove(
+            "text-neutral-900", "dark:text-neutral-100",
+            "bg-neutral-100", "dark:bg-neutral-800",
+            "font-semibold"
+          );
+          t.classList.add("text-neutral-500", "dark:text-neutral-400");
+        });
+        tab.classList.remove("text-neutral-500", "dark:text-neutral-400");
+        tab.classList.add(
           "text-neutral-900", "dark:text-neutral-100",
           "bg-neutral-100", "dark:bg-neutral-800",
           "font-semibold"
         );
-        t.classList.add("text-neutral-500", "dark:text-neutral-400");
-      });
-      tab.classList.remove("text-neutral-500", "dark:text-neutral-400");
-      tab.classList.add(
-        "text-neutral-900", "dark:text-neutral-100",
-        "bg-neutral-100", "dark:bg-neutral-800",
-        "font-semibold"
-      );
 
-      // 切换内容区
-      document.querySelectorAll(".tab-content").forEach(function (c) {
-        c.style.display = c.dataset.category === cat ? "block" : "none";
-      });
-    });
+        // 切换内容区
+        document.querySelectorAll(".tab-content").forEach(function (c) {
+          c.style.display = c.dataset.category === cat ? "block" : "none";
+        });
+      };
+
+      tabsEl.addEventListener("click", tabsEl._tabHandler);
+    }
+
+    initCollectionsTabs();
   })();
 </script>
 
