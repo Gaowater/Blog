@@ -621,4 +621,11 @@ const memorableDatesJson = JSON.stringify(memorableDates);
     background-color: var(--btn-regular-bg);
     border-radius: 0.25rem;
   }
+
+  /* 移动端日历不被 overflow-hidden 裁切 */
+  @media (max-width: 767px) {
+    :global(#calendar-widget.collapse-wrapper) {
+      overflow: visible !important;
+    }
+  }
 </style>
