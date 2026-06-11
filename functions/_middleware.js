@@ -14,7 +14,7 @@ export async function onRequest(context) {
   }
 
   // 提交密码的接口 → 放行给 auth.js 处理
-  if (url.pathname === "/_auth") return next();
+  if (url.pathname === "/auth") return next();
 
   // 没登录 → 返回密码页
   return new Response(getLoginPage(), {
@@ -55,7 +55,7 @@ button:hover{background:#a07d64}
   <h2>🌸</h2>
   <p class="sub">输入密码进入</p>
   ${error ? `<p class="error">${error}</p>` : ""}
-  <form method="post" action="/_auth">
+  <form method="post" action="/auth">
     <input type="password" name="password" placeholder="密码" autofocus>
     <button type="submit">进入</button>
   </form>

@@ -1,5 +1,5 @@
 // Cloudflare Pages Function — 处理密码提交
-// URL: /_auth (POST)
+// URL: /auth (POST)
 // 验证密码 → 设置 cookie → 重定向到首页
 export async function onRequest(context) {
   const { request } = context;
@@ -69,7 +69,7 @@ button:hover{background:#a07d64}
   <h2>🌸</h2>
   <p class="sub">输入密码进入</p>
   <p class="error">${error}</p>
-  <form method="post" action="/_auth">
+  <form method="post" action="/auth">
     <input type="password" name="password" placeholder="密码" autofocus>
     <button type="submit">进入</button>
   </form>
