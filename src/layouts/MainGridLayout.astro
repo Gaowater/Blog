@@ -2,6 +2,7 @@
 import Live2DWidget from "@components/features/Live2DWidget.astro";
 
 import SpineModel from "@components/features/SpineModel.astro";
+import Calendar from "@/components/widget/Calendar.astro";
 import Footer from "@components/layout/Footer.astro";
 import Navbar from "@components/layout/Navbar.astro";
 import SideBar from "@components/layout/SideBar.astro";
@@ -901,6 +902,11 @@ const bannerCarouselInterval = Math.max(
 					<SideBar side="bottom" headings={headings}></SideBar>
                 </div>
             )}
+
+            {/* 移动端日历 - 768px及以下显示 */}
+            <div class="col-span-1 block md:hidden mt-4">
+                <Calendar />
+            </div>
 
             <div class={footerClassName}>
                 <Footer></Footer>
