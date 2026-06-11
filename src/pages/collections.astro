@@ -199,13 +199,14 @@ const pageDesc = "那些在记忆中刻下痕迹的作品";
 <script data-astro-rerun>
   /**
    * Tab 切换逻辑。
-   * 事件委托在 document 上，Swup 切页后监听不会丢。
+   * 每次页面加载（含 Swup 切页）都把监听挂到 #category-tabs 上。
+   * Swup 替换 DOM 后旧监听自动消失，不会重复。
    */
   (function () {
-    if (window._collectionsTabDone) return;
-    window._collectionsTabDone = true;
+    var tabsEl = document.getElementById("category-tabs");
+    if (!tabsEl) return;
 
-    document.addEventListener("click", function (e) {
+    tabsEl.addEventListener("click", function (e) {
       var tab = e.target.closest(".tab-btn");
       if (!tab) return;
 
