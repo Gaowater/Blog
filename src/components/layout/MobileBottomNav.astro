@@ -7,6 +7,7 @@ const navItems = [
   { href: "/", icon: "material-symbols:home", label: "首页" },
   { href: "/gallery/", icon: "material-symbols:photo-album", label: "相册" },
   { href: "/collections/", icon: "material-symbols:movie", label: "驻足" },
+  { href: "#calendar-section", icon: "material-symbols:calendar-month", label: "日历" },
   { href: "/about/", icon: "material-symbols:info", label: "关于" },
 ];
 ---
@@ -39,6 +40,9 @@ const navItems = [
 
         if (href === '/') {
           isActive = currentPath === '/' || currentPath === '';
+        } else if (href && href.startsWith('#')) {
+          // 锚点链接（如 #calendar-section）不高亮任何项
+          isActive = false;
         } else {
           isActive = currentPath.startsWith(href);
         }
