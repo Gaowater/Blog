@@ -7,7 +7,8 @@ const navItems = [
   { href: "/", icon: "material-symbols:home", label: "首页" },
   { href: "/gallery/", icon: "material-symbols:photo-album", label: "相册" },
   { href: "/collections/", icon: "material-symbols:movie", label: "驻足" },
-  { href: "#calendar-section", icon: "material-symbols:calendar-month", label: "日历" },
+  { href: "/collections/", icon: "material-symbols:movie", label: "驻足" },
+  { href: "#calendar-section", icon: "material-symbols:calendar-month", label: "日历", scroll: true },
   { href: "/about/", icon: "material-symbols:info", label: "关于" },
 ];
 ---
@@ -16,13 +17,23 @@ const navItems = [
 <nav id="mobile-bottom-nav" class="mobile-bottom-nav">
   <div class="flex items-center justify-around h-full max-w-lg mx-auto px-2">
     {navItems.map((item) => (
-      <a
-        href={url(item.href)}
-        class="mobile-nav-item flex flex-col items-center justify-center gap-0.5 px-3 py-1 rounded-lg transition-colors duration-150 text-neutral-400 dark:text-neutral-500 no-underline"
-      >
-        <Icon name={item.icon} class="text-xl" />
-        <span class="text-[10px] leading-none font-medium">{item.label}</span>
-      </a>
+      item.scroll ? (
+        <button
+          data-scroll-id={item.href.replace('#', '')}
+          class="mobile-nav-item flex flex-col items-center justify-center gap-0.5 px-3 py-1 rounded-lg transition-colors duration-150 text-neutral-400 dark:text-neutral-500 bg-transparent border-none cursor-pointer"
+        >
+          <Icon name={item.icon} class="text-xl" />
+          <span class="text-[10px] leading-none font-medium">{item.label}</span>
+        </button>
+      ) : (
+        <a
+          href={url(item.href)}
+          class="mobile-nav-item flex flex-col items-center justify-center gap-0.5 px-3 py-1 rounded-lg transition-colors duration-150 text-neutral-400 dark:text-neutral-500 no-underline"
+        >
+          <Icon name={item.icon} class="text-xl" />
+          <span class="text-[10px] leading-none font-medium">{item.label}</span>
+        </a>
+      )
     ))}
   </div>
 </nav>
@@ -36,12 +47,18 @@ const navItems = [
 
       items.forEach(function(item) {
         var href = item.getAttribute('href');
+
+        // 按钮类（日历）不参与高亮
+        if (!href) {
+          item.style.color = '';
+          return;
+        }
+
         var isActive = false;
 
         if (href === '/') {
           isActive = currentPath === '/' || currentPath === '';
         } else if (href && href.startsWith('#')) {
-          // 锚点链接（如 #calendar-section）不高亮任何项
           isActive = false;
         } else {
           isActive = currentPath.startsWith(href);
@@ -55,9 +72,60 @@ const navItems = [
       });
     }
 
+    // 从其他页跳回首页后，如果有滚动日历标记，居中滚动
+    function scrollToCalendar() {
+      var target = document.getElementById('calendar-section');
+      if (!target) return;
+
+      var targetTop = target.getBoundingClientRect().top + window.scrollY;
+      var viewH = window.innerHeight;
+      var targetH = target.offsetHeight;
+      var scrollTo = targetTop - (viewH - targetH) / 2 - viewH * 0.08;
+
+      window.scrollTo({ top: Math.max(0, scrollTo), behavior: 'smooth' });
+    }
+
+    // 日历按钮
+    document.addEventListener('click', function(e) {
+      var btn = e.target.closest('[data-scroll-id]');
+      if (!btn) return;
+
+      e.preventDefault();
+
+      var targetId = btn.getAttribute('data-scroll-id');
+      var target = document.getElementById(targetId);
+
+      if (!target) {
+        // 不在首页 → 用 sessionStorage 标记，跳回首页后自动居中
+        sessionStorage.setItem('scrollToCalendar', 'true');
+        window.location.href = '/';
+        return;
+      }
+
+      // 在首页 → 直接居中
+      var targetTop = target.getBoundingClientRect().top + window.scrollY;
+      var viewH = window.innerHeight;
+      var targetH = target.offsetHeight;
+      var scrollTo = targetTop - (viewH - targetH) / 2 - viewH * 0.08;
+      window.scrollTo({ top: Math.max(0, scrollTo), behavior: 'smooth' });
+    });
+
     updateActiveNav();
+
+    // 检查 sessionStorage 标记并滚动
+    if (sessionStorage.getItem('scrollToCalendar') === 'true') {
+      sessionStorage.removeItem('scrollToCalendar');
+      // 等 DOM 渲染完再滚动
+      setTimeout(scrollToCalendar, 200);
+    }
+
     document.addEventListener('swup:contentReplaced', function() {
       setTimeout(updateActiveNav, 50);
+      // Swup 切回首页时也检查标记
+      if (sessionStorage.getItem('scrollToCalendar') === 'true') {
+        sessionStorage.removeItem('scrollToCalendar');
+        setTimeout(scrollToCalendar, 200);
+      }
     });
   })();
 </script>
