@@ -422,8 +422,6 @@ const managerConfigStr = JSON.stringify({
                     startIndex = Math.floor(Math.random() * state.playlist.length);
                 }
 
-                state.initialized = true;
-
                 emit('fm:init', {
                     playlist: state.playlist,
                     playMode: state.playMode,
@@ -431,7 +429,11 @@ const managerConfigStr = JSON.stringify({
                     isMuted: state.isMuted
                 });
 
+                // 先加载曲目（此时不标记初始化），避免 loadTrack 里的 saveProgress() 覆盖 localStorage
                 loadTrack(startIndex, false);
+
+                // 标记初始化完成
+                state.initialized = true;
 
                 // 恢复播放进度并自动播放
                 if (savedTime !== null && savedTime > 0) {
