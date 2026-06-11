@@ -904,7 +904,7 @@ const bannerCarouselInterval = Math.max(
             )}
 
             {/* 移动端日历 - 768px及以下显示 */}
-            <div id="calendar-section" class="col-span-1 block md:hidden mt-4" style="overflow: visible !important;">
+            <div id="calendar-section" class="col-span-1 block md:hidden min-h-[calc(100dvh-4rem)] flex flex-col justify-center" style="overflow: visible !important;">
                 <Calendar instanceId="calendar-widget-mobile" />
             </div>
 
@@ -920,6 +920,57 @@ const bannerCarouselInterval = Math.max(
 
 <FloatingControls headings={headings} />
 
+<script is:inline>
+  (function() {
+    /* ── 驻足之旅 Tab 切换（全局持久版）── */
+    function initCollectionsTabs() {
+      var tabsEl = document.getElementById("category-tabs");
+      if (!tabsEl) return;   // 不在驻足之旅页面，不做任何事
+
+      // 移除旧监听（如果之前挂过）
+      if (tabsEl._tabHandler) {
+        tabsEl.removeEventListener("click", tabsEl._tabHandler);
+      }
+
+      tabsEl._tabHandler = function (e) {
+        var tab = e.target.closest(".tab-btn");
+        if (!tab) return;
+
+        var cat = tab.dataset.category;
+        if (!cat) return;
+
+        // 更新所有 tab 样式
+        document.querySelectorAll(".tab-btn").forEach(function (t) {
+          t.classList.remove(
+            "text-neutral-900", "dark:text-neutral-100",
+            "bg-neutral-100", "dark:bg-neutral-800",
+            "font-semibold"
+          );
+          t.classList.add("text-neutral-500", "dark:text-neutral-400");
+        });
+        tab.classList.remove("text-neutral-500", "dark:text-neutral-400");
+        tab.classList.add(
+          "text-neutral-900", "dark:text-neutral-100",
+          "bg-neutral-100", "dark:bg-neutral-800",
+          "font-semibold"
+        );
+
+        // 切换内容区
+        document.querySelectorAll(".tab-content").forEach(function (c) {
+          c.style.display = c.dataset.category === cat ? "block" : "none";
+        });
+      };
+
+      tabsEl.addEventListener("click", tabsEl._tabHandler);
+    }
+
+    // 初始加载
+    initCollectionsTabs();
+
+    // Swup 切页后（新内容已在 DOM 中）
+    document.addEventListener("swup:contentReplaced", initCollectionsTabs);
+  })();
+</script>
 
 </Layout>
 

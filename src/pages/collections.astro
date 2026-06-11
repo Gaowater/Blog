@@ -196,59 +196,6 @@ const pageDesc = "那些在记忆中刻下痕迹的作品";
   </div>
 </MainGridLayout>
 
-<script data-astro-rerun>
-  /**
-   * Tab 切换逻辑。
-   * data-astro-rerun 保证 Swup 切页时重跑脚本，
-   * 每次执行只往 #category-tabs 上挂监听。
-   * 用 _tabHandler 存引用，避免重复监听。
-   */
-  (function () {
-    function initCollectionsTabs() {
-      var tabsEl = document.getElementById("category-tabs");
-      if (!tabsEl) return;
-
-      // 移除旧监听（如果元素上还挂着之前的）
-      if (tabsEl._tabHandler) {
-        tabsEl.removeEventListener("click", tabsEl._tabHandler);
-      }
-
-      tabsEl._tabHandler = function (e) {
-        var tab = e.target.closest(".tab-btn");
-        if (!tab) return;
-
-        var cat = tab.dataset.category;
-        if (!cat) return;
-
-        // 更新所有 tab 样式
-        document.querySelectorAll(".tab-btn").forEach(function (t) {
-          t.classList.remove(
-            "text-neutral-900", "dark:text-neutral-100",
-            "bg-neutral-100", "dark:bg-neutral-800",
-            "font-semibold"
-          );
-          t.classList.add("text-neutral-500", "dark:text-neutral-400");
-        });
-        tab.classList.remove("text-neutral-500", "dark:text-neutral-400");
-        tab.classList.add(
-          "text-neutral-900", "dark:text-neutral-100",
-          "bg-neutral-100", "dark:bg-neutral-800",
-          "font-semibold"
-        );
-
-        // 切换内容区
-        document.querySelectorAll(".tab-content").forEach(function (c) {
-          c.style.display = c.dataset.category === cat ? "block" : "none";
-        });
-      };
-
-      tabsEl.addEventListener("click", tabsEl._tabHandler);
-    }
-
-    initCollectionsTabs();
-  })();
-</script>
-
 <style>
   /* 网格布局 */
   .collections-grid {
