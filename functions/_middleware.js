@@ -1,19 +1,21 @@
 // Cloudflare Pages Functions — 密码保护中间件
 // 访问任何页面都需要密码，密码通过 URL 参数或 cookie 验证
 export async function onRequest(context) {
-  const { request, next } = context;
+  const { request, env } = context;
   const url = new URL(request.url);
   const cookie = request.headers.get("Cookie") || "";
 
-  // 已登录 → 放行
-  if (cookie.includes("blog_auth=p")) return next();
-
-  // 静态资源 → 放行（不然密码页样式也加载不了）
-  if (url.pathname.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|woff2?|ttf|mp4|webp|avif)$/)) {
-    return next();
+  // 已登录 → 用 ASSETS 直接输出页面
+  if (cookie.includes("blog_auth=p")) {
+    return env.ASSETS.fetch(request);
   }
 
-  // 检查 URL 参数 ?p=853697 → 正确则设置 cookie 并跳转
+  // 静态资源 → 放行（否则密码页 CSS/图片也加载不了）
+  if (url.pathname.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|woff2?|ttf|mp4|webp|avif)$/)) {
+    return env.ASSETS.fetch(request);
+  }
+
+  // 检查 URL 参数 ?p=853697 → 正确则设置 cookie 并重定向
   const pass = url.searchParams.get("p");
   if (pass === "853697") {
     const dest = url.pathname + url.hash;
