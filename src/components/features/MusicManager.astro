@@ -229,11 +229,21 @@ const managerConfigStr = JSON.stringify({
     }
 
     // ── Playback controls ────────────────────────────────────
+    // 缓存用户请求，等初始化完成后自动播放
+    var pendingPlay = false;
+
     function togglePlay() {
+        // 如果还没初始化完成，标记为"等待播放"，init 完成后会自动播放
+        if (!state.initialized) {
+            pendingPlay = true;
+            return;
+        }
         if (audio.paused) {
             audio.play().then(function () {
                 state.isPlaying = true;
                 emit('fm:play-state', { isPlaying: true });
+            }).catch(function () {
+                // 播放失败，不要乱设状态
             });
         } else {
             audio.pause();
@@ -304,6 +314,15 @@ const managerConfigStr = JSON.stringify({
     }
 
     function playTrackByIndex(index) {
+        // 还没初始化完 → 标记 pendingPlay 并记下要播的曲目
+        if (!state.initialized) {
+            pendingPlay = true;
+            // 等 init 完成后 loadTrack 会自动加载 index 指向的曲目，
+            // 但 init 会先加载 savedIndex，所以这里把 savedIndex 改了
+            try { localStorage.setItem('music-player-current-index', index.toString()); } catch(e) {}
+            try { localStorage.setItem('music-player-current-time', '0'); } catch(e) {}
+            return;
+        }
         if (index === state.currentIndex && !audio.paused) {
             togglePlay();
         } else {
@@ -433,6 +452,19 @@ const managerConfigStr = JSON.stringify({
                         audio.currentTime = savedTime;
                         audio.play().catch(function () { /* autoplay blocked */ });
                     }
+                } else if (pendingPlay) {
+                    // 用户等待时点了播放 → 初始化完成后自动播放
+                    pendingPlay = false;
+                    // 音频可能已经缓存好了（readyState >= 2），此时 canplay 不会触发
+                    if (audio.readyState >= 2) {
+                        audio.play().catch(function () {});
+                    } else {
+                        audio.addEventListener('canplay', function autoPlayOnce() {
+                            audio.removeEventListener('canplay', autoPlayOnce);
+                            audio.play().catch(function () {});
+                        });
+                    }
+                }
                 }
             } else {
                 state.initialized = true;
