@@ -17,7 +17,7 @@ export const siteConfig: SiteConfig = {
 
 	// 站点描述
 	description:
-		"这是我的第一个非个人独自开发的博客,在这里我将分享我借助AI制作的网页或者软件,以及分享一些文章!",
+		"这是你和我在互联网上的一片小天地啊！",
 
 	// 站点关键词
 	keywords: [
