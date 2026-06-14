@@ -455,31 +455,37 @@ const memorableDatesJson = JSON.stringify(memorableDates);
 
     card.classList.remove('hidden');
 
-    list.innerHTML = visibleDates.map(function(item) {
-      var parts = item.date.split('-');
-      var displayDate = parseInt(parts[1], 10) + '月' + parseInt(parts[2], 10) + '日';
-      return '<div class="flex items-center justify-between text-xs text-neutral-600 dark:text-neutral-400 px-2 py-0.5">' +
-        '<span>' + item.label + '</span>' +
-        '<span class="text-neutral-400 dark:text-neutral-500">' + displayDate + '</span>' +
-      '</div>';
-    }).join('');
-
-    // 在列表最前面插入年份标题
-    var yearGroup = '';
-    var lastYear = '';
+    // 按年份分组
+    var groups = {};
     visibleDates.forEach(function(item) {
       var year = item.date.split('-')[0];
-      var displayYear = year === '0000' ? '每年' : year + '年';
-      if (displayYear !== lastYear) {
-        yearGroup += '<div class="text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 px-2 pt-2 pb-1">' + displayYear + '</div>';
-        lastYear = displayYear;
-      }
+      if (!groups[year]) groups[year] = [];
+      groups[year].push(item);
     });
 
-    // 如果有多年的数据，将年份标题插入到列表前面
-    if (yearGroup) {
-      list.innerHTML = yearGroup + list.innerHTML;
-    }
+    // 渲染分组（每年排前，然后其他年份）
+    var html = '';
+    var yearOrder = Object.keys(groups).sort(function(a, b) {
+      // 0000（每年）排最前
+      if (a === '0000') return -1;
+      if (b === '0000') return 1;
+      return a.localeCompare(b);
+    });
+
+    yearOrder.forEach(function(year) {
+      var displayYear = year === '0000' ? '每年' : year + '年';
+      html += '<div class="text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 px-2 pt-2 pb-1">' + displayYear + '</div>';
+      groups[year].forEach(function(item) {
+        var parts = item.date.split('-');
+        var displayDate = parseInt(parts[1], 10) + '月' + parseInt(parts[2], 10) + '日';
+        html += '<div class="flex items-center justify-between text-xs text-neutral-600 dark:text-neutral-400 px-2 py-0.5">' +
+          '<span>' + item.label + '</span>' +
+          '<span class="text-neutral-400 dark:text-neutral-500">' + displayDate + '</span>' +
+        '</div>';
+      });
+    });
+
+    list.innerHTML = html;
 
     // 默认折叠
     list.classList.add('hidden');
