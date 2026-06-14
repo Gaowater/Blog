@@ -16,11 +16,12 @@ export interface MemorableDate {
 
 export const memorableDates: MemorableDate[] = [
   // ⬇️ 在这里添加你的纪念日 ⬇️
+  { date: "0000-05-03", label: "你的生日 🎂" },
+  { date: "0000-09-07", label: "我的生日 🎂" },
   { date: "2026-02-07", label: "相识" },
   { date: "2026-03-22", label: "你送给我的第一杯奶茶" },
-  { date: "2026-05-03", label: "你的生日" },
   { date: "2026-05-17", label: "一百天纪念日" },
   { date: "2026-06-12", label: "表白日" },
-  { date: "2026-09-07", label: "我的生日" },
+  { date: "2026-06-13", label: "第一次深度聊天" },
   // { date: "2026-XX-XX", label: "纪念日" },
 ];

@@ -150,6 +150,11 @@ const memorableDatesJson = JSON.stringify(memorableDates);
   memorableDateList.forEach(function(item) {
     if (item && item.date) {
       memorableMap[item.date] = item.label;
+      // 对 0000 年份的日期（生日等每年事件），也添加 MM-DD 键，方便跨年匹配
+      var parts = item.date.split('-');
+      if (parts.length === 3 && parts[0] === '0000') {
+        memorableMap[parts[1] + '-' + parts[2]] = item.label;
+      }
     }
   });
 
@@ -285,6 +290,11 @@ const memorableDatesJson = JSON.stringify(memorableDates);
       const isToday = day === currentDate && isCurrentMonth;
       var dateKeyFull = dateKey || '';
       var isMemorable = !!(dateKeyFull && memorableMap[dateKeyFull]);
+      // 如果 YYYY-MM-DD 没匹配上，再查 MM-DD（支持 0000 年份的每年事件）
+      if (!isMemorable && dateKeyFull) {
+        var md = dateKeyFull.split('-').slice(1).join('-');
+        isMemorable = !!(md && memorableMap[md]);
+      }
       const classes = [
         "calendar-day aspect-square flex items-center justify-center rounded text-sm relative cursor-pointer"
       ];
@@ -459,9 +469,10 @@ const memorableDatesJson = JSON.stringify(memorableDates);
     var lastYear = '';
     visibleDates.forEach(function(item) {
       var year = item.date.split('-')[0];
-      if (year !== lastYear) {
-        yearGroup += '<div class="text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 px-2 pt-2 pb-1">' + year + '年</div>';
-        lastYear = year;
+      var displayYear = year === '0000' ? '每年' : year + '年';
+      if (displayYear !== lastYear) {
+        yearGroup += '<div class="text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 px-2 pt-2 pb-1">' + displayYear + '</div>';
+        lastYear = displayYear;
       }
     });
 
