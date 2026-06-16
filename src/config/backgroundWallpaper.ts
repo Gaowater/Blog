@@ -209,5 +209,11 @@ export const backgroundWallpaper: BackgroundWallpaperConfig = {
 	fullscreen: {
 		// 图片位置
 		position: "center",
+		// 全屏壁纸轮播配置（多张图片时每隔 interval 毫秒切换）
+		carousel: {
+			enable: true,      // 启用全屏壁纸轮播
+			interval: 10000,   // 10秒切换一张
+			switchable: false, // 不显示切换开关
+		},
 	},
 };

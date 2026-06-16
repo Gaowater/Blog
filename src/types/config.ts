@@ -663,6 +663,11 @@ export type BackgroundWallpaperConfig = {
 	// 全屏壁纸模式特有配置
 	fullscreen?: {
 		position?: string; // 壁纸位置，支持CSS object-position的所有值
+		carousel?: {
+			enable: boolean; // 是否启用全屏壁纸轮播
+			interval?: number; // 轮播间隔时间，单位毫秒
+			switchable?: boolean; // 是否允许用户通过控制面板切换轮播
+		};
 	};
 };
 
