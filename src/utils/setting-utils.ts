@@ -130,8 +130,8 @@ export function applyThemeToDocument(theme: LIGHT_DARK_MODE) {
 
 	// 批量 DOM 操作，减少重绘
 	if (needsThemeChange) {
-		// 添加过渡保护类（但会导致大量重绘，所以使用更轻量的方式）
-		// document.documentElement.classList.add("is-theme-transitioning");
+		// 添加过渡动画类，让主题切换平滑渐变
+		document.documentElement.classList.add("theme-transitioning");
 
 		// 直接切换主题，利用 CSS 变量的特性让浏览器优化过渡
 		if (targetIsDark) {
@@ -139,6 +139,13 @@ export function applyThemeToDocument(theme: LIGHT_DARK_MODE) {
 		} else {
 			document.documentElement.classList.remove("dark");
 		}
+
+		// 在下一帧移除过渡类，确保动画完成后清理
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				document.documentElement.classList.remove("theme-transitioning");
+			});
+		});
 	}
 
 	// Set the theme for Expressive Code based on current mode

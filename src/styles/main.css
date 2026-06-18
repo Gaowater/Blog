@@ -566,3 +566,21 @@ html {
 .pagination-info {
   @apply text-sm text-(--text-secondary) text-center mb-2;
 }
+
+/* 主题切换过渡动画 - 当 theme-transitioning 类在 html 上时启用渐变 */
+/* 只针对颜色相关属性，不影响布局和大小变化 */
+html.theme-transitioning,
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition-property: background-color, color, border-color, box-shadow, backdrop-filter !important;
+  transition-duration: 0.35s !important;
+  transition-timing-function: ease !important;
+}
+
+/* 代码块在主题切换时关闭复杂效果以提升性能 */
+html.theme-transitioning .expressive-code,
+html.theme-transitioning .expressive-code * {
+  transition: none !important;
+  animation: none !important;
+}
