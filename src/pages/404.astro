@@ -1,74 +1,68 @@
 ---
-import { Icon } from "astro-icon/components";
-import I18nKey from "@/i18n/i18nKey";
-import { i18n } from "@/i18n/translation";
 import MainGridLayout from "@/layouts/MainGridLayout.astro";
-import { url } from "@/utils/url-utils";
 ---
 
-<MainGridLayout title={i18n(I18nKey.notFound)} description={i18n(I18nKey.notFoundDescription)}>
-    <div class="flex w-full rounded-(--radius-large) overflow-hidden relative min-h-96">
-        <div class="card-base z-10 px-9 py-12 relative w-full flex flex-col items-center justify-center text-center">
-            <!-- 404 大号数字 -->
-            <div class="text-8xl md:text-9xl font-bold text-(--primary) opacity-20 mb-4">
-                {i18n(I18nKey.notFound)}
-            </div>
-            
-            <!-- 404 图标 -->
-            <div class="mb-6">
-                <Icon name="material-symbols:error-outline" class="text-6xl text-(--primary)" />
-            </div>
-            
-            <!-- 标题 -->
-            <div class="text-3xl md:text-4xl font-bold mb-4 text-90">
-                {i18n(I18nKey.notFoundTitle)}
-            </div>
-            
-            <!-- 描述 -->
-            <p class="text-lg text-75 mb-8 max-w-md">
-                {i18n(I18nKey.notFoundDescription)}
-            </p>
-            
-            <!-- 返回首页按钮 -->
-            <a 
-                href={url("/")}
-                class="inline-flex items-center gap-2 px-6 py-3 bg-(--primary) text-white rounded-(--radius-large) hover:bg-(--btn-content) transition-colors duration-200 font-medium"
-            >
-                <Icon name="material-symbols:home" class="text-xl" />
-                {i18n(I18nKey.backToHome)}
-            </a>
-            
-            <!-- 装饰性元素 -->
-            <div class="absolute top-4 left-4 opacity-10">
-                <Icon name="material-symbols:sentiment-sad" class="text-4xl text-(--primary)" />
-            </div>
-            <div class="absolute bottom-4 right-4 opacity-10">
-                <Icon name="material-symbols:search-off" class="text-4xl text-(--primary)" />
-            </div>
-        </div>
+<MainGridLayout title="页面走丢了" description="可能是被风吹走了……">
+  <div class="flex w-full rounded-(--radius-large) overflow-hidden relative min-h-96">
+    <div class="card-base z-10 px-6 py-8 relative w-full flex flex-col items-center justify-center text-center">
+
+      <!-- 404 大字 -->
+      <div class="text-8xl md:text-9xl font-bold text-(--primary) opacity-15 leading-none mb-2">
+        404
+      </div>
+
+      <!-- 图片 -->
+      <div class="w-48 h-48 md:w-56 md:h-56 rounded-full overflow-hidden shadow-lg mb-6 ring-2 ring-(--primary)/20">
+        <img
+          src="/images/404-illustration.png"
+          alt="404 插图"
+          class="w-full h-full object-cover"
+        />
+      </div>
+
+      <!-- 文案 -->
+      <p class="text-xl md:text-2xl text-75 mb-2 font-medium">
+        这片领地还没建好~
+      </p>
+      <p class="text-sm text-50 mb-8">
+        可能是被风吹走了，也可能是想偷偷躲起来
+      </p>
+
+      <!-- 回首页 -->
+      <a
+        href="/"
+        class="inline-flex items-center gap-2 px-6 py-3 bg-(--primary) text-white rounded-(--radius-large) hover:bg-(--btn-content) transition-all duration-200 font-medium hover:-translate-y-0.5 hover:shadow-lg"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0z"/>
+          <path d="M9 12h6"/>
+          <path d="m12 9 3 3-3 3"/>
+        </svg>
+        回首页逛逛
+      </a>
+
     </div>
+  </div>
 </MainGridLayout>
 
 <style>
-    /* 添加一些动画效果 */
-    .card-base {
-        animation: fadeInUp 0.6s ease-out;
+  .card-base {
+    animation: fadeInUp 0.6s ease-out;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
     }
-    
-    @keyframes fadeInUp {
-        from {
-            opacity: 0;
-            transform: translateY(30px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+    to {
+      opacity: 1;
+      transform: translateY(0);
     }
-    
-    /* 按钮悬停效果 */
-    a:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.3);
-    }
+  }
+
+  /* 图片容器柔和阴影 */
+  img {
+    filter: drop-shadow(0 0 8px color-mix(in srgb, var(--primary) 25%, transparent));
+  }
 </style>
