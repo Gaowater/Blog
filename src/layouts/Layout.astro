@@ -580,6 +580,8 @@ const siteLang = lang.replace("_", "-");
   >
 
     <div id="progress-bar"></div>
+    <!-- 文章阅读进度条 - 只在文章页显示 -->
+    <div id="reading-progress" style="position:fixed;top:0;left:0;height:3px;width:0%;z-index:9999;background:var(--primary);transition:width 0.1s linear;opacity:0;pointer-events:none;"></div>
 
     <!-- 页面顶部渐变高光效果 - 只在full和semifull模式下显示 -->
     {shouldShowTopHighlight && <div class="top-gradient-highlight" />}
@@ -597,6 +599,71 @@ const siteLang = lang.replace("_", "-");
 
     <!-- 移动端底部导航 -->
     <MobileBottomNav />
+
+    <!-- 文章阅读进度条脚本 -->
+    <script data-astro-rerun>
+      (function() {
+        var bar = document.getElementById('reading-progress');
+        if (!bar) return;
+
+        var article = document.querySelector('article');
+        // 非文章页直接隐藏
+        if (!article) {
+          bar.style.opacity = '0';
+          bar.style.width = '0';
+          return;
+        }
+
+        bar.style.opacity = '1';
+
+        function updateProgress() {
+          var total = article.scrollHeight - window.innerHeight;
+          // 内容不够一屏时直接100%
+          if (total <= 0) {
+            bar.style.width = '100%';
+            return;
+          }
+          var rect = article.getBoundingClientRect();
+          var scrolled = Math.abs(rect.top);
+          var pct = Math.min(Math.max((scrolled / total) * 100, 0), 100);
+          bar.style.width = pct + '%';
+        }
+
+        // 绑定滚动事件
+        window.addEventListener('scroll', updateProgress, { passive: true });
+        updateProgress();
+
+        // Swup 页面切换后重新绑定
+        document.addEventListener('swup:contentReplaced', function() {
+          // 用 setTimeout 确保新 DOM 已渲染
+          setTimeout(function() {
+            var newBar = document.getElementById('reading-progress');
+            var newArticle = document.querySelector('article');
+            if (!newBar) return;
+
+            if (!newArticle) {
+              newBar.style.opacity = '0';
+              newBar.style.width = '0';
+              return;
+            }
+
+            newBar.style.opacity = '1';
+
+            function newUpdate() {
+              var t = newArticle.scrollHeight - window.innerHeight;
+              if (t <= 0) { newBar.style.width = '100%'; return; }
+              var r = newArticle.getBoundingClientRect();
+              var s = Math.abs(r.top);
+              var p = Math.min(Math.max((s / t) * 100, 0), 100);
+              newBar.style.width = p + '%';
+            }
+
+            window.addEventListener('scroll', newUpdate, { passive: true });
+            newUpdate();
+          }, 50);
+        });
+      })();
+    </script>
   </body>
 </html>
 
