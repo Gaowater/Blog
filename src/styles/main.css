@@ -567,35 +567,6 @@ html {
   @apply text-sm text-(--text-secondary) text-center mb-2;
 }
 
-/* 主题切换过渡动画 - 当 theme-transitioning 类在 html 上时启用渐变 */
-/* 只针对顶层容器，不用 * 防止对所有元素追**
-性能优化：用 contain 隔离渲染上下文，避免波及整个页面 */
-html.theme-transitioning {
-  transition: background-color 0.35s ease, color 0.35s ease;
-  contain: layout style paint;
-}
-
-html.theme-transitioning body,
-html.theme-transitioning #main-grid,
-html.theme-transitioning #navbar > div,
-html.theme-transitioning .mobile-bottom-nav,
-html.theme-transitioning .sidebar-container,
-html.theme-transitioning .card-base,
-html.theme-transitioning .widget,
-html.theme-transitioning .float-panel,
-html.theme-transitioning .dropdown-content,
-html.theme-transitioning .post-card {
-  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, backdrop-filter 0.3s ease;
-  contain: layout style paint;
-}
-
-/* 代码块在主题切换时关闭复杂效果以提升性能 */
-html.theme-transitioning .expressive-code,
-html.theme-transitioning .expressive-code * {
-  transition: none !important;
-  animation: none !important;
-}
-
 /* ===== 桌面端侧边栏独立滚动 ===== */
 @media (min-width: 768px) {
   #left-sidebar,
