@@ -107,6 +107,9 @@ export function generateSidebarClasses(
 		"md:row-start-1",
 		"md:row-end-3",
 		"md:col-start-1",
+		"md:sticky",
+		"md:top-24",
+		"md:self-start",
 		"onload-animation",
 	];
 
@@ -139,6 +142,9 @@ export function generateRightSidebarClasses(
 			"md:max-w-70",
 			"md:col-start-2", // 平板端在第2列
 			"xl:col-start-3", // 桌面端在第3列
+			"md:sticky",
+			"md:top-24",
+			"md:self-start",
 		);
 	} else if (config.isBothSidebars) {
 		// 双侧栏+平板端显示左侧栏（默认）：仅1280px+显示
@@ -149,6 +155,9 @@ export function generateRightSidebarClasses(
 			"xl:col-span-1",
 			"xl:max-w-70",
 			"xl:col-start-3",
+			"xl:sticky",
+			"xl:top-24",
+			"xl:self-start",
 		);
 	} else if (config.position === "right") {
 		// 仅右侧栏模式（非双侧栏）：769px+显示，在第2列
@@ -159,6 +168,9 @@ export function generateRightSidebarClasses(
 			"md:col-span-1",
 			"md:max-w-70",
 			"md:col-start-2",
+			"md:sticky",
+			"md:top-24",
+			"md:self-start",
 		);
 	} else {
 		// 其他情况：仅1280px+显示
@@ -169,6 +181,9 @@ export function generateRightSidebarClasses(
 			"xl:col-span-1",
 			"xl:max-w-70",
 			"xl:col-start-3",
+			"xl:sticky",
+			"xl:top-24",
+			"xl:self-start",
 		);
 	}
 
