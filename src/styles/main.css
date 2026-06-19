@@ -595,3 +595,23 @@ html.theme-transitioning .expressive-code * {
   transition: none !important;
   animation: none !important;
 }
+
+/* ===== 桌面端侧边栏独立滚动 ===== */
+@media (min-width: 768px) {
+  #left-sidebar,
+  #right-sidebar {
+    max-height: calc(100vh - 7rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  /* 隐藏侧边栏滚动条（保持干净外观，但功能正常） */
+  #left-sidebar::-webkit-scrollbar,
+  #right-sidebar::-webkit-scrollbar {
+    width: 4px;
+  }
+  #left-sidebar::-webkit-scrollbar-thumb,
+  #right-sidebar::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-bg);
+    border-radius: 4px;
+  }
+}
