@@ -17,15 +17,24 @@ const description = "";
 
 {import.meta.env.PROD && (
 <script is:inline define:vars={{ scriptUrl: url('/pagefind/pagefind.js') }}>
+    // 预加载 pagefind，手机上提前下载资源
+    const pfUrl = scriptUrl.replace(/\/$/, "");
+    if (!document.querySelector('link[href="' + pfUrl + '"]')) {
+        var link = document.createElement("link");
+        link.rel = "preload";
+        link.href = pfUrl;
+        link.as = "script";
+        document.head.appendChild(link);
+    }
+
     if (!window.pagefind) {
         async function loadPagefind() {
-            const url = scriptUrl.replace(/\/$/, "")
             try {
-                const response = await fetch(url, { method: 'HEAD' });
+                const response = await fetch(pfUrl, { method: 'HEAD' });
                 if (response.status !== 200) {
                     return;
                 }
-                const pagefind = await import(scriptUrl);
+                const pagefind = await import(pfUrl);
                 await pagefind.options({
                     "excerptLength": 20
                 });

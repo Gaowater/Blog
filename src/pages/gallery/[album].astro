@@ -30,7 +30,9 @@ if (!albumMeta) {
 
 // 根据相册类型获取媒体文件
 const isVideoAlbum = albumMeta.type === "video";
-const photos = scanAlbumPhotos(albumMeta.id);
+const photos = scanAlbumPhotos(albumMeta.id).filter(
+	(p) => !/\/cover\./i.test(p),
+);
 const videos = isVideoAlbum ? scanAlbumVideos(albumMeta.id) : [];
 // 视频相册如果目录里有cover.jpg也使用它作为封面
 const cover = isVideoAlbum ? getAlbumCover(albumMeta, photos) : getAlbumCover(albumMeta, photos);

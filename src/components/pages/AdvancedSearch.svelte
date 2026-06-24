@@ -53,7 +53,13 @@ const search = async () => {
 			const rawResults = await Promise.all(
 				response.results.map((item) => item.data()),
 			);
-			results = rawResults;
+			// 展平 sub_results，优先使用锚点链接定位到具体标题位置
+			results = rawResults.flatMap((item) => {
+				if (item.sub_results && item.sub_results.length > 0) {
+					return item.sub_results;
+				}
+				return [item];
+			});
 		} else if (import.meta.env.DEV) {
 			// 开发模式下的模拟结果
 			results = fakeResult.filter(
