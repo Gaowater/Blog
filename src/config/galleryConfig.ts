@@ -25,6 +25,15 @@ export const galleryConfig: GalleryConfig = {
 			tags: ["依琳", "何姨","你","回忆"],
 		},
 		{
+			id: "class photo",
+			cover: "gallery/class photo/cover.class photo.jpg",
+			name: "班级合照",
+			description: "你的描述写在这里",
+			location: "",
+			date: "2026-06-24",
+			tags: ["合照", "同学"],
+		},
+		{
 			id: "encrypted-test",
 			cover: "gallery/encrypted-test/cover.相册封面.avif",
 			name: "加密相册",
