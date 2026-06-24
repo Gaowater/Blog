@@ -640,6 +640,107 @@ const siteLang = lang.replace("_", "-");
         });
       })();
     </script>
+
+    <!-- 搜索关键词高亮：定位到文章中关键词位置 -->
+    <script is:inline>
+      (function() {
+        function escapeRegex(str) {
+          return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        function runHighlight() {
+          var params = new URLSearchParams(window.location.search);
+          var kw = params.get('highlight');
+          if (!kw) return;
+          kw = decodeURIComponent(kw);
+
+          var container = document.querySelector('.custom-md');
+          if (!container) return;
+
+          // 清除之前残留的高亮
+          document.querySelectorAll('mark.search-highlight').forEach(function(m) {
+            var p = m.parentNode;
+            p.replaceChild(document.createTextNode(m.textContent), m);
+            p.normalize();
+          });
+
+          var marks = [];
+          var regex = new RegExp(escapeRegex(kw), 'gi');
+
+          function walk(node) {
+            if (node.nodeType === 3) {
+              var text = node.textContent;
+              if (!regex.test(text)) return;
+              regex.lastIndex = 0;
+              var frag = document.createDocumentFragment();
+              var lastIdx = 0;
+              var m;
+              while ((m = regex.exec(text)) !== null) {
+                if (m.index > lastIdx) {
+                  frag.appendChild(document.createTextNode(text.slice(lastIdx, m.index)));
+                }
+                var mark = document.createElement('mark');
+                mark.className = 'search-highlight';
+                mark.textContent = m[0];
+                frag.appendChild(mark);
+                marks.push(mark);
+                lastIdx = m.index + m[0].length;
+              }
+              if (lastIdx < text.length) {
+                frag.appendChild(document.createTextNode(text.slice(lastIdx)));
+              }
+              node.parentNode.replaceChild(frag, node);
+            } else if (node.nodeType === 1 && !/^(SCRIPT|STYLE|MARK|textarea)$/i.test(node.tagName)) {
+              Array.from(node.childNodes).forEach(walk);
+            }
+          }
+
+          walk(container);
+
+          if (marks.length === 0) return;
+
+          // 滚动到第一个匹配位置
+          setTimeout(function() {
+            marks[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 150);
+
+          // 清理 URL 中的 highlight 参数
+          if (history.replaceState) {
+            var cleanUrl = window.location.pathname + window.location.hash;
+            history.replaceState(null, '', cleanUrl);
+          }
+
+          // 点屏幕任意位置 → 高亮消失
+          function removeMarks() {
+            document.querySelectorAll('mark.search-highlight').forEach(function(m) {
+              var p = m.parentNode;
+              p.replaceChild(document.createTextNode(m.textContent), m);
+              p.normalize();
+            });
+            document.removeEventListener('click', removeMarks);
+            document.removeEventListener('touchstart', removeMarks);
+          }
+
+          // 延迟绑定，避免触发导航时的 click 事件
+          setTimeout(function() {
+            document.addEventListener('click', removeMarks, { once: true });
+            document.addEventListener('touchstart', removeMarks, { once: true });
+          }, 800);
+        }
+
+        // 页面加载后执行
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', runHighlight);
+        } else {
+          runHighlight();
+        }
+
+        // Swup 页面切换后重新执行
+        document.addEventListener('swup:contentReplaced', function() {
+          setTimeout(runHighlight, 100);
+        });
+      })();
+    </script>
   </body>
 </html>
 

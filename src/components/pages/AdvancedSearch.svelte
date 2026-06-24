@@ -54,12 +54,20 @@ const search = async () => {
 				response.results.map((item) => item.data()),
 			);
 			// 展平 sub_results，优先使用锚点链接定位到具体标题位置
-			results = rawResults.flatMap((item) => {
+			const flatResults = rawResults.flatMap((item) => {
 				if (item.sub_results && item.sub_results.length > 0) {
 					return item.sub_results;
 				}
 				return [item];
 			});
+			// 给结果链接加上高亮参数，让目标页滚动到关键词位置
+			const kw = keyword.trim();
+			results = kw
+				? flatResults.map((r) => ({
+						...r,
+						url: r.url + (r.url.includes("?") ? "&" : "?") + "highlight=" + encodeURIComponent(kw),
+				  }))
+				: flatResults;
 		} else if (import.meta.env.DEV) {
 			// 开发模式下的模拟结果
 			results = fakeResult.filter(
