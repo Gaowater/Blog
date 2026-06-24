@@ -179,8 +179,11 @@ const handleInput = () => {
                                 var kw = keyword.trim();
                                 var target = result.url;
                                 if (kw) {
-                                    var sep = result.url.indexOf('?') === -1 ? '?' : '&';
-                                    target = result.url + sep + '__hl=' + encodeURIComponent(kw);
+                                    // 确保 ?__hl= 在 # 之前（Pagefind 的 sub_results 带 # 锚点）
+                                    var hashIdx = result.url.indexOf('#');
+                                    var base = hashIdx === -1 ? result.url : result.url.substring(0, hashIdx);
+                                    var hash = hashIdx === -1 ? '' : result.url.substring(hashIdx);
+                                    target = base + '?__hl=' + encodeURIComponent(kw) + hash;
                                 }
                                 window.location.href = target;
                             }}
