@@ -176,10 +176,8 @@ const handleInput = () => {
                             on:click={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                var kw = keyword.trim();
-                                if (kw) {
-                                    localStorage.setItem("search_highlight", kw);
-                                }
+                                // 不论 keyword 是什么，都写入一个固定值做测试
+                                localStorage.setItem("search_highlight", keyword.trim() || "(empty)");
                                 window.location.href = result.url;
                             }}
                         >
