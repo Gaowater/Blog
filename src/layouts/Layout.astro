@@ -653,6 +653,10 @@ const siteLang = lang.replace("_", "-");
           if (!kw) return;
           sessionStorage.removeItem('search_highlight');
 
+          // 调试：脚本执行了就把标题变红
+          var titleEl = document.querySelector('h1, h2');
+          if (titleEl) titleEl.style.color = 'red';
+
           var container = document.querySelector('.custom-md');
           if (!container) return;
 
