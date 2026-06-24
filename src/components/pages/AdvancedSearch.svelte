@@ -92,6 +92,7 @@ onMount(() => {
 		e.stopPropagation();
 		const kw = keyword.trim();
 		// 直接改 URL：把关键词放在 ?__kw=，确保在 hash 之前
+		alert('跳转URL: ' + link.href + ' → ?__kw=' + kw);
 		const url = new URL(link.href);
 		url.searchParams.set('__kw', kw || '(empty)');
 		window.location.href = url.toString();
