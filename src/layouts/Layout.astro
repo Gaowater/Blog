@@ -653,10 +653,6 @@ const siteLang = lang.replace("_", "-");
           if (!kw) return;
           sessionStorage.removeItem('search_highlight');
 
-          // 调试：脚本执行了就把标题变红
-          var titleEl = document.querySelector('h1, h2');
-          if (titleEl) titleEl.style.color = 'red';
-
           var container = document.querySelector('.custom-md');
           if (!container) return;
 
@@ -725,17 +721,25 @@ const siteLang = lang.replace("_", "-");
           }, 800);
         }
 
-        // 页面加载后执行
+        // 1. 页面加载后立即执行
         if (document.readyState === 'loading') {
           document.addEventListener('DOMContentLoaded', runHighlight);
         } else {
           runHighlight();
         }
 
-        // Swup 页面切换后重新执行
+        // 2. Swup 页面切换后执行
         document.addEventListener('swup:contentReplaced', function() {
           setTimeout(runHighlight, 100);
         });
+
+        // 3. MutationObserver 兜底：检测 .custom-md 出现
+        var mo = new MutationObserver(function() {
+          if (document.querySelector('.custom-md')) {
+            runHighlight();
+          }
+        });
+        mo.observe(document.body, { childList: true, subtree: true });
       })();
     </script>
   </body>
