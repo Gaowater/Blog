@@ -652,7 +652,11 @@ const siteLang = lang.replace("_", "-");
           var kw = null;
           var match = document.cookie.match(new RegExp('(^| )search_highlight=([^;]+)'));
           if (match) kw = decodeURIComponent(match[2]);
-          if (!kw) return;
+          if (!kw) {
+            // 调试：显示所有 cookie 给用户看
+            alert('cookie没找到! 全部cookie=' + document.cookie);
+            return;
+          }
           document.cookie = 'search_highlight=; path=/; max-age=0';
 
           // 调试弹窗：确认读到了关键词
