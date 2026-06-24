@@ -54,11 +54,6 @@ const search = async () => {
 				response.results.map((item) => item.data()),
 			);
 			results = rawResults;
-			// window.name 同标签页跨导航保留，比 localStorage/cookie/URL 都可靠
-			const kw = keyword.trim();
-			if (kw) {
-				window.name = '__kw=' + encodeURIComponent(kw);
-			}
 		} else if (import.meta.env.DEV) {
 			// 开发模式下的模拟结果
 			results = fakeResult.filter(
