@@ -214,3 +214,64 @@ body.wallpaper-transparent .custom-md {
   }
 }
 
+/* ===== 问答卡片（十万个为什么?） ===== */
+.custom-md .qa-card {
+  border: 1px solid var(--line-color);
+  border-radius: 12px;
+  margin: 1.5rem 0;
+  overflow: hidden;
+  background: var(--card-bg);
+}
+
+.custom-md .qa-card .qa-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.9rem 1.25rem;
+  background: color-mix(in oklab, var(--primary) 9%, transparent);
+  border-bottom: 1px solid var(--line-color);
+}
+
+.custom-md .qa-card .qa-header .qa-badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 8px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
+  margin-top: 0.1rem;
+}
+
+.custom-md .qa-card .qa-header .qa-text {
+  font-weight: 600;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: var(--text-primary);
+  margin: 0;
+  padding-top: 0.1rem;
+}
+
+.custom-md .qa-card .qa-body {
+  padding: 0.1rem 1.25rem;
+  line-height: 1.85;
+  color: var(--text-secondary);
+}
+
+.custom-md .qa-card .qa-body p {
+  margin: 0.85rem 0;
+}
+
+.custom-md .qa-card .qa-body p:first-child {
+  margin-top: 0.85rem;
+}
+
+.custom-md .qa-card .qa-body p:last-child {
+  margin-bottom: 0.85rem;
+}
+

@@ -27,11 +27,11 @@ export const galleryConfig: GalleryConfig = {
 		{
 			id: "class photo",
 			cover: "gallery/class photo/cover.class photo.jpg",
-			name: "班级合照",
-			description: "你的描述写在这里",
-			location: "",
+			name: "毕业照",
+			description: "你我高中各自的最后一张照片",
+			location: "临洮县，甘肃省，中国",
 			date: "2026-06-24",
-			tags: ["合照", "同学"],
+			tags: ["合照"],
 		},
 		{
 			id: "encrypted-test",
