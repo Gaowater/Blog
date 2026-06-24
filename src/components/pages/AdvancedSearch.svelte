@@ -177,15 +177,10 @@ const handleInput = () => {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 var kw = keyword.trim();
-                                var target = result.url;
                                 if (kw) {
-                                    // 确保 ?__hl= 在 # 之前（Pagefind 的 sub_results 带 # 锚点）
-                                    var hashIdx = result.url.indexOf('#');
-                                    var base = hashIdx === -1 ? result.url : result.url.substring(0, hashIdx);
-                                    var hash = hashIdx === -1 ? '' : result.url.substring(hashIdx);
-                                    target = base + '?__hl=' + encodeURIComponent(kw) + hash;
+                                    localStorage.setItem("search_highlight", kw);
                                 }
-                                window.location.href = target;
+                                window.location.href = result.url;
                             }}
                         >
                             <h5 class="mb-2 text-2xl font-bold tracking-tight text-90 group-hover:text-(--primary) transition-colors">

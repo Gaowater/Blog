@@ -649,11 +649,9 @@ const siteLang = lang.replace("_", "-");
         }
 
         function runHighlight() {
-          // 从 URL 参数读取关键词（全页跳转，参数不会丢）
-          var params = new URLSearchParams(window.location.search);
-          var kw = params.get('__hl');
+          var kw = localStorage.getItem('search_highlight');
           if (!kw) return;
-          kw = decodeURIComponent(kw);
+          localStorage.removeItem('search_highlight');
 
           var container = document.querySelector('.custom-md');
           if (!container) return;
