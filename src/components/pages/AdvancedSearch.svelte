@@ -90,8 +90,8 @@ onMount(() => {
 		if (!link) return;
 		e.preventDefault();
 		e.stopPropagation();
+		alert('CLICKED! keyword=' + keyword.trim()); // 调试：确认处理器运行
 		const kw = keyword.trim();
-		// 用 cookie 传递关键词（跨页面最稳定，不受 Svelte/localStorage 影响）
 		document.cookie = 'search_highlight=' + encodeURIComponent(kw || '(empty)') + '; path=/; max-age=60';
 		window.location.href = link.href;
 	}
