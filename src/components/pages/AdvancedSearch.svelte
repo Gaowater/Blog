@@ -84,14 +84,15 @@ const search = async () => {
 
 // --- Initialization onMount ---
 onMount(() => {
-	// 全局 click 监听：拦截搜索结果链接，绕过 Svelte on:click 可能的问题
+	// 全局 click 监听：拦截搜索结果链接
 	function handleSearchLinkClick(e: MouseEvent) {
 		const link = (e.target as HTMLElement).closest('a[data-search-link]') as HTMLAnchorElement | null;
 		if (!link) return;
 		e.preventDefault();
 		e.stopPropagation();
 		const kw = keyword.trim();
-		localStorage.setItem('search_highlight', kw || '(empty)');
+		// 用 cookie 传递关键词（跨页面最稳定，不受 Svelte/localStorage 影响）
+		document.cookie = 'search_highlight=' + encodeURIComponent(kw || '(empty)') + '; path=/; max-age=60';
 		window.location.href = link.href;
 	}
 	document.addEventListener('click', handleSearchLinkClick);

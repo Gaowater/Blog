@@ -649,11 +649,11 @@ const siteLang = lang.replace("_", "-");
         }
 
         function runHighlight() {
-          var kw = localStorage.getItem('search_highlight');
-          if (!kw) {
-            return;
-          }
-          localStorage.removeItem('search_highlight');
+          var kw = null;
+          var match = document.cookie.match(new RegExp('(^| )search_highlight=([^;]+)'));
+          if (match) kw = decodeURIComponent(match[2]);
+          if (!kw) return;
+          document.cookie = 'search_highlight=; path=/; max-age=0';
 
           // 调试弹窗：确认读到了关键词
           alert('找到关键词：' + kw);
