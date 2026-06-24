@@ -1,7 +1,7 @@
 <script lang="ts">
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
-import { onMount } from "svelte";
+import { onMount, onDestroy } from "svelte";
 import Icon from "@/components/common/Icon.svelte";
 import type { SearchResult } from "@/global";
 import { url as formatUrl } from "@/utils/url-utils";
@@ -84,6 +84,18 @@ const search = async () => {
 
 // --- Initialization onMount ---
 onMount(() => {
+	// 全局 click 监听：拦截搜索结果链接，绕过 Svelte on:click 可能的问题
+	function handleSearchLinkClick(e: MouseEvent) {
+		const link = (e.target as HTMLElement).closest('a[data-search-link]') as HTMLAnchorElement | null;
+		if (!link) return;
+		e.preventDefault();
+		e.stopPropagation();
+		const kw = keyword.trim();
+		localStorage.setItem('search_highlight', kw || '(empty)');
+		window.location.href = link.href;
+	}
+	document.addEventListener('click', handleSearchLinkClick);
+
 	const initialize = async () => {
 		initialized = true;
 
@@ -112,6 +124,10 @@ onMount(() => {
 			});
 		}
 	}
+});
+
+onDestroy(() => {
+	// 不需要显式清理，onMount 闭包会在组件销毁时被一起回收
 });
 
 let debounceTimer: NodeJS.Timeout;
@@ -169,17 +185,12 @@ const handleInput = () => {
             <div class="space-y-4">
                 {#each results as result}
                     <div class="card-base p-6 block rounded-(--radius-large)">
+                        <!-- 全局 click 监听通过 data-search-link 拦截 -->
                         <a
                             href={result.url}
                             class="block group"
+                            data-search-link
                             data-no-swup
-                            on:click={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                // 不论 keyword 是什么，都写入一个固定值做测试
-                                localStorage.setItem("search_highlight", keyword.trim() || "(empty)");
-                                window.location.href = result.url;
-                            }}
                         >
                             <h5 class="mb-2 text-2xl font-bold tracking-tight text-90 group-hover:text-(--primary) transition-colors">
                                 {@html result.meta.title}
