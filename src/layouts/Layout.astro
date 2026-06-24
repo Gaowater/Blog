@@ -649,10 +649,9 @@ const siteLang = lang.replace("_", "-");
         }
 
         function runHighlight() {
-          var params = new URLSearchParams(window.location.search);
-          var kw = params.get('highlight');
+          var kw = sessionStorage.getItem('search_highlight');
           if (!kw) return;
-          kw = decodeURIComponent(kw);
+          sessionStorage.removeItem('search_highlight');
 
           var container = document.querySelector('.custom-md');
           if (!container) return;
@@ -703,12 +702,6 @@ const siteLang = lang.replace("_", "-");
           setTimeout(function() {
             marks[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
           }, 150);
-
-          // 清理 URL 中的 highlight 参数
-          if (history.replaceState) {
-            var cleanUrl = window.location.pathname + window.location.hash;
-            history.replaceState(null, '', cleanUrl);
-          }
 
           // 点屏幕任意位置 → 高亮消失
           function removeMarks() {

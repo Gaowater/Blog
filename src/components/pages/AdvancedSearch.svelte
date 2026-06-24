@@ -60,22 +60,12 @@ const search = async () => {
 				}
 				return [item];
 			});
-			// 给结果链接加上高亮参数，让目标页滚动到关键词位置
-			// 注意：URL 可能带有 hash 锚点（如 /posts/xxx/#标题），需要把参数插在 hash 前面
+			// 用 sessionStorage 传递搜索关键词，避免 URL 参数被 Swup 吞掉
 			const kw = keyword.trim();
-			results = kw
-				? flatResults.map((r) => {
-						const url = r.url;
-						const hashIdx = url.indexOf("#");
-						const base = hashIdx >= 0 ? url.slice(0, hashIdx) : url;
-						const hash = hashIdx >= 0 ? url.slice(hashIdx) : "";
-						const sep = base.includes("?") ? "&" : "?";
-						return {
-							...r,
-							url: base + sep + "highlight=" + encodeURIComponent(kw) + hash,
-						};
-				  })
-				: flatResults;
+			if (kw) {
+				sessionStorage.setItem("search_highlight", kw);
+			}
+			results = flatResults;
 		} else if (import.meta.env.DEV) {
 			// 开发模式下的模拟结果
 			results = fakeResult.filter(
