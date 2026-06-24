@@ -649,9 +649,11 @@ const siteLang = lang.replace("_", "-");
         }
 
         function runHighlight() {
-          var kw = sessionStorage.getItem('search_highlight');
+          // 从 URL 参数读取关键词（全页跳转，参数不会丢）
+          var params = new URLSearchParams(window.location.search);
+          var kw = params.get('__hl');
           if (!kw) return;
-          sessionStorage.removeItem('search_highlight');
+          kw = decodeURIComponent(kw);
 
           var container = document.querySelector('.custom-md');
           if (!container) return;
@@ -681,6 +683,7 @@ const siteLang = lang.replace("_", "-");
                 var mark = document.createElement('mark');
                 mark.className = 'search-highlight';
                 mark.textContent = m[0];
+                mark.style.cssText = 'background:#ffee00;color:#000;padding:0 2px;border-radius:2px;font-weight:bold;';
                 frag.appendChild(mark);
                 marks.push(mark);
                 lastIdx = m.index + m[0].length;
@@ -701,7 +704,7 @@ const siteLang = lang.replace("_", "-");
           // 滚动到第一个匹配位置
           setTimeout(function() {
             marks[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }, 150);
+          }, 200);
 
           // 点屏幕任意位置 → 高亮消失
           function removeMarks() {
@@ -714,32 +717,18 @@ const siteLang = lang.replace("_", "-");
             document.removeEventListener('touchstart', removeMarks);
           }
 
-          // 延迟绑定，避免触发导航时的 click 事件
           setTimeout(function() {
             document.addEventListener('click', removeMarks, { once: true });
             document.addEventListener('touchstart', removeMarks, { once: true });
           }, 800);
         }
 
-        // 1. 页面加载后立即执行
+        // 页面加载后执行
         if (document.readyState === 'loading') {
           document.addEventListener('DOMContentLoaded', runHighlight);
         } else {
           runHighlight();
         }
-
-        // 2. Swup 页面切换后执行
-        document.addEventListener('swup:contentReplaced', function() {
-          setTimeout(runHighlight, 100);
-        });
-
-        // 3. MutationObserver 兜底：检测 .custom-md 出现
-        var mo = new MutationObserver(function() {
-          if (document.querySelector('.custom-md')) {
-            runHighlight();
-          }
-        });
-        mo.observe(document.body, { childList: true, subtree: true });
       })();
     </script>
   </body>

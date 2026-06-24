@@ -169,7 +169,6 @@ const handleInput = () => {
             <div class="space-y-4">
                 {#each results as result}
                     <div class="card-base p-6 block rounded-(--radius-large)">
-                        <!-- 全页跳转绕过 Swup，确保 sessionStorage 可靠传递 -->
                         <a
                             href={result.url}
                             class="block group"
@@ -177,10 +176,13 @@ const handleInput = () => {
                             on:click={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                if (keyword.trim()) {
-                                    sessionStorage.setItem("search_highlight", keyword.trim());
+                                var kw = keyword.trim();
+                                var target = result.url;
+                                if (kw) {
+                                    var sep = result.url.indexOf('?') === -1 ? '?' : '&';
+                                    target = result.url + sep + '__hl=' + encodeURIComponent(kw);
                                 }
-                                window.location.href = result.url;
+                                window.location.href = target;
                             }}
                         >
                             <h5 class="mb-2 text-2xl font-bold tracking-tight text-90 group-hover:text-(--primary) transition-colors">
