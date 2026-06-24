@@ -653,14 +653,8 @@ const siteLang = lang.replace("_", "-");
           var kw = params.get('__kw');
           if (!kw) return;
 
-          // 调试弹窗：确认读到了关键词
-          alert('找到关键词：' + kw);
-
           var container = document.querySelector('.custom-md');
-          if (!container) {
-            alert('未找到 .custom-md');
-            return;
-          }
+          if (!container) return;
 
           // 清除之前残留的高亮
           document.querySelectorAll('mark.search-highlight').forEach(function(m) {
