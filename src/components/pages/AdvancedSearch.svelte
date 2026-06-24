@@ -90,10 +90,11 @@ onMount(() => {
 		if (!link) return;
 		e.preventDefault();
 		e.stopPropagation();
-		alert('CLICKED! keyword=' + keyword.trim()); // 调试：确认处理器运行
 		const kw = keyword.trim();
-		document.cookie = 'search_highlight=' + encodeURIComponent(kw || '(empty)') + '; path=/; max-age=60';
-		window.location.href = link.href;
+		// 直接改 URL：把关键词放在 ?__kw=，确保在 hash 之前
+		const url = new URL(link.href);
+		url.searchParams.set('__kw', kw || '(empty)');
+		window.location.href = url.toString();
 	}
 	document.addEventListener('click', handleSearchLinkClick);
 

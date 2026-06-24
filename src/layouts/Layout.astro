@@ -649,15 +649,9 @@ const siteLang = lang.replace("_", "-");
         }
 
         function runHighlight() {
-          var kw = null;
-          var match = document.cookie.match(new RegExp('(^| )search_highlight=([^;]+)'));
-          if (match) kw = decodeURIComponent(match[2]);
-          if (!kw) {
-            // 调试：显示所有 cookie 给用户看
-            alert('cookie没找到! 全部cookie=' + document.cookie);
-            return;
-          }
-          document.cookie = 'search_highlight=; path=/; max-age=0';
+          var params = new URLSearchParams(window.location.search);
+          var kw = params.get('__kw');
+          if (!kw) return;
 
           // 调试弹窗：确认读到了关键词
           alert('找到关键词：' + kw);
