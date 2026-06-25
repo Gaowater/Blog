@@ -233,6 +233,8 @@ const relatedPosts = await getRelatedPosts(entry, 5);
           tags={entry.data.tags}
           category={entry.data.category || undefined}
           id={entry.id}
+          words={remarkPluginFrontmatter.words}
+          minutes={remarkPluginFrontmatter.minutes}
         />
         {
           !processedImage && (
