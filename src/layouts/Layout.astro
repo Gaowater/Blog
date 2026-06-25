@@ -644,72 +644,25 @@ const siteLang = lang.replace("_", "-");
     <!-- 文章内搜索栏 -->
     <script is:inline data-swup-ignore-script>
       (function() {
-        var wrapper, toggle, panel, input, info, prevBtn, nextBtn, closeBtn;
-        var marks = [], currentIdx = -1, debounceTimer, container = null;
+        var toggle, panel, input, info, prevBtn, nextBtn, closeBtn;
+        var marks = [], currentIdx = -1, debounceTimer;
+        var container = null;
 
         function initArticleSearch() {
           container = document.querySelector('.custom-md');
-          if (!container) { removeUI(); return; }
-          if (wrapper && wrapper.parentNode) return;
-          buildUI(); bindEvents();
-        }
+          toggle = document.getElementById('article-search-toggle');
+          panel = document.getElementById('article-search-panel');
+          input = document.getElementById('article-search-input');
+          info = document.getElementById('article-search-info');
+          prevBtn = document.getElementById('article-prev-btn');
+          nextBtn = document.getElementById('article-next-btn');
+          closeBtn = document.getElementById('article-close-btn');
 
-        function buildUI() {
-          wrapper = document.createElement('div');
-          wrapper.style.cssText = 'margin:0 0 1.25rem 0';
+          // 不是在文章页或没有搜索栏HTML → 不做任何事
+          if (!container || !toggle) return;
 
-          toggle = document.createElement('button');
-          toggle.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--text-50);cursor:pointer;font-size:0.85rem;transition:all .2s';
-          toggle.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> <span>搜索文章</span>';
-          toggle.onmouseenter = function(){toggle.style.borderColor = 'var(--text-20)';toggle.style.color = 'var(--text-75)'};
-          toggle.onmouseleave = function(){toggle.style.borderColor = 'transparent';toggle.style.color = 'var(--text-50)'};
-          wrapper.appendChild(toggle);
-
-          panel = document.createElement('div');
-          panel.style.cssText = 'display:none;padding:8px 0';
-          var row = document.createElement('div');
-          row.style.cssText = 'display:flex;align-items:center;gap:6px;flex-wrap:wrap';
-
-          row.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:var(--text-40)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
-
-          input = document.createElement('input');
-          input.type = 'text';
-          input.placeholder = '输入关键词...';
-          input.autocomplete = 'off';
-          input.style.cssText = 'flex:1;min-width:100px;padding:5px 10px;border:1px solid var(--text-20);border-radius:6px;background:transparent;color:var(--text-90);font-size:0.88rem;outline:none;transition:border-color .2s';
-          input.onfocus = function(){input.style.borderColor = 'var(--primary)'};
-          input.onblur = function(){input.style.borderColor = 'var(--text-20)'};
-          row.appendChild(input);
-
-          info = document.createElement('span');
-          info.style.cssText = 'font-size:0.8rem;color:var(--text-40);white-space:nowrap;min-width:60px;text-align:center';
-          row.appendChild(info);
-
-          var mkBtn = function(label, title) {
-            var b = document.createElement('button');
-            b.textContent = label;
-            b.title = title;
-            b.disabled = true;
-            b.style.cssText = 'padding:3px 8px;border:1px solid var(--text-20);border-radius:5px;background:transparent;color:var(--text-50);cursor:pointer;font-size:0.8rem;transition:all .2s;line-height:1';
-            b.onmouseenter = function(){if(!b.disabled){b.style.borderColor='var(--primary)';b.style.color='var(--primary)'}};
-            b.onmouseleave = function(){if(!b.disabled){b.style.borderColor='var(--text-20)';b.style.color='var(--text-50)'}};
-            return b;
-          };
-          prevBtn = mkBtn('\u25B2', '上一个');
-          nextBtn = mkBtn('\u25BC', '下一个');
-          row.appendChild(prevBtn);
-          row.appendChild(nextBtn);
-
-          var closeBtn = document.createElement('button');
-          closeBtn.textContent = '\u2715';
-          closeBtn.title = '关闭';
-          closeBtn.style.cssText = 'padding:3px 6px;border:none;border-radius:5px;background:transparent;color:var(--text-40);cursor:pointer;font-size:0.9rem;transition:all .2s;line-height:1';
-          closeBtn.onmouseenter = function(){closeBtn.style.color='var(--primary)'};
-          closeBtn.onmouseleave = function(){closeBtn.style.color='var(--text-40)'};
-          row.appendChild(closeBtn);
-
-          panel.appendChild(row);
-          wrapper.appendChild(panel);
+          // 已经绑定过事件了(按钮有自定义标记) → 跳过
+          if (toggle.getAttribute('data-bound')) return;
 
           toggle.onclick = function() {
             if (panel.style.display === 'none') { panel.style.display=''; input.focus(); }
@@ -727,12 +680,7 @@ const siteLang = lang.replace("_", "-");
           nextBtn.onclick = function() { nav(1); };
           closeBtn.onclick = closeSearch;
 
-          container.insertBefore(wrapper, container.firstChild);
-        }
-
-        function removeUI() {
-          if (wrapper && wrapper.parentNode) wrapper.parentNode.removeChild(wrapper);
-          wrapper=toggle=panel=input=info=prevBtn=nextBtn=closeBtn=null;
+          toggle.setAttribute('data-bound', '1');
         }
 
         function doSearch() {
@@ -938,6 +886,22 @@ const siteLang = lang.replace("_", "-");
       height: 4.5rem !important;
     }
 
+    /* 文章内搜索栏 */
+    #article-search-wrapper{margin:0 0 1rem 0}
+    #article-search-toggle{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--text-50);cursor:pointer;font-size:0.85rem;transition:all .2s}
+    #article-search-toggle:hover{border-color:var(--text-20);color:var(--text-75)}
+    #article-search-panel{padding:6px 0}
+    .article-search-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+    .article-search-row svg{flex-shrink:0;color:var(--text-40)}
+    #article-search-input{flex:1;min-width:100px;padding:5px 10px;border:1px solid var(--text-20);border-radius:6px;background:transparent;color:var(--text-90);font-size:0.88rem;outline:none;transition:border-color .2s}
+    #article-search-input:focus{border-color:var(--primary)}
+    #article-search-input::placeholder{opacity:0.4;color:var(--text-40)}
+    #article-search-info{font-size:0.8rem;color:var(--text-40);white-space:nowrap;min-width:60px;text-align:center}
+    .article-nav-btn{padding:3px 8px;border:1px solid var(--text-20);border-radius:5px;background:transparent;color:var(--text-50);cursor:pointer;font-size:0.8rem;transition:all .2s;line-height:1}
+    .article-nav-btn:disabled{opacity:0.3;cursor:default}
+    .article-nav-btn:not(:disabled):hover{border-color:var(--primary);color:var(--primary)}
+    #article-close-btn{padding:3px 6px;border:none;border-radius:5px;background:transparent;color:var(--text-40);cursor:pointer;font-size:0.9rem;transition:all .2s;line-height:1}
+    #article-close-btn:hover{color:var(--primary)}
     /* 文章内搜索高亮 */
     mark.article-highlight {
       background:#ffee00; color:#000;
