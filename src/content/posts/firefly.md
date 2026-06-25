@@ -76,12 +76,13 @@ image: ./images/firefly2.avif
   }
   #article-search-close:hover { color:var(--primary); background:color-mix(in srgb, var(--primary) 8%, transparent); }
   mark.art-highlight {
-    background:#ffee00; color:#000;
-    padding:0 2px; border-radius:2px; font-weight:bold;
+    background:color-mix(in srgb, var(--primary) 18%, transparent);
+    color:inherit; padding:1px 2px; border-radius:3px;
+    border-bottom:2px solid color-mix(in srgb, var(--primary) 50%, transparent);
   }
   mark.art-highlight.active {
-    background:#ffb300; color:#000;
-    box-shadow:0 0 0 2px #ffb300;
+    background:color-mix(in srgb, var(--primary) 35%, transparent);
+    border-bottom-color:var(--primary);
   }
 </style>
 
