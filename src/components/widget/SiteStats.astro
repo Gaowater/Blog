@@ -29,8 +29,11 @@ const tags = await getTagList();
 let totalWords = 0;
 for (const post of posts) {
 	if (post.body) {
-		// 移除代码块和内联代码后计算字数
+		// 移除代码块、内联代码、HTML标签、style/script块后计算字数
 		let text = post.body
+			.replace(/<style[\s\S]*?<\/style>/gi, "") // 移除 style 块
+			.replace(/<script[\s\S]*?<\/script>/gi, "") // 移除 script 块
+			.replace(/<[^>]*>/g, "") // 移除 HTML 标签
 			.replace(/```[\s\S]*?```/g, "") // 移除代码块
 			.replace(/`[^`]*`/g, "") // 移除内联代码
 			.replace(/\s+/g, " ") // 合并空白
