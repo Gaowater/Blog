@@ -546,3 +546,185 @@ const relatedPosts = await getRelatedPosts(entry, 5);
   <!-- 评论 -->
   {entry.data.comment && !entry.data.password && <Comment post={entry} />}
 </MainGridLayout>
+
+<!-- 文章内搜索栏 -->
+<script is:inline>
+  (function() {
+    var wrapper, toggle, panel, input, info, prevBtn, nextBtn, closeBtn;
+    var marks = [];
+    var currentIdx = -1;
+    var debounceTimer;
+    var container = null;
+
+    function initArticleSearch() {
+      container = document.querySelector('.custom-md');
+      if (!container) {
+        removeUI();
+        return;
+      }
+      if (wrapper && wrapper.parentNode) return;
+      buildUI();
+      bindEvents();
+    }
+
+    function buildUI() {
+      wrapper = document.createElement('div');
+      wrapper.id = 'article-search-wrapper';
+
+      toggle = document.createElement('button');
+      toggle.id = 'article-search-toggle';
+      toggle.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> <span>搜索文章</span>';
+      wrapper.appendChild(toggle);
+
+      panel = document.createElement('div');
+      panel.id = 'article-search-panel';
+      panel.style.display = 'none';
+
+      var row = document.createElement('div');
+      row.className = 'article-search-row';
+      row.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
+
+      input = document.createElement('input');
+      input.type = 'text';
+      input.placeholder = '输入关键词搜索...';
+      input.autocomplete = 'off';
+      row.appendChild(input);
+
+      info = document.createElement('span');
+      info.className = 'article-search-info';
+      row.appendChild(info);
+
+      prevBtn = document.createElement('button');
+      prevBtn.className = 'article-nav-btn';
+      prevBtn.title = '上一个'; prevBtn.textContent = '▲'; prevBtn.disabled = true;
+      row.appendChild(prevBtn);
+
+      nextBtn = document.createElement('button');
+      nextBtn.className = 'article-nav-btn';
+      nextBtn.title = '下一个'; nextBtn.textContent = '▼'; nextBtn.disabled = true;
+      row.appendChild(nextBtn);
+
+      closeBtn = document.createElement('button');
+      closeBtn.className = 'article-search-close';
+      closeBtn.title = '关闭'; closeBtn.textContent = '\u2715';
+      row.appendChild(closeBtn);
+
+      panel.appendChild(row);
+      wrapper.appendChild(panel);
+      container.insertBefore(wrapper, container.firstChild);
+    }
+
+    function removeUI() {
+      if (wrapper && wrapper.parentNode) wrapper.parentNode.removeChild(wrapper);
+      wrapper = null; toggle = null; panel = null; input = null;
+      info = null; prevBtn = null; nextBtn = null; closeBtn = null;
+    }
+
+    function bindEvents() {
+      toggle.addEventListener('click', function() {
+        if (panel.style.display === 'none') {
+          panel.style.display = ''; input.focus();
+        } else { closeSearch(); }
+      });
+      input.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(doSearch, 250);
+      });
+      input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); nav(1); }
+        if (e.key === 'Escape') { closeSearch(); }
+      });
+      prevBtn.addEventListener('click', function() { nav(-1); });
+      nextBtn.addEventListener('click', function() { nav(1); });
+      closeBtn.addEventListener('click', closeSearch);
+    }
+
+    function doSearch() {
+      clearMarks();
+      var kw = input.value.trim();
+      if (!kw) {
+        info.textContent = '';
+        prevBtn.disabled = true; nextBtn.disabled = true;
+        marks = []; currentIdx = -1;
+        return;
+      }
+      var regex = new RegExp(escapeRegex(kw), 'gi');
+      marks = []; currentIdx = -1;
+      walkTextNodes(container, regex);
+      if (marks.length === 0) {
+        info.textContent = '未找到';
+        prevBtn.disabled = true; nextBtn.disabled = true;
+      } else {
+        info.textContent = '1/' + marks.length;
+        prevBtn.disabled = true; nextBtn.disabled = marks.length <= 1;
+        currentIdx = 0;
+        marks[0].classList.add('active');
+        marks[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
+    function walkTextNodes(node, regex) {
+      if (node.nodeType === 3) {
+        var text = node.textContent;
+        if (!regex.test(text)) return;
+        regex.lastIndex = 0;
+        var frag = document.createDocumentFragment();
+        var lastIdx = 0, m;
+        while ((m = regex.exec(text)) !== null) {
+          if (m.index > lastIdx) frag.appendChild(document.createTextNode(text.slice(lastIdx, m.index)));
+          var mark = document.createElement('mark');
+          mark.className = 'article-highlight';
+          mark.textContent = m[0];
+          frag.appendChild(mark);
+          marks.push(mark);
+          lastIdx = m.index + m[0].length;
+        }
+        if (lastIdx < text.length) frag.appendChild(document.createTextNode(text.slice(lastIdx)));
+        node.parentNode.replaceChild(frag, node);
+      } else if (node.nodeType === 1 && !/^(SCRIPT|STYLE|MARK|TEXTAREA)$/i.test(node.tagName)) {
+        if (node.classList && (node.classList.contains('article-highlight') || node.id === 'article-search-wrapper')) return;
+        Array.from(node.childNodes).forEach(function(child) { walkTextNodes(child, regex); });
+      }
+    }
+
+    function clearMarks() {
+      document.querySelectorAll('mark.article-highlight').forEach(function(m) {
+        var p = m.parentNode;
+        p.replaceChild(document.createTextNode(m.textContent), m);
+        p.normalize();
+      });
+      marks = []; currentIdx = -1;
+    }
+
+    function nav(dir) {
+      if (marks.length === 0) return;
+      marks[currentIdx].classList.remove('active');
+      currentIdx = (currentIdx + dir + marks.length) % marks.length;
+      marks[currentIdx].classList.add('active');
+      marks[currentIdx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      info.textContent = (currentIdx + 1) + '/' + marks.length;
+      prevBtn.disabled = currentIdx === 0;
+      nextBtn.disabled = currentIdx === marks.length - 1;
+    }
+
+    function closeSearch() {
+      panel.style.display = 'none';
+      input.value = ''; clearMarks();
+      info.textContent = ''; prevBtn.disabled = true; nextBtn.disabled = true;
+    }
+
+    function escapeRegex(str) {
+      return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    // 初始化
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initArticleSearch);
+    } else {
+      initArticleSearch();
+    }
+    document.addEventListener('swup:contentReplaced', function() {
+      setTimeout(initArticleSearch, 50);
+    });
+  })();
+</script>
