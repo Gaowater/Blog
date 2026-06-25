@@ -667,6 +667,8 @@ const fullscreenCarouselInterval = Math.max(
                     )}
                     <!-- 相识天数计数器：从 2026-02-07 开始，当日算第1天 -->
                     <div id="banner-day-counter" class="font-bold text-white/80 leading-tight mb-2 lg:mb-4" style="font-size: calc(var(--banner-title-size, 3rem) * 0.72)"></div>
+                    <!-- 相恋天数计数器：从 2026-06-12 开始，当日算第1天 -->
+                    <div id="banner-love-counter" class="font-bold text-white/80 leading-tight mb-2 lg:mb-4" style="font-size: calc(var(--banner-title-size, 3rem) * 0.72)"></div>
                     <script is:inline data-astro-rerun>
                         (function() {
                             var el = document.getElementById('banner-day-counter');
@@ -674,8 +676,15 @@ const fullscreenCarouselInterval = Math.max(
                             var start = new Date('2026-02-07T00:00:00+08:00');
                             var now = new Date();
                             var diffMs = now.getTime() - start.getTime();
-                            var days = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1; // +1 让2月7日为第1天
+                            var days = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
                             el.textContent = '与你相识的第 ' + days + ' 天';
+
+                            var el2 = document.getElementById('banner-love-counter');
+                            if (!el2) return;
+                            var start2 = new Date('2026-06-12T00:00:00+08:00');
+                            var diffMs2 = now.getTime() - start2.getTime();
+                            var days2 = Math.floor(diffMs2 / (1000 * 60 * 60 * 24)) + 1;
+                            el2.textContent = '与你相恋的第 ' + days2 + ' 天';
                         })();
                     </script>
                     {backgroundWallpaper.common?.homeText?.subtitle && (
