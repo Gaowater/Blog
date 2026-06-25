@@ -66,6 +66,11 @@ const defaultIcon = "fa7-brands:gratipay";
 
     <!-- ═══ 正式面板（身份绑定后显示） ═══ -->
     <div id="mood-main" class="hidden">
+      <!-- 当前身份提示 -->
+      <div id="mood-identity" class="mb-2 text-center">
+        <span class="text-[0.6rem] text-neutral-400 dark:text-neutral-500">当前身份：</span>
+        <span id="mood-identity-name" class="text-[0.65rem] font-semibold text-primary dark:text-primary">—</span>
+      </div>
       <!-- 两人心情状态 -->
       <div id="mood-status" class="mb-3">
         <div class="flex items-center justify-center gap-3 text-sm">
@@ -223,10 +228,17 @@ const defaultIcon = "fa7-brands:gratipay";
         mainEl.classList.remove("hidden");
       }
 
+      /* ── 显示当前身份 ── */
+      function showIdentity(user) {
+        var nameEl = document.getElementById("mood-identity-name");
+        if (nameEl) nameEl.textContent = user === "mouhe" ? "MH" : "HYL";
+      }
+
       /* ── 绑定身份 ── */
       function bindUser(user) {
         activeUser = user;
         localStorage.setItem(USER_KEY, user);
+        showIdentity(user);
         enterMainMode();
         // 恢复之前保存的心情图标
         var saved = localStorage.getItem(STORAGE_KEY);
@@ -236,6 +248,7 @@ const defaultIcon = "fa7-brands:gratipay";
 
       /* ── 首次打开时判断是否已绑定 ── */
       if (activeUser) {
+        showIdentity(activeUser);
         enterMainMode();
         var saved = localStorage.getItem(STORAGE_KEY);
         if (saved) showIcon(saved);
