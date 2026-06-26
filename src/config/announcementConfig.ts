@@ -5,7 +5,7 @@ export const announcementConfig: AnnouncementConfig = {
 	title: "公告",
 
 	// 公告内容
-	content: "我真的好想你！好喜欢你啊！！",
+	content: "优化了心情显示 新增文章内部搜索引擎~ 并且我很想你，宝！",
 	// 是否允许用户关闭公告
 	closable: false,
 
