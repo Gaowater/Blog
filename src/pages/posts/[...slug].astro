@@ -18,6 +18,7 @@ import {
 import { Icon } from "astro-icon/components";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
+import ArticleSearch from "@/components/features/ArticleSearch.astro";
 import CoverImage from "@/components/common/CoverImage.astro";
 import PostMetadata from "@/components/layout/PostMeta.astro";
 import RecommendedPost from "@/components/misc/RecommendedPost.astro";
@@ -262,9 +263,12 @@ const relatedPosts = await getRelatedPosts(entry, 5);
 
       {entry.data.password ? (
         <EncryptedPost password={entry.data.password} slug={entry.id} hint={entry.data.passwordHint}>
-          <Markdown class="mb-6 markdown-content onload-animation">
-            <Content />
-          </Markdown>
+          <div id="article-content">
+            <Markdown class="mb-6 markdown-content onload-animation">
+              <Content />
+            </Markdown>
+          </div>
+          {entry.data.searchBar && <ArticleSearch />}
 
           {/* 赞助按钮 & 分享按钮 */}
           {
@@ -350,9 +354,12 @@ const relatedPosts = await getRelatedPosts(entry, 5);
         </EncryptedPost>
       ) : (
         <>
-          <Markdown class="mb-6 markdown-content onload-animation">
-            <Content />
-          </Markdown>
+          {entry.data.searchBar && <ArticleSearch />}
+          <div id="article-content">
+            <Markdown class="mb-6 markdown-content onload-animation">
+              <Content />
+            </Markdown>
+          </div>
 
           {/* 赞助按钮 & 分享按钮 */}
           {

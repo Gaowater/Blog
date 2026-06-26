@@ -1,0 +1,191 @@
+<!-- 文章内搜索栏组件 -->
+<div id="article-search-wrap">
+  <button id="article-search-btn">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <span>搜索文章</span>
+  </button>
+  <div id="article-search-panel" style="display:none">
+    <div id="article-search-row">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="article-search-input" placeholder="输入关键词搜索..." autocomplete="off" />
+      <span id="article-search-info"></span>
+      <button id="article-search-prev" title="上一个" disabled>▲</button>
+      <button id="article-search-next" title="下一个" disabled>▼</button>
+      <button id="article-search-close" title="关闭">✕</button>
+    </div>
+  </div>
+</div>
+
+<style is:inline>
+  #article-search-wrap { margin-bottom:0; }
+  #article-search-btn {
+    display:inline-flex; align-items:center; gap:6px;
+    padding:6px 14px; border:1px solid var(--border);
+    border-radius:8px; background:var(--card-bg); color:var(--text-75);
+    cursor:pointer; font-size:0.9rem; transition:all .2s;
+  }
+  #article-search-btn:hover {
+    border-color:var(--primary); color:var(--primary);
+    background:color-mix(in srgb, var(--primary) 6%, transparent);
+  }
+  #article-search-panel {
+    padding:10px 14px; margin-top:8px; margin-bottom:1.25rem;
+    border:1px solid var(--border); border-radius:10px;
+    background:var(--card-bg); animation:artFadeIn .2s ease;
+  }
+  @keyframes artFadeIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
+  #article-search-row {
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  }
+  #article-search-row svg { flex-shrink:0; color:var(--text-50); }
+  #article-search-input {
+    flex:1; min-width:120px;
+    padding:6px 10px; border:1px solid var(--border);
+    border-radius:6px; background:transparent; color:var(--text-90);
+    font-size:0.9rem; outline:none; transition:border-color .2s;
+  }
+  #article-search-input:focus { border-color:var(--primary); }
+  #article-search-input::placeholder { opacity:0.4; }
+  #article-search-info {
+    font-size:0.82rem; color:var(--text-50); white-space:nowrap;
+    min-width:70px; text-align:center;
+  }
+  #article-search-prev, #article-search-next {
+    padding:4px 10px; border:1px solid var(--border);
+    border-radius:6px; background:transparent; color:var(--text-75);
+    cursor:pointer; font-size:0.85rem; transition:all .2s; line-height:1;
+  }
+  #article-search-prev:disabled, #article-search-next:disabled { opacity:0.3; cursor:default; }
+  #article-search-prev:not(:disabled):hover, #article-search-next:not(:disabled):hover {
+    border-color:var(--primary); color:var(--primary);
+  }
+  #article-search-close {
+    padding:4px 8px; border:none; border-radius:6px;
+    background:transparent; color:var(--text-50);
+    cursor:pointer; font-size:1rem; transition:all .2s; line-height:1;
+  }
+  #article-search-close:hover { color:var(--primary); background:color-mix(in srgb, var(--primary) 8%, transparent); }
+  mark.art-highlight {
+    background:color-mix(in srgb, var(--primary) 18%, transparent);
+    color:inherit; padding:1px 2px; border-radius:3px;
+    border-bottom:2px solid color-mix(in srgb, var(--primary) 50%, transparent);
+  }
+  mark.art-highlight.active {
+    background:color-mix(in srgb, var(--primary) 35%, transparent);
+    border-bottom-color:var(--primary);
+  }
+</style>
+
+<script is:inline data-astro-rerun>
+(function(){
+  var contentEl, inputEl, infoEl, prevBtn, nextBtn, toggleBtn, panel;
+  var marks = [], currentIdx = -1, debounceTimer;
+
+  function init() {
+    contentEl = document.getElementById('article-content');
+    inputEl = document.getElementById('article-search-input');
+    infoEl = document.getElementById('article-search-info');
+    prevBtn = document.getElementById('article-search-prev');
+    nextBtn = document.getElementById('article-search-next');
+    toggleBtn = document.getElementById('article-search-btn');
+    panel = document.getElementById('article-search-panel');
+
+    if (!inputEl || !contentEl) return;
+
+    inputEl.addEventListener('input', function() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(doSearch, 250);
+    });
+
+    inputEl.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); nav(1); }
+      if (e.key === 'Escape') { close(); }
+    });
+
+    toggleBtn.addEventListener('click', function() {
+      var isHidden = panel.style.display === 'none';
+      panel.style.display = isHidden ? 'block' : 'none';
+      if (isHidden) { inputEl.focus(); inputEl.select(); }
+    });
+
+    prevBtn.addEventListener('click', function() { nav(-1); });
+    nextBtn.addEventListener('click', function() { nav(1); });
+    document.getElementById('article-search-close').addEventListener('click', close);
+  }
+
+  function doSearch() {
+    clearMarks();
+    var q = inputEl.value.trim();
+    if (!q) { infoEl.textContent = ''; prevBtn.disabled = nextBtn.disabled = true; marks = []; currentIdx = -1; return; }
+
+    var regex = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    marks = []; currentIdx = -1;
+
+    (function walk(node, re) {
+      if (node.nodeType === 3) {
+        var tx = node.textContent;
+        if (!re.test(tx)) return; re.lastIndex = 0;
+        var frag = document.createDocumentFragment(), lastIdx = 0, match;
+        while ((match = re.exec(tx)) !== null) {
+          if (match.index > lastIdx) frag.appendChild(document.createTextNode(tx.slice(lastIdx, match.index)));
+          var mk = document.createElement('mark'); mk.className = 'art-highlight';
+          mk.textContent = match[0]; frag.appendChild(mk); marks.push(mk);
+          lastIdx = match.index + match[0].length;
+        }
+        if (lastIdx < tx.length) frag.appendChild(document.createTextNode(tx.slice(lastIdx)));
+        node.parentNode.replaceChild(frag, node);
+      } else if (node.nodeType === 1 && !/^(SCRIPT|STYLE|MARK|TEXTAREA)$/i.test(node.tagName)) {
+        if (node.classList && node.classList.contains('art-highlight')) return;
+        Array.from(node.childNodes).forEach(function(ch) { walk(ch, re); });
+      }
+    })(contentEl, regex);
+
+    if (!marks.length) {
+      infoEl.textContent = '未找到';
+      prevBtn.disabled = nextBtn.disabled = true;
+    } else {
+      infoEl.textContent = '1/' + marks.length;
+      prevBtn.disabled = true;
+      nextBtn.disabled = marks.length <= 1;
+      currentIdx = 0;
+      marks[0].classList.add('active');
+      marks[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+
+  function clearMarks() {
+    document.querySelectorAll('mark.art-highlight').forEach(function(mk) {
+      var parent = mk.parentNode;
+      if (!parent) return;
+      var txt = document.createTextNode(mk.textContent);
+      parent.replaceChild(txt, mk);
+      parent.normalize();
+    });
+    marks = []; currentIdx = -1;
+  }
+
+  function nav(dir) {
+    if (!marks.length) return;
+    marks[currentIdx].classList.remove('active');
+    currentIdx += dir;
+    if (currentIdx < 0) currentIdx = marks.length - 1;
+    if (currentIdx >= marks.length) currentIdx = 0;
+    marks[currentIdx].classList.add('active');
+    marks[currentIdx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    infoEl.textContent = (currentIdx + 1) + '/' + marks.length;
+    prevBtn.disabled = currentIdx === 0;
+    nextBtn.disabled = currentIdx === marks.length - 1;
+  }
+
+  function close() {
+    clearMarks();
+    inputEl.value = '';
+    infoEl.textContent = '';
+    prevBtn.disabled = nextBtn.disabled = true;
+    panel.style.display = 'none';
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+</script>
