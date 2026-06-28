@@ -21,7 +21,7 @@
         var x = startX + (Math.random() - 0.5) * 60;
         var y = startY;
         var size = 12 + Math.random() * 16;
-        heart.style.cssText = 'position:fixed;left:'+x+'px;top:'+y+'px;font-size:'+size+'px;pointer-events:none;z-index:9999;transition:all 1s cubic-bezier(0,.5,.5,1);opacity:1;color:#ffb6c1;transform:scale(0);';
+        heart.style.cssText = 'position:fixed;left:'+x+'px;top:'+y+'px;font-size:'+size+'px;pointer-events:none;z-index:9999;transition:all 1s cubic-bezier(0,.5,.5,1);opacity:1;color:#ffb6c1!important;transform:scale(0);';
         document.body.appendChild(heart);
         var angle = -Math.PI/2 + (Math.random() - 0.5) * 1.5;
         var dist = 30 + Math.random() * 90;
