@@ -23,6 +23,7 @@ const postsCollection = defineCollection({
 		password: z.string().optional().default(""),
 		passwordHint: z.string().optional().default(""),
 		searchBar: z.boolean().optional().default(false),
+		mood: z.enum(['rain', 'sunlight', 'fireflies', 'bubbles', 'stars']).optional(),
 
 		/* For internal use */
 		prevTitle: z.string().default(""),

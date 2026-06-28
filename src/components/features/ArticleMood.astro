@@ -1,0 +1,187 @@
+---
+const { mood } = Astro.props;
+const uid = `am-${Math.random().toString(36).slice(2, 10)}`;
+---
+
+<div class="article-mood-bg" id="{uid}">
+  <canvas id="{uid}-canvas"></canvas>
+</div>
+
+<style is:inline>
+  #{uid} {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 0;
+    border-radius: inherit;
+  }
+  #{uid} canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+</style>
+
+<script is:inline data-astro-rerun>
+(function(){var U='{uid}',MO='{mood}';
+var W,H,c=document.getElementById(U+'-canvas'),ctx=c&&c.getContext('2d'),b=document.getElementById(U);
+if(!c||!ctx||!b)return;
+
+// 停止上一次动画（Swup切换时清理）
+if(window.__moodStop&&typeof window.__moodStop==='function')window.__moodStop();
+
+var running=true,drops=[],stop;
+function resize(){var r=b.getBoundingClientRect();W=c.width=r.width;H=c.height=r.height;}
+resize();window.addEventListener('resize',resize);
+
+// ======== 雨滴 (emo) ========
+function initRain(){
+  function create(){return{
+    x:Math.random()*W,y:Math.random()*H-H,
+    len:10+Math.random()*14,speed:2+Math.random()*3,
+  };}
+  for(var i=0;i<50;i++)drops.push(create());
+  return function(){
+    ctx.clearRect(0,0,W,H);
+    ctx.strokeStyle='rgba(160,190,255,0.45)';ctx.lineWidth=1.5;
+    for(var i=0;i<drops.length;i++){
+      var d=drops[i];
+      ctx.beginPath();ctx.moveTo(d.x,d.y);ctx.lineTo(d.x-3,d.y+d.len);ctx.stroke();
+      d.y+=d.speed;d.x-=0.3;
+      if(d.y>H+10||d.x<-10)drops[i]=create();
+    }
+  };
+}
+
+// ======== 阳光 (向上的情绪) ========
+function initSunlight(){
+  var rays=[],dust=[];
+  for(var i=0;i<6;i++)rays.push({
+    x:Math.random()*W*0.8,y:-20,
+    width:30+Math.random()*50,angle:-0.3+Math.random()*0.6,
+    len:H*0.5+Math.random()*H*0.5,opacity:0.03+Math.random()*0.04,sway:Math.random()*0.3
+  });
+  for(var i=0;i<40;i++)dust.push({
+    x:Math.random()*W,y:Math.random()*H,
+    r:0.5+Math.random()*1.5,speed:0.1+Math.random()*0.3,drift:(Math.random()-0.5)*0.2,
+    opacity:0.1+Math.random()*0.3,twinkle:Math.random()*Math.PI*2,tSpeed:0.01+Math.random()*0.02
+  });
+  return function(){
+    ctx.clearRect(0,0,W,H);
+    for(var i=0;i<rays.length;i++){
+      var r=rays[i];r.sway+=0.002;
+      var grad=ctx.createLinearGradient(r.x,0,r.x+r.width,0);
+      grad.addColorStop(0,'rgba(255,230,150,0)');
+      grad.addColorStop(0.3,'rgba(255,220,120,'+r.opacity+')');
+      grad.addColorStop(0.7,'rgba(255,220,120,'+r.opacity+')');
+      grad.addColorStop(1,'rgba(255,230,150,0)');
+      ctx.save();ctx.translate(r.x+Math.sin(r.sway)*5,0);ctx.rotate(r.angle*0.15);
+      ctx.fillStyle=grad;ctx.fillRect(-r.width/2,0,r.width,r.len);ctx.restore();
+    }
+    for(var i=0;i<dust.length;i++){
+      var d=dust[i];d.twinkle+=d.tSpeed;d.y+=d.speed;d.x+=d.drift;
+      if(d.y>H+5){d.y=-5;d.x=Math.random()*W;}
+      if(d.x<0)d.x=W;if(d.x>W)d.x=0;
+      ctx.beginPath();ctx.arc(d.x,d.y,d.r,0,Math.PI*2);
+      ctx.fillStyle='rgba(255,240,200,'+(d.opacity*(0.3+Math.sin(d.twinkle)*0.7))+')';
+      ctx.fill();
+    }
+  };
+}
+
+// ======== 萤火虫 (舒适) ========
+function initFireflies(){
+  for(var i=0;i<18;i++)drops.push({
+    x:Math.random()*W,y:Math.random()*H,
+    r:1.5+Math.random()*2.5,angle:Math.random()*Math.PI*2,
+    speed:0.3+Math.random()*0.6,twinkle:Math.random()*Math.PI*2,
+    twinkleSpeed:0.02+Math.random()*0.04
+  });
+  return function(){
+    ctx.clearRect(0,0,W,H);
+    for(var i=0;i<drops.length;i++){
+      var f=drops[i];f.angle+=0.01;f.twinkle+=f.twinkleSpeed;
+      f.x+=Math.cos(f.angle)*f.speed;f.y+=Math.sin(f.angle)*f.speed*0.5;
+      if(f.x<0)f.x=W;if(f.x>W)f.x=0;if(f.y<0)f.y=H;if(f.y>H)f.y=0;
+      var g=0.3+Math.sin(f.twinkle)*0.7;
+      ctx.beginPath();ctx.arc(f.x,f.y,f.r*4,0,Math.PI*2);
+      ctx.fillStyle='rgba(255,230,150,'+(g*0.1)+')';ctx.fill();
+      ctx.beginPath();ctx.arc(f.x,f.y,f.r*2,0,Math.PI*2);
+      ctx.fillStyle='rgba(255,240,180,'+(g*0.2)+')';ctx.fill();
+      ctx.beginPath();ctx.arc(f.x,f.y,f.r,0,Math.PI*2);
+      ctx.fillStyle='rgba(255,255,200,'+(0.5+g*0.5)+')';ctx.fill();
+    }
+  };
+}
+
+// ======== 气泡 (平静治愈) ========
+function initBubbles(){
+  for(var i=0;i<12;i++){
+    var r=8+Math.random()*18;
+    drops.push({
+      x:10+Math.random()*(W-20), y:Math.random()*H,
+      r:r,speed:0.3+Math.random()*0.6,
+      sway:Math.random()*8,swing:Math.random()*Math.PI*2,
+      swingSpeed:0.005+Math.random()*0.015,opacity:0.1+Math.random()*0.2
+    });
+  }
+  return function(){
+    ctx.clearRect(0,0,W,H);
+    for(var i=0;i<drops.length;i++){
+      var b2=drops[i];b2.swing+=b2.swingSpeed;b2.y-=b2.speed;
+      ctx.beginPath();ctx.arc(b2.x+Math.sin(b2.swing)*b2.sway,b2.y,b2.r,0,Math.PI*2);
+      ctx.strokeStyle='rgba(180,220,255,'+(b2.opacity*0.5)+')';ctx.lineWidth=1.2;ctx.stroke();
+      ctx.beginPath();ctx.arc(b2.x+Math.sin(b2.swing)*b2.sway-b2.r*0.25,b2.y-b2.r*0.25,b2.r*0.3,0,Math.PI*2);
+      ctx.fillStyle='rgba(255,255,255,'+(b2.opacity*0.3)+')';ctx.fill();
+      if(b2.y<-b2.r-10){b2.y=H+10;b2.x=10+Math.random()*(W-20);}
+    }
+  };
+}
+
+// ======== 星星 (梦幻) ========
+function initStars(){
+  for(var i=0;i<60;i++)drops.push({
+    x:Math.random()*W,y:Math.random()*H,
+    r:0.5+Math.random()*1.5,twinkle:Math.random()*Math.PI*2,
+    speed:0.01+Math.random()*0.03,driftX:(Math.random()-0.5)*0.15,driftY:(Math.random()-0.5)*0.15
+  });
+  return function(){
+    ctx.clearRect(0,0,W,H);
+    for(var i=0;i<drops.length;i++){
+      var s=drops[i];s.twinkle+=s.speed;
+      var op=0.3+Math.sin(s.twinkle)*0.7;
+      ctx.save();ctx.translate(s.x,s.y);ctx.globalAlpha=op;
+      var rr=s.r,ss=rr*0.4;
+      ctx.beginPath();
+      for(var j=0;j<5;j++){
+        var a=j*Math.PI*2/5-Math.PI/2;ctx.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);
+        a+=Math.PI/5;ctx.lineTo(Math.cos(a)*ss,Math.sin(a)*ss);
+      }
+      ctx.closePath();ctx.fillStyle='#ffe880';ctx.shadowColor='#ffe880';ctx.shadowBlur=rr*4;ctx.fill();
+      ctx.restore();
+      s.x+=s.driftX;s.y+=s.driftY;
+      if(s.x<0)s.x=W;if(s.x>W)s.x=0;if(s.y<0)s.y=H;if(s.y>H)s.y=0;
+    }
+  };
+}
+
+// 选择情绪
+var drawFn;
+if(MO==='rain')drawFn=initRain();
+else if(MO==='sunlight')drawFn=initSunlight();
+else if(MO==='fireflies')drawFn=initFireflies();
+else if(MO==='bubbles')drawFn=initBubbles();
+else if(MO==='stars')drawFn=initStars();
+
+function loop(){if(!running)return;drawFn&&drawFn();requestAnimationFrame(loop);}
+loop();
+
+stop=function(){running=false;window.removeEventListener('resize',resize);if(window.__moodStop===stop)window.__moodStop=null;};
+window.__moodStop=stop;
+})();</script>
