@@ -275,3 +275,17 @@ body.wallpaper-transparent .custom-md {
   margin-bottom: 0.85rem;
 }
 
+/* 高亮标注块 - 暖色背景卡片 */
+.highlight-block {
+  background: color-mix(in srgb, var(--primary) 10%, var(--card-bg));
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  margin: 1.5rem 0;
+  color: var(--text-90);
+  line-height: 1.7;
+}
+
+.highlight-block p {
+  margin: 0.4rem 0;
+}
+

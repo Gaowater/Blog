@@ -12,7 +12,7 @@ export const profileConfig: ProfileConfig = {
 	name: "牧河伊琉",
 
 	// 个人签名
-	bio: "每日小确幸，从爱好自己开始！",
+	bio: "每日小确幸，从爱好自己开始！当然，爱你也是！",
 
 	// 链接配置
 	// 已经预装的图标集：fa7-brands，fa7-regular，fa7-solid，material-symbols，simple-icons
