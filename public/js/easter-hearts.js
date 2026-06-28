@@ -4,7 +4,8 @@
     else { document.addEventListener('DOMContentLoaded', fn); }
   };
   ready(function(){
-    var el = document.querySelector('.easter-hearts');
+    var els = document.querySelectorAll('.highlight-block:last-of-type li');
+    var el = els[els.length - 1];
     if (!el) return;
     el.style.cursor = 'pointer';
     el.setAttribute('title', '双击有惊喜 ✨');
