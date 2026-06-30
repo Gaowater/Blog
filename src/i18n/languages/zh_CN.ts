@@ -283,7 +283,7 @@ export const zh_CN: Translation = {
 	[Key.calendarOctober]: "10月",
 	[Key.calendarNovember]: "11月",
 	[Key.calendarDecember]: "12月",
-	[Key.memorableDates]: "值得纪念的日子",
+	[Key.memorableDates]: "值得记住的日子",
 	[Key.generatingPoster]: "海报生成中...",
 	[Key.copied]: "已复制",
 	[Key.copyLink]: "复制链接",
