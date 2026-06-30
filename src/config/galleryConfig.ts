@@ -40,7 +40,7 @@ export const galleryConfig: GalleryConfig = {
 			description:
 				"这是一个加密相册，目前还没想好放什么~",
 			location: "保密",
-			date: "2026-05-28",
+			date: "2008-05-03",
 			tags: ["加密相册"],
 			password: "20080503",
 		},
