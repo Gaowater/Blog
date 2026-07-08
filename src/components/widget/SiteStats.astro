@@ -9,6 +9,7 @@ import {
 	getSortedPosts,
 	getTagList,
 } from "@/utils/content-utils";
+import { getLastGitDate } from "@/utils/git-utils";
 
 interface Props {
 	class?: string;
@@ -22,6 +23,15 @@ const siteStartDate = siteConfig.siteStartDate || "2025-01-01";
 
 // 获取所有文章（排除草稿）
 const posts = (await getSortedPosts()).filter(p => !p.data.draft);
+
+// 预计算 git 最后修改日期
+const gitDateMap = new Map<string, Date>();
+for (const post of posts) {
+	const gitDate = getLastGitDate(post.id);
+	if (gitDate) {
+		gitDateMap.set(post.id, new Date(gitDate));
+	}
+}
 const categories = await getCategoryList();
 const tags = await getTagList();
 
@@ -53,16 +63,16 @@ function formatNumber(num: number): string {
 }
 
 // 获取最新文章日期（用于客户端计算）
-// 取每篇文章的"最后修改时间"：如果有 updated 字段则用它，否则用 published
+// 优先使用 git 最后一次提交日期，fallback 到 frontmatter
 const latestPost = posts.reduce((latest, post) => {
-	const postDate = post.data.updated || post.data.published;
+	const postDate = gitDateMap.get(post.id) || post.data.updated || post.data.published;
 	if (!latest) return post;
-	const latestDate = latest.data.updated || latest.data.published;
+	const latestDate = gitDateMap.get(latest.id) || latest.data.updated || latest.data.published;
 	return postDate > latestDate ? post : latest;
 }, posts[0]);
 
 const lastPostDate = latestPost
-	? (latestPost.data.updated || latestPost.data.published).toISOString()
+	? (gitDateMap.get(latestPost.id) || latestPost.data.updated || latestPost.data.published).toISOString()
 	: null;
 
 // 以构建时间作为"最后活动"时间

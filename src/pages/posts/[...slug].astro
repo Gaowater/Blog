@@ -15,6 +15,7 @@ import {
 	getPostUrlBySlug,
 	removeFileExtension,
 } from "@utils/url-utils";
+import { getLastGitDate } from "@/utils/git-utils";
 import { Icon } from "astro-icon/components";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -50,10 +51,17 @@ const { Content, headings } = await render(entry);
 
 const { remarkPluginFrontmatter } = await render(entry);
 
+// 使用 git 最后一次提交日期作为"最后更新于"，fallback 到 frontmatter 中的 updated/published
+const effectiveUpdated: Date = (() => {
+	const gitDate = getLastGitDate(entry.id);
+	if (gitDate) return new Date(gitDate);
+	return entry.data.updated || entry.data.published;
+})();
+
 const bannerPostMeta = {
 	title: entry.data.title,
 	published: entry.data.published,
-	updated: entry.data.updated,
+	updated: effectiveUpdated,
 	words: remarkPluginFrontmatter.words,
 	minutes: remarkPluginFrontmatter.minutes,
 };
@@ -231,7 +239,7 @@ const relatedPosts = await getRelatedPosts(entry, 5);
         <PostMetadata
           className="mb-5"
           published={entry.data.published}
-          updated={entry.data.updated}
+          updated={effectiveUpdated}
           tags={entry.data.tags}
           category={entry.data.category || undefined}
           id={entry.id}
@@ -453,7 +461,7 @@ const relatedPosts = await getRelatedPosts(entry, 5);
   <!-- 上次编辑时间 -->
   {
     siteConfig.showLastModified && (() => {
-      const lastModified = dayjs(entry.data.updated || entry.data.published);
+      const lastModified = dayjs(effectiveUpdated);
       const dateStr = lastModified.format("YYYY-MM-DD");
       const outdatedThreshold = siteConfig.outdatedThreshold ?? 1;
 

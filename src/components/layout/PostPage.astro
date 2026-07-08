@@ -1,10 +1,20 @@
 ---
 import type { CollectionEntry } from "astro:content";
 import { getPostUrlBySlug } from "@utils/url-utils";
+import { getLastGitDate } from "@/utils/git-utils";
 import PostCard from "@/components/layout/PostCard.astro";
 import { siteConfig } from "@/config";
 
 const { page } = Astro.props;
+
+// 预计算所有文章的 git 最后修改日期
+const entryUpdatedMap = new Map<string, Date>();
+for (const entry of page.data) {
+	const gitDate = getLastGitDate(entry.id);
+	if (gitDate) {
+		entryUpdatedMap.set(entry.id, new Date(gitDate));
+	}
+}
 
 let delay = 0;
 const interval = 50;
@@ -42,7 +52,7 @@ const initialLayoutClass =
         tags={entry.data.tags}
         category={entry.data.category}
         published={entry.data.published}
-        updated={entry.data.updated}
+        updated={entryUpdatedMap.get(entry.id) || entry.data.updated}
         url={getPostUrlBySlug(entry.id)}
         image={entry.data.image}
         description={entry.data.description}
