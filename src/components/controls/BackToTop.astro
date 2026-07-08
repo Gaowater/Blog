@@ -13,8 +13,23 @@ import FloatingButton from "@/components/common/FloatingButton.astro";
 
 <script is:raw is:inline>
   function backToTop() {
-    // 直接使用原生滚动，避免OverlayScrollbars冲突
-    window.scroll({ top: 0, behavior: "smooth" });
+    // 自定义平滑滚动，速度可调
+    (function() {
+      var startY = window.pageYOffset || document.documentElement.scrollTop;
+      var distance = 0 - startY;
+      var duration = 250;
+      var startTime = performance.now();
+
+      function scroll(timestamp) {
+        var elapsed = timestamp - startTime;
+        var progress = Math.min(elapsed / duration, 1);
+        var ease = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+        window.scrollTo(0, startY + distance * ease);
+        if (progress < 1) requestAnimationFrame(scroll);
+      }
+
+      requestAnimationFrame(scroll);
+    })();
   }
 
   // 响应式返回顶部按钮管理器

@@ -6,6 +6,41 @@
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 
+/**
+ * 自定义平滑滚动（替代浏览器原生 behavior: "smooth"）
+ * 使用 ease-out cubic 缓动，速度可调
+ * @param targetY 目标 Y 坐标
+ * @param duration 持续时间（ms），默认 350
+ */
+export function smoothScrollTo(targetY: number, duration: number = 350): void {
+	const startY = window.pageYOffset || document.documentElement.scrollTop;
+	const distance = targetY - startY;
+
+	// 距离太短直接跳转，避免动画突兀
+	if (Math.abs(distance) < 50) {
+		window.scrollTo(0, targetY);
+		return;
+	}
+
+	const startTime = performance.now();
+
+	function scroll(timestamp: number) {
+		const elapsed = timestamp - startTime;
+		const progress = Math.min(elapsed / duration, 1);
+
+		// ease-out cubic
+		const ease = 1 - Math.pow(1 - progress, 3);
+
+		window.scrollTo(0, startY + distance * ease);
+
+		if (progress < 1) {
+			requestAnimationFrame(scroll);
+		}
+	}
+
+	requestAnimationFrame(scroll);
+}
+
 export interface TOCConfig {
 	contentId: string;
 	indicatorId: string;
@@ -379,10 +414,7 @@ export class TOCManager {
 				window.pageYOffset -
 				this.scrollOffset;
 
-			window.scrollTo({
-				top: targetTop,
-				behavior: "smooth",
-			});
+			smoothScrollTo(targetTop, 300);
 		}
 	}
 
