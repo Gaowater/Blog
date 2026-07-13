@@ -34,6 +34,16 @@ export const galleryConfig: GalleryConfig = {
 			tags: ["合照"],
 		},
 		{
+			id: "screenshots",
+			cover: "gallery/screenshots/cover.screen.avif",
+			name: "截图美照",
+			description:
+				"这是我在微信视频里给你截的照片",
+			location: "临洮县，甘肃省，中国",
+			date: "2026-07-13",
+			tags: ["截屏"],
+		},
+		{
 			id: "encrypted-test",
 			cover: "gallery/encrypted-test/cover.相册封面.avif",
 			name: "加密相册",
