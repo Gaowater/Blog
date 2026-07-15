@@ -46,7 +46,7 @@ import {
 	setWallpaperMode,
 	setWavesEnabled,
 } from "@utils/setting-utils";
-import { onMount } from "svelte";
+import { onMount, tick } from "svelte";
 import Icon from "@/components/common/Icon.svelte";
 import { backgroundWallpaper, sakuraConfig, siteConfig } from "@/config";
 import type { WALLPAPER_MODE } from "@/types/config";
@@ -565,7 +565,12 @@ $effect(() => {
                 <button
                     aria-label="重置亮度"
                     class="btn-regular w-6 h-6 rounded-md shrink-0 flex items-center justify-center active:scale-90"
-                    onclick={() => { primaryLightness = getAutoLightnessForHue(hue); resetPrimaryLightness(); }}
+                    onclick={async () => {
+                        primaryLightness = getAutoLightnessForHue(hue);
+                        resetPrimaryLightness();
+                        await tick();
+                        refreshAllRangeProgress();
+                    }}
                 >
                     <Icon icon="fa7-solid:arrow-rotate-left" class="text-[0.75rem]"></Icon>
                 </button>
@@ -587,7 +592,12 @@ $effect(() => {
                 <button
                     aria-label="重置彩度"
                     class="btn-regular w-6 h-6 rounded-md shrink-0 flex items-center justify-center active:scale-90"
-                    onclick={() => { primaryChroma = getAutoChromaForHue(hue); resetPrimaryChroma(); }}
+                    onclick={async () => {
+                        primaryChroma = getAutoChromaForHue(hue);
+                        resetPrimaryChroma();
+                        await tick();
+                        refreshAllRangeProgress();
+                    }}
                 >
                     <Icon icon="fa7-solid:arrow-rotate-left" class="text-[0.75rem]"></Icon>
                 </button>
@@ -880,6 +890,50 @@ $effect(() => {
             border-radius 999px
             background-image unquote("linear-gradient(90deg, var(--primary) 0 var(--range-progress, 50%), hsla(var(--hue), 22%, 28%, 0.18) var(--range-progress, 50%) 100%)")
             transition background-image 0.15s ease-in-out
+            cursor pointer
+
+            &::-webkit-slider-thumb
+                -webkit-appearance none
+                height 1rem
+                width 0.5rem
+                border-radius 0.125rem
+                background rgba(255, 255, 255, 0.7)
+                border none
+                box-shadow none
+
+                &:hover
+                    background rgba(255, 255, 255, 0.8)
+
+                &:active
+                    background rgba(255, 255, 255, 0.6)
+
+            &::-moz-range-thumb
+                height 1rem
+                width 0.5rem
+                border-radius 0.125rem
+                border-width 0
+                background rgba(255, 255, 255, 0.7)
+                box-shadow none
+
+                &:hover
+                    background rgba(255, 255, 255, 0.8)
+
+                &:active
+                    background rgba(255, 255, 255, 0.6)
+
+            &::-ms-thumb
+                height 1rem
+                width 0.5rem
+                border-radius 0.125rem
+                background rgba(255, 255, 255, 0.7)
+                border none
+                box-shadow none
+
+                &:hover
+                    background rgba(255, 255, 255, 0.8)
+
+                &:active
+                    background rgba(255, 255, 255, 0.6)
 
         input[type="range"].overlay-slider
             height 0.85rem
