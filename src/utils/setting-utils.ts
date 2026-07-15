@@ -79,11 +79,96 @@ export function setHue(hue: number): void {
 		return;
 	}
 	localStorage.setItem("hue", String(hue));
-	const r = document.querySelector(":root") as HTMLElement;
-	if (!r) {
+	applyPrimaryColor();
+}
+
+/**
+ * 根据色相自动计算最佳亮度
+ * 暖色（红/粉）偏亮，冷色（蓝）偏暗，绿色保持当前值
+ */
+export function getAutoLightnessForHue(hue: number): number {
+	const h = ((hue % 360) + 360) % 360;
+	const rad = ((h - 170) * Math.PI) / 180;
+	const offset = -Math.cos(rad) * 0.08;
+	return Math.round(Math.min(0.90, Math.max(0.55, 0.70 + offset)) * 100) / 100;
+}
+
+/**
+ * 根据色相自动计算最佳彩度
+ * 亮/暗极值时降低彩度保持柔和
+ */
+export function getAutoChromaForHue(hue: number): number {
+	const h = ((hue % 360) + 360) % 360;
+	const rad = ((h - 170) * Math.PI) / 180;
+	const offset = -Math.cos(rad) * 0.03;
+	return Math.round(Math.min(0.22, Math.max(0.06, 0.14 + offset)) * 1000) / 1000;
+}
+
+export function getPrimaryLightness(): number | null {
+	if (typeof window === "undefined" || !window.localStorage) return null;
+	const stored = localStorage.getItem("primary-l");
+	return stored ? Number.parseFloat(stored) : null;
+}
+
+export function setPrimaryLightness(value: number): void {
+	if (
+		typeof window === "undefined" ||
+		!window.localStorage ||
+		typeof document === "undefined"
+	) {
 		return;
 	}
+	localStorage.setItem("primary-l", String(value));
+	applyPrimaryColor();
+}
+
+export function resetPrimaryLightness(): void {
+	if (typeof window === "undefined" || !window.localStorage || typeof document === "undefined") return;
+	localStorage.removeItem("primary-l");
+	applyPrimaryColor();
+}
+
+export function getPrimaryChroma(): number | null {
+	if (typeof window === "undefined" || !window.localStorage) return null;
+	const stored = localStorage.getItem("primary-c");
+	return stored ? Number.parseFloat(stored) : null;
+}
+
+export function setPrimaryChroma(value: number): void {
+	if (
+		typeof window === "undefined" ||
+		!window.localStorage ||
+		typeof document === "undefined"
+	) {
+		return;
+	}
+	localStorage.setItem("primary-c", String(value));
+	applyPrimaryColor();
+}
+
+export function resetPrimaryChroma(): void {
+	if (typeof window === "undefined" || !window.localStorage || typeof document === "undefined") return;
+	localStorage.removeItem("primary-c");
+	applyPrimaryColor();
+}
+
+/**
+ * 将当前 hue + 亮度/彩度设置应用到 CSS 变量
+ */
+function applyPrimaryColor(): void {
+	const r = document.querySelector(":root") as HTMLElement;
+	if (!r) return;
+
+	const hue = getHue();
+	const storedL = localStorage.getItem("primary-l");
+	const storedC = localStorage.getItem("primary-c");
+
+	const l = storedL ? Number.parseFloat(storedL) : getAutoLightnessForHue(hue);
+	const c = storedC ? Number.parseFloat(storedC) : getAutoChromaForHue(hue);
+
 	r.style.setProperty("--hue", String(hue));
+	r.style.setProperty("--primary-l", String(l));
+	r.style.setProperty("--primary-c", String(c));
 }
 
 export function applyThemeToDocument(theme: LIGHT_DARK_MODE) {

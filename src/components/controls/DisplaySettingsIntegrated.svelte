@@ -8,6 +8,8 @@ import {
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import {
+	getAutoChromaForHue,
+	getAutoLightnessForHue,
 	getDefaultBannerCarouselEnabled,
 	getDefaultBannerTitleEnabled,
 	getDefaultGradientEnabled,
@@ -18,6 +20,8 @@ import {
 	getDefaultSakuraEnabled,
 	getDefaultWavesEnabled,
 	getHue,
+	getPrimaryChroma,
+	getPrimaryLightness,
 	getStoredBannerCarouselEnabled,
 	getStoredBannerTitleEnabled,
 	getStoredGradientEnabled,
@@ -27,6 +31,8 @@ import {
 	getStoredSakuraEnabled,
 	getStoredWallpaperMode,
 	getStoredWavesEnabled,
+	resetPrimaryChroma,
+	resetPrimaryLightness,
 	setBannerCarouselEnabled,
 	setBannerTitleEnabled,
 	setGradientEnabled,
@@ -34,6 +40,8 @@ import {
 	setOverlayBlur,
 	setOverlayCardOpacity,
 	setOverlayOpacity,
+	setPrimaryChroma,
+	setPrimaryLightness,
 	setSakuraEnabled,
 	setWallpaperMode,
 	setWavesEnabled,
@@ -58,6 +66,8 @@ type OverlaySliderItem = {
 
 let hue = $state(getHue());
 const defaultHue = getDefaultHue();
+let primaryLightness = $state(getPrimaryLightness() ?? getAutoLightnessForHue(hue));
+let primaryChroma = $state(getPrimaryChroma() ?? getAutoChromaForHue(hue));
 let wallpaperMode: WALLPAPER_MODE = $state(backgroundWallpaper.mode);
 const defaultWallpaperMode = backgroundWallpaper.mode;
 let currentLayout: "list" | "grid" = $state("list");
@@ -471,6 +481,27 @@ onMount(() => {
 $effect(() => {
 	if (hue || hue === 0) {
 		setHue(hue);
+		// 当主滑块变化时，如果用户没有手动微调亮度和彩度，更新为自动值
+		if (!getPrimaryLightness()) {
+			const autoL = getAutoLightnessForHue(hue);
+			primaryLightness = autoL;
+		}
+		if (!getPrimaryChroma()) {
+			const autoC = getAutoChromaForHue(hue);
+			primaryChroma = autoC;
+		}
+	}
+});
+
+$effect(() => {
+	if (primaryLightness || primaryLightness === 0) {
+		setPrimaryLightness(primaryLightness);
+	}
+});
+
+$effect(() => {
+	if (primaryChroma || primaryChroma === 0) {
+		setPrimaryChroma(primaryChroma);
 	}
 });
 
@@ -516,7 +547,51 @@ $effect(() => {
         </div>
         <div class="w-full h-6 px-1 bg-[oklch(0.80_0.10_0)] dark:bg-[oklch(0.70_0.10_0)] rounded select-none">
             <input aria-label={i18n(I18nKey.themeColor)} type="range" min="0" max="360" bind:value={hue}
-                   class="slider" id="colorSlider" step="5" style="width: 100%">
+                   class="slider" id="colorSlider" step="1" style="width: 100%">
+        </div>
+        <!-- 亮度微调 -->
+        <div class="mt-2 rounded-md bg-(--btn-regular-bg) p-2">
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-sm font-medium text-(--btn-content) opacity-80">亮度</span>
+                <span class="text-xs text-(--btn-content)">{Math.round(primaryLightness * 100)}%</span>
+            </div>
+            <div class="flex items-center gap-1">
+                <input
+                    aria-label="主色亮度微调"
+                    type="range" min="0.50" max="0.90" step="0.01"
+                    bind:value={primaryLightness}
+                    class="slider w-full"
+                />
+                <button
+                    aria-label="重置亮度"
+                    class="btn-regular w-6 h-6 rounded-md shrink-0 flex items-center justify-center active:scale-90"
+                    onclick={() => { primaryLightness = getAutoLightnessForHue(hue); resetPrimaryLightness(); }}
+                >
+                    <Icon icon="fa7-solid:arrow-rotate-left" class="text-[0.75rem]"></Icon>
+                </button>
+            </div>
+        </div>
+        <!-- 彩度微调 -->
+        <div class="mt-1 rounded-md bg-(--btn-regular-bg) p-2">
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-sm font-medium text-(--btn-content) opacity-80">彩度</span>
+                <span class="text-xs text-(--btn-content)">{Math.round(primaryChroma * 100)}%</span>
+            </div>
+            <div class="flex items-center gap-1">
+                <input
+                    aria-label="主色彩度微调"
+                    type="range" min="0.06" max="0.22" step="0.005"
+                    bind:value={primaryChroma}
+                    class="slider w-full"
+                />
+                <button
+                    aria-label="重置彩度"
+                    class="btn-regular w-6 h-6 rounded-md shrink-0 flex items-center justify-center active:scale-90"
+                    onclick={() => { primaryChroma = getAutoChromaForHue(hue); resetPrimaryChroma(); }}
+                >
+                    <Icon icon="fa7-solid:arrow-rotate-left" class="text-[0.75rem]"></Icon>
+                </button>
+            </div>
         </div>
     </div>
     {/if}
