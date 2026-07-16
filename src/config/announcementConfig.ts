@@ -5,7 +5,7 @@ export const announcementConfig: AnnouncementConfig = {
 	title: "公告",
 
 	// 公告内容
-	content: "我坚信无论何种情况，绝不会轻易结束！",
+	content: "我喜欢你！",
 	// 是否允许用户关闭公告
 	closable: false,
 
