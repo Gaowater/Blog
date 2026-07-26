@@ -44,13 +44,41 @@ const posterSrc = src.replace(/\/[^/]+$/, "/cover.jpg");
     cards.forEach(function(card) {
       var placeholder = card.querySelector('.video-placeholder');
       var video = card.querySelector('video');
+      var preloaded = false;
+
+      function startPreload() {
+        if (preloaded || !video) return;
+        preloaded = true;
+        video.preload = 'auto';
+        video.load();
+      }
+
+      // 滚动到可见区域时开始预加载（移动端也生效）
+      if ('IntersectionObserver' in window) {
+        var observer = new IntersectionObserver(function(entries) {
+          entries.forEach(function(entry) {
+            if (entry.isIntersecting) {
+              startPreload();
+              observer.unobserve(entry.target);
+            }
+          });
+        }, { rootMargin: '200px' }); // 距离可见区域 200px 就开始加载
+        observer.observe(card);
+      }
+
+      // 鼠标悬停时也触发预加载（桌面端）
+      card.addEventListener('mouseenter', startPreload);
 
       function playVideo() {
         if (!video || !placeholder) return;
         placeholder.style.display = 'none';
         video.muted = false;
         video.setAttribute('controls', '');
-        video.load();
+        if (!preloaded) {
+          preloaded = true;
+          video.preload = 'auto';
+          video.load();
+        }
         video.play().catch(function() {});
       }
 
