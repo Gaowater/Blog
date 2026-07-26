@@ -36,6 +36,7 @@ const photos = scanAlbumPhotos(albumMeta.id).filter(
 const videos = isVideoAlbum ? scanAlbumVideos(albumMeta.id) : [];
 // 视频相册如果目录里有cover.jpg也使用它作为封面
 const cover = isVideoAlbum ? getAlbumCover(albumMeta, photos) : getAlbumCover(albumMeta, photos);
+const coverThumb = cover ? cover.replace(/\.(jpe?g|png|avif|gif)$/i, "_thumb.webp") : cover;
 const columnWidth = galleryConfig.columnWidth || 240;
 ---
 
@@ -46,7 +47,7 @@ const columnWidth = galleryConfig.columnWidth || 240;
       <!-- 有封面图片（视频相册如果有cover.jpg也会走这里） -->
       <div class="relative w-full aspect-[3/1] min-h-[200px] max-h-[360px]">
         <img
-          src={cover}
+          src={coverThumb}
           alt={albumMeta.name}
           class="w-full h-full object-cover"
         />
@@ -148,7 +149,7 @@ const columnWidth = galleryConfig.columnWidth || 240;
       <!-- 图片相册：封面横幅 -->
       <div class="relative w-full aspect-[3/1] min-h-[200px] max-h-[360px]">
         <img
-          src={cover}
+          src={coverThumb}
           alt={albumMeta.name}
           class="w-full h-full object-cover"
         />

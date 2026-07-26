@@ -7,15 +7,17 @@ interface Props {
 
 const { src, albumId, index } = Astro.props;
 const videoId = `video-${albumId}-${index}`;
+const posterSrc = src.replace(/\/[^/]+$/, "/cover.jpg");
 ---
 
 <div
   class="video-card rounded-xl overflow-hidden bg-black relative group cursor-pointer aspect-[9/16]"
   data-video-id={videoId}
 >
-  <!-- 视频本身始终可见，让浏览器加载首帧作为封面 -->
+  <!-- 视频：使用 cover.jpg 作为海报封面，点击前不加载视频数据 -->
   <video
-    preload="metadata"
+    preload="none"
+    poster={posterSrc}
     playsinline
     muted
     class="w-full h-full object-cover rounded-xl"
@@ -23,7 +25,7 @@ const videoId = `video-${albumId}-${index}`;
     <source src={src} type="video/mp4" />
   </video>
 
-  <!-- 播放按钮覆盖层（点击后消失） -->
+  <!-- 播放按钮覆盖层 -->
   <div class="video-placeholder absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/10 transition-colors duration-200 z-10">
     <div class="flex flex-col items-center gap-2">
       <div class="w-14 h-14 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center transition-transform duration-200 group-hover:scale-110">

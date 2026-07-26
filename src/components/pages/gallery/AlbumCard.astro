@@ -28,6 +28,9 @@ const {
 	encrypted,
 	isVideoAlbum,
 } = Astro.props;
+
+// 封面也使用缩略图（如果有的话）
+const thumbCover = cover ? cover.replace(/\.(jpe?g|png|avif|gif)$/i, "_thumb.webp") : cover;
 ---
 
 <a
@@ -39,7 +42,7 @@ const {
   <div class="aspect-4/3 relative overflow-hidden">
     {cover ? (
       <img
-        src={cover}
+        src={thumbCover}
         alt={name}
         class="w-full h-full object-cover pointer-events-none transition-transform duration-500 group-hover:scale-105"
         loading="lazy"

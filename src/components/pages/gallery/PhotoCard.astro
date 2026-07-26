@@ -6,6 +6,9 @@ interface Props {
 }
 
 const { src, albumId, alt = "" } = Astro.props;
+
+// 缩略图路径：从原图路径推导 _thumb.webp
+const thumbSrc = src.replace(/\.(jpe?g|png|avif|gif)$/i, "_thumb.webp");
 ---
 
 <div class="gallery-photo-card break-inside-avoid mb-3">
@@ -16,7 +19,8 @@ const { src, albumId, alt = "" } = Astro.props;
     class="block rounded-xl overflow-hidden group cursor-pointer"
   >
     <img
-      src={src}
+      src={thumbSrc}
+      data-fullsrc={src}
       alt={alt}
       loading="lazy"
       decoding="async"
