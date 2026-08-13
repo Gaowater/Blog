@@ -1774,11 +1774,14 @@ if (!window.__journalSwupBound) {
 
 	/* ── 引言页（封面后的第二页） ── */
 	.j-intro-body {
+		/* flex 子项撑满剩余高度（替代 min-height:100%，在 flex column 父容器中更可靠） */
+		flex: 1 1 auto;
 		min-height: 100%;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		justify-content: center;
+		/* safe center：内容超高时退化为顶部对齐，避免顶部（"写在前面"及以上）被裁切无法滚动到 */
+		justify-content: safe center;
 		text-align: center;
 		padding: 2.5rem 1.8rem 2rem;
 	}
