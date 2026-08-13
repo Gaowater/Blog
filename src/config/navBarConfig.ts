@@ -18,6 +18,16 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 		LinkPreset.Archive,
 	];
 
+	// 根据配置决定是否添加手账，在siteConfig关闭pages.journal时导航栏不显示手账
+	if (siteConfig.pages.journal) {
+		// 手账内容修改：src/data/journal.ts
+		links.push({
+			name: "手账",
+			url: "/journal/",
+			icon: "material-symbols:edit-note",
+		});
+	}
+
 	// 根据配置决定是否添加友链，在siteConfig关闭pages.friends时导航栏不显示友链
 	if (siteConfig.pages.friends) {
 		links.push(LinkPreset.Friends);

@@ -1,0 +1,2573 @@
+---
+import MainGridLayout from "@/layouts/MainGridLayout.astro";
+import { Icon } from "astro-icon/components";
+import { getCollection, render } from "astro:content";
+import { siteConfig } from "@/config";
+
+// 页面开关：siteConfig.pages.journal 为 false 时返回 404
+if (!siteConfig.pages.journal) {
+	return Astro.redirect("/404/");
+}
+
+// 日期显示：MM.DD
+const fmtDay = (date: string) => {
+	const m = Number(date.slice(5, 7));
+	const dd = Number(date.slice(8, 10));
+	return `${m}.${dd.toString().padStart(2, "0")}`;
+};
+
+// ── 心情 = 天气拼音 → 图标 ──
+// mood 字段支持三种写法：① emoji ② 天气拼音（如 "qing" 晴）③ 完整图标名（如 "material-symbols:wb-sunny"）
+// 拼音表：心情 → 天气拼音 → material-symbols 图标
+const MOOD_ICONS: Record<string, string> = {
+	// 晴
+	qing: "material-symbols:wb-sunny", // 晴/开心
+	// 多云
+	duoyun: "material-symbols:partly-cloudy-day", // 多云/复杂
+	// 阴
+	yin: "material-symbols:cloud", // 阴/低落
+	// 雨
+	yu: "material-symbols:rainy", // 雨/悲伤
+	xiaoyu: "material-symbols:rainy-light", // 小雨/淡淡忧伤
+	dayu: "material-symbols:rainy-heavy", // 大雨/难过
+	// 雷
+	lei: "material-symbols:thunderstorm", // 雷暴/愤怒
+	// 雪
+	xue: "material-symbols:weather-snowy", // 雪/宁静
+	qingxue: "material-symbols:sunny-snowing", // 晴雪/温馨
+	// 雾
+	wu: "material-symbols:foggy", // 雾/迷茫
+	// 夜
+	ye: "material-symbols:nightlight", // 夜/平静
+	// 希望
+	xingguang: "material-symbols:auto-awesome", // 星光/希望（库无彩虹，用星光替代）
+};
+// 解析 mood：返回 { icon: string | null, text: string | null }
+// icon 非空 → 渲染图标；否则 text 非空 → 按 emoji 显示
+const resolveMood = (mood?: string): { icon: string | null; text: string | null } => {
+	if (!mood) return { icon: null, text: null };
+	if (mood.includes(":")) return { icon: mood, text: null }; // 完整图标名
+	const mapped = MOOD_ICONS[mood.trim()];
+	if (mapped) return { icon: mapped, text: null }; // 天气拼音
+	return { icon: null, text: mood }; // emoji
+};
+
+// ── 读取所有手账本（src/content/spec/journal-*.md，每本 = 一年） ──
+const journalEntries = (await getCollection("spec")).filter((e) =>
+	e.id.startsWith("journal-"),
+);
+if (journalEntries.length === 0) {
+	return Astro.redirect("/404/");
+}
+
+type Book = {
+	year: string;
+	data: any;
+	Content: any;
+	paper: string;
+	cover: {
+		title: string;
+		author: string;
+		subtitle: string;
+		date: string;
+		paragraphs: string[];
+	};
+	intro: {
+		title: string;
+		paragraphs: string[];
+	};
+	enable: {
+		moods: boolean;
+		notes: boolean;
+		todos: boolean;
+		diary: boolean;
+		quotes: boolean;
+	};
+	pages: any[];
+	totalPages: number;
+	monthGroups: Array<{
+		key: string;
+		label: string;
+		days: Array<{ date: string; day: number; pageIdx: number }>;
+	}>;
+};
+
+const books: Book[] = [];
+for (const entry of journalEntries) {
+	const { Content } = await render(entry);
+	const d = entry.data;
+	const pages = d.pages ?? [];
+	const monthGroups: Book["monthGroups"] = [];
+	pages.forEach((p: any, i: number) => {
+		const ym = p.date.slice(0, 7);
+		const month = p.date.slice(5, 7);
+		const day = Number(p.date.slice(8, 10));
+		let g = monthGroups.find((x) => x.key === ym);
+		if (!g) {
+			g = { key: ym, label: `${Number(month)} 月`, days: [] };
+			monthGroups.push(g);
+		}
+		// 页码 = i + 2：0=封面，1=引言页（intro 为空时引言页不渲染，但仍保持 +2 序号统一）
+		g.days.push({ date: p.date, day, pageIdx: i + 2 });
+	});
+	// hideJournal: true → 手账内容隐藏（年份下拉/书页不渲染），数据仍在文件里可随时恢复
+	if (d.hideJournal) continue;
+	books.push({
+		year: d.year ?? entry.id.replace(/^journal-/, "").replace(/\.md$/, ""),
+		data: d,
+		Content,
+		paper: d.paper ?? "lined",
+		cover: {
+			title: d.title ?? "我的手账",
+			author: d.author ?? "牧河伊琉",
+			subtitle: d.subtitle ?? "",
+			date: d.date ?? "",
+			paragraphs: (d.coverText ?? "")
+				.split("\n")
+				.map((s: string) => s.trim())
+				.filter((s: string) => s.length > 0),
+		},
+		intro: {
+			title: d.introTitle ?? "写在前面",
+			paragraphs: (d.intro ?? "")
+				.split("\n")
+				.map((s: string) => s.trim())
+				.filter((s: string) => s.length > 0),
+		},
+		enable: {
+			moods: d.enableMoods !== false,
+			notes: d.enableNotes !== false,
+			todos: d.enableTodos !== false,
+			diary: d.enableDiary !== false,
+			quotes: d.enableQuotes !== false,
+		},
+		pages,
+		totalPages: pages.length + 1,
+		monthGroups,
+	});
+}
+
+// 按年份升序，默认打开最近一年的本子
+books.sort((a, b) => a.year.localeCompare(b.year));
+// 支持 URL 参数直达：?year=2026&page=3（如从总结页返回时一步到位，避免先封面再跳页）
+const urlYear = Astro.url.searchParams.get("year");
+const urlPageRaw = Astro.url.searchParams.get("page");
+const urlPage = urlPageRaw !== null ? Number(urlPageRaw) : null;
+const activeYear =
+	urlYear && books.some((b) => b.year === urlYear)
+		? urlYear
+		: books[books.length - 1].year;
+const activePage =
+	urlPage !== null && Number.isFinite(urlPage) && urlPage >= 0 ? urlPage : 0;
+const cover = (books.find((b) => b.year === activeYear) ?? books[books.length - 1]).cover;
+---
+
+<!--
+  数字手账（多页书册）
+  内容全部在 src/content/spec/journal.md 里修改
+-->
+
+<MainGridLayout title={cover.title} description={cover.subtitle}>
+	<!-- 手写字体：站酷快乐体（Google Fonts，运行时加载） -->
+	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+	<link
+		href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap"
+		rel="stylesheet"
+	/>
+
+	<div class="flex w-full rounded-(--radius-large) overflow-hidden relative">
+		<div class="card-base z-10 px-4 py-5 sm:px-6 sm:py-6 relative w-full">
+			<div class="j-app" data-total={books.length}>
+
+				<!-- ══ 工具栏 ══ -->
+				<div class="j-toolbar">
+					<button type="button" class="j-btn" id="j-toc-btn" aria-label="打开目录">
+						<span class="j-btn-icon" aria-hidden="true">☰</span>
+						<span>目录</span>
+					</button>
+					<a
+						class="j-btn"
+						id="j-summary-btn"
+						href="/journal/summary/"
+						aria-label="查看年度与月度总结"
+					>
+						<span class="j-btn-icon" aria-hidden="true">✦</span>
+						<span>总结</span>
+					</a>
+					<span class="j-page-indicator" id="j-page-indicator">1 / 1</span>
+					<div class="j-controls">
+						<select class="j-select" id="j-year-select" aria-label="切换手账年份">
+							{books.map((b) => (
+								<option value={b.year} selected={b.year === activeYear}>
+									{b.year} 年
+								</option>
+							))}
+						</select>
+						<select class="j-select" id="j-paper-select" aria-label="纸张主题">
+							<option value="lined">横线</option>
+							<option value="blank">空白</option>
+							<option value="kraft">牛皮纸</option>
+						</select>
+					</div>
+					<div class="j-nav">
+						<button type="button" class="j-btn j-nav-btn" id="j-prev" aria-label="上一页">
+							<span aria-hidden="true">←</span>
+						</button>
+						<button type="button" class="j-btn j-nav-btn" id="j-next" aria-label="下一页">
+							<span aria-hidden="true">→</span>
+						</button>
+						<button
+							type="button"
+							class="j-btn"
+							id="j-share-btn"
+							aria-label="分享当前页"
+							title="分享当前页"
+						>
+							<span>分享</span>
+						</button>
+					</div>
+				</div>
+
+				<!-- ══ 书册（按年份分本，点击两侧露出的卡片翻页） ══ -->
+				<div class="j-stage">
+					<div id="j-years">
+					{books.map((book) => (
+					<div class="j-year-book" data-year={book.year} hidden={book.year !== activeYear}>
+					<div class="j-book" data-paper={book.paper}>
+
+					<!-- 封面 -->
+					<section
+						class="j-sheet j-cover"
+						data-page="0"
+						data-state={book.year === activeYear && activePage === 0 ? "active" : "hidden"}
+					>
+						<div class="j-cover-frame">
+							<div class="j-cover-inner">
+								<!-- 装饰区：胶带 + 贴纸 + 手绘小花 -->
+								<div class="j-cover-tape j-cover-tape-a" aria-hidden="true"></div>
+								<div class="j-cover-tape j-cover-tape-b" aria-hidden="true"></div>
+								<svg class="j-cover-flower j-cover-flower-tl" viewBox="0 0 24 24" aria-hidden="true">
+									<path fill="currentColor" d="M3 13a9 9 0 0 0 9 9c0-5-4.03-9-9-9m9-7.5A2.5 2.5 0 0 1 14.5 8a2.5 2.5 0 0 1-2.5 2.5A2.5 2.5 0 0 1 9.5 8A2.5 2.5 0 0 1 12 5.5m-6.4 4.75a2.5 2.5 0 0 0 2.5 2.5c.53 0 1.02-.17 1.4-.44v.19A2.5 2.5 0 0 0 12 15a2.5 2.5 0 0 0 2.5-2.5v-.19c.38.27.87.44 1.4.44a2.5 2.5 0 0 0 2.5-2.5c0-1-.59-1.85-1.43-2.25c.84-.4 1.43-1.26 1.43-2.25a2.5 2.5 0 0 0-2.5-2.5c-.53 0-1.02.16-1.4.44V3.5A2.5 2.5 0 0 0 12 1a2.5 2.5 0 0 0-2.5 2.5v.19c-.38-.28-.87-.44-1.4-.44a2.5 2.5 0 0 0-2.5 2.5c0 .99.59 1.85 1.43 2.25c-.84.4-1.43 1.25-1.43 2.25M12 22a9 9 0 0 0 9-9c-5 0-9 4-9 9"/>
+								</svg>
+								<svg class="j-cover-flower j-cover-flower-br" viewBox="0 0 24 24" aria-hidden="true">
+									<path fill="currentColor" d="M12 9c1.59 7.61-2 13-2 13h3c1.88-5.8 1-9.91.5-12m2.16-2.84c.17.21.34.43.47.66a7.1 7.1 0 0 1-.63 8.44a7.11 7.11 0 0 0-.55-6.49c-.08-.13-.17-.24-.25-.36a7.1 7.1 0 0 0-2.16-1.98a7.13 7.13 0 0 0-4.96 6.79c0 .74.11 1.45.31 2.11a7.07 7.07 0 0 1-1.33-4.14c0-2.35 1.14-4.43 2.89-5.73C8 6.35 6.46 6.67 5.12 7.5q-.93.615-1.62 1.41C4.05 7.58 5 6.39 6.3 5.57c1.5-.94 3.2-1.25 4.84-1.01C10.73 4 10.23 3.47 9.63 3c-.58-.42-1.21-.76-1.87-1c1.44.04 2.88.5 4.11 1.43c.63.47 1.13 1.04 1.53 1.64c.1 0 .19-.01.29-.01c3.2 0 5.91 2.11 6.81 5.02a7.07 7.07 0 0 0-4.84-2.92"/>
+								</svg>
+								<span class="j-cover-sticker" aria-hidden="true">
+									<svg class="j-cover-sticker-icon" viewBox="0 0 24 24">
+										<path fill="currentColor" d="M3 13a9 9 0 0 0 9 9a9 9 0 0 0-9-9m9 9a9 9 0 0 0 9-9a9 9 0 0 0-9 9m6-19v5a6 6 0 0 1-6 6a6 6 0 0 1-6-6V3c.74 0 1.47.12 2.16.39c.55.23 1.04.57 1.45 1L12 2l2.39 2.39c.41-.43.9-.77 1.45-1A5.9 5.9 0 0 1 18 3"/>
+									</svg>
+								</span>
+								<span class="j-cover-dot j-cover-dot-1" aria-hidden="true"></span>
+								<span class="j-cover-dot j-cover-dot-2" aria-hidden="true"></span>
+								<span class="j-cover-dot j-cover-dot-3" aria-hidden="true"></span>
+
+								<!-- 标题区 -->
+								{book.cover.date && <div class="j-cover-date">{book.cover.date}</div>}
+								<h2 class="j-cover-title">{book.cover.title}</h2>
+								{book.cover.subtitle && <p class="j-cover-subtitle">{book.cover.subtitle}</p>}
+								<div class="j-cover-divider" aria-hidden="true"></div>
+
+								<!-- 正文区（可编辑段落） -->
+								{book.cover.paragraphs.length > 0 && (
+									<div class="j-cover-text">
+										{book.cover.paragraphs.map((line) => (
+											<p>{line}</p>
+										))}
+									</div>
+								)}
+
+								<!-- 署名区 -->
+								<div class="j-cover-author">—— {book.cover.author}</div>
+							</div>
+						</div>
+					</section>
+
+					<!-- 引言页（封面之后；frontmatter 的 intro 为空则不渲染） -->
+					{book.intro.paragraphs.length > 0 && (
+						<section
+							class="j-sheet j-intro"
+							data-page="1"
+							data-state={book.year === activeYear && activePage === 1 ? "active" : "hidden"}
+						>
+							<div class="j-sheet-inner">
+								<div class="j-intro-body">
+									<div class="j-intro-badge" aria-hidden="true">序</div>
+									{book.intro.title && <h2 class="j-intro-title">{book.intro.title}</h2>}
+									<div class="j-intro-rule" aria-hidden="true"></div>
+									<div class="j-intro-text">
+										{book.intro.paragraphs.map((line) => (
+											<p>{line}</p>
+										))}
+									</div>
+								</div>
+							</div>
+							<div class="j-footer" aria-hidden="true">
+								<span class="j-footer-line"></span>
+								<span class="j-footer-mark">✦ 01</span>
+							</div>
+							<div class="j-watermark" aria-hidden="true">
+								<svg viewBox="0 0 24 24">
+									<path fill="currentColor" d="M3 13a9 9 0 0 0 9 9c0-5-4.03-9-9-9m9-7.5A2.5 2.5 0 0 1 14.5 8a2.5 2.5 0 0 1-2.5 2.5A2.5 2.5 0 0 1 9.5 8A2.5 2.5 0 0 1 12 5.5m-6.4 4.75a2.5 2.5 0 0 0 2.5 2.5c.53 0 1.02-.17 1.4-.44v.19A2.5 2.5 0 0 0 12 15a2.5 2.5 0 0 0 2.5-2.5v-.19c.38.27.87.44 1.4.44a2.5 2.5 0 0 0 2.5-2.5c0-1-.59-1.85-1.43-2.25c.84-.4 1.43-1.26 1.43-2.25a2.5 2.5 0 0 0-2.5-2.5c-.53 0-1.02.16-1.4.44V3.5A2.5 2.5 0 0 0 12 1a2.5 2.5 0 0 0-2.5 2.5v.19c-.38-.28-.87-.44-1.4-.44a2.5 2.5 0 0 0-2.5 2.5c0 .99.59 1.85 1.43 2.25c-.84.4-1.43 1.25-1.43 2.25M12 22a9 9 0 0 0 9-9c-5 0-9 4-9 9"/>
+								</svg>
+							</div>
+						</section>
+					)}
+
+					<!-- 内页 -->
+					{book.pages.map((p, i) => (
+						<section
+							class="j-sheet"
+							data-page={i + 2}
+							data-date={p.date}
+							data-state={book.year === activeYear && activePage === i + 2 ? "active" : "hidden"}
+						>
+							<div class="j-sheet-inner">
+								<!-- 日期头 -->
+								<header class="j-head">
+									<div class="j-head-left">
+										<span class="j-head-date">{fmtDay(p.date)}</span>
+										{p.title && <span class="j-head-title">{p.title}</span>}
+									</div>
+									{/* 心情：可填 emoji / 天气拼音（qing 晴、yin 阴…）/ 图标名（material-symbols:xxx） */}
+									{p.mood && (() => {
+										const m = resolveMood(p.mood);
+										return m.icon ? (
+											<Icon name={m.icon} class="j-head-mood-icon" />
+										) : (
+											<span class="j-head-mood">{m.text}</span>
+										);
+									})()}
+								</header>
+
+								<!-- 心情文字行（保持在头部下方原位，不参与垂直居中） -->
+								{book.enable.moods && p.mood && (() => {
+									const m = resolveMood(p.mood);
+									return m.icon ? (
+										<p class="j-mood-line">
+											今日心情：
+											<Icon name={m.icon} class="j-mood-line-icon" />
+										</p>
+									) : (
+										<p class="j-mood-line">今日心情：{m.text}</p>
+									);
+								})()}
+
+								<!-- 正文内容区（内容少时垂直居中，头部与心情保持顶部） -->
+								<div class="j-content">
+								{p.images && p.images.length > 0 && (
+									<div class:list={["j-imgs", p.images.length > 1 && "j-imgs-multi"]}>
+										{p.images.map((src) => (
+											<img
+												src={src}
+												alt=""
+												loading="lazy"
+												class:list={["j-img", p.imagePortrait && "j-img-portrait"]}
+											/>
+										))}
+									</div>
+								)}
+
+								<!-- 便签（单数自动变长条：1 个占满整行；3/5 个最后一个横跨整行） -->
+								{book.enable.notes && p.notes && p.notes.length > 0 && (
+									<div class="j-block">
+										<h3 class="j-sec-title">✎ 便签</h3>
+										<div
+											class:list={[
+												"j-notes",
+												p.notes.length === 1 && "j-notes-single",
+												p.notes.length % 2 === 1 &&
+													p.notes.length > 1 &&
+													"j-notes-last-full",
+											]}
+										>
+											{p.notes.map((n) => (
+												<article
+													class:list={["j-note", `note-${n.color ?? "yellow"}`]}
+													style={`--note-rotate: ${n.rotate ?? 0}deg`}
+												>
+													<h4 class="j-note-title">{n.title}</h4>
+													<p class="j-note-content">{n.content}</p>
+												</article>
+											))}
+										</div>
+									</div>
+								)}
+
+								<!-- 待办 -->
+								{book.enable.todos && p.todos && p.todos.length > 0 && (
+									<div class="j-block">
+										<h3 class="j-sec-title">☑ 待办清单</h3>
+										<ul class="j-todos">
+											{p.todos.map((t) => (
+												<li class="j-todo-item">
+													<label class="j-todo-label">
+														<input
+															type="checkbox"
+															checked={t.done}
+															aria-label={t.text}
+														/>
+														<span class="j-todo-text">{t.text}</span>
+													</label>
+												</li>
+											))}
+										</ul>
+										<p class="j-todo-count">
+											已完成 <span class="j-todo-num">0</span> / {p.todos.length} 项 ✧
+										</p>
+									</div>
+								)}
+
+								<!-- 日记（JS 从正文注入） -->
+								{book.enable.diary && (
+									<div class="j-block j-diary">
+										<h3 class="j-sec-title">☁ 日记</h3>
+										<div class="j-diary-slot">
+											<p class="j-diary-empty">（这一天还没有写日记……）</p>
+										</div>
+									</div>
+								)}
+
+								<!-- 摘抄 -->
+								{book.enable.quotes && p.quotes && p.quotes.length > 0 && (
+									<div class="j-block">
+										<h3 class="j-sec-title">❝ 摘抄</h3>
+										<div class="j-quotes">
+											{p.quotes.map((q) => (
+												<figure class="j-quote">
+													<blockquote class="j-quote-text">「{q.text}」</blockquote>
+													{q.author && (
+														<figcaption class="j-quote-author">—— {q.author}</figcaption>
+													)}
+												</figure>
+											))}
+										</div>
+									</div>
+								)}
+								</div>
+								<!-- 底部占位：把垂直居中的下界精确对齐到花印顶部（距底 3.65rem） -->
+								<div class="j-foot-spacer" aria-hidden="true"></div>
+							</div>
+							<!-- 页脚收尾 + 角落水印（填补底部空白） -->
+							<div class="j-footer" aria-hidden="true">
+								<span class="j-footer-line"></span>
+								<span class="j-footer-mark">✦ {String(i + 2).padStart(2, "0")}</span>
+							</div>
+							<div class="j-watermark" aria-hidden="true">
+								<svg viewBox="0 0 24 24">
+									<path fill="currentColor" d="M3 13a9 9 0 0 0 9 9c0-5-4.03-9-9-9m9-7.5A2.5 2.5 0 0 1 14.5 8a2.5 2.5 0 0 1-2.5 2.5A2.5 2.5 0 0 1 9.5 8A2.5 2.5 0 0 1 12 5.5m-6.4 4.75a2.5 2.5 0 0 0 2.5 2.5c.53 0 1.02-.17 1.4-.44v.19A2.5 2.5 0 0 0 12 15a2.5 2.5 0 0 0 2.5-2.5v-.19c.38.27.87.44 1.4.44a2.5 2.5 0 0 0 2.5-2.5c0-1-.59-1.85-1.43-2.25c.84-.4 1.43-1.26 1.43-2.25a2.5 2.5 0 0 0-2.5-2.5c-.53 0-1.02.16-1.4.44V3.5A2.5 2.5 0 0 0 12 1a2.5 2.5 0 0 0-2.5 2.5v.19c-.38-.28-.87-.44-1.4-.44a2.5 2.5 0 0 0-2.5 2.5c0 .99.59 1.85 1.43 2.25c-.84.4-1.43 1.25-1.43 2.25M12 22a9 9 0 0 0 9-9c-5 0-9 4-9 9"/>
+								</svg>
+							</div>
+						</section>
+					))}
+					</div>
+
+					<!-- 正文源（JS 按日期分节注入各页） -->
+					<div class="j-diary-source" hidden>
+						{(() => {
+							const C = book.Content;
+							return <C />;
+						})()}
+					</div>
+					</div>
+					))}
+					</div>
+				</div>
+
+				<!-- 翻页提示（移动端） -->
+				<p class="j-hint">点击两侧卡片或左右滑动翻页 · 目录可快速跳转</p>
+
+				<!-- ══ 目录面板 ══ -->
+				<div class="j-toc-mask" id="j-toc-mask" hidden></div>
+				<aside class="j-toc" id="j-toc" aria-label="手账目录" hidden>
+					<div class="j-toc-head">
+						<h3>手账目录</h3>
+						<button type="button" class="j-btn j-toc-close" id="j-toc-close" aria-label="关闭目录">
+							<span aria-hidden="true">✕</span>
+						</button>
+					</div>
+					<div class="j-toc-body">
+						{books.map((book) => (
+							<div class="j-toc-year" data-toc-year={book.year} hidden={book.year !== activeYear}>
+								<button
+									type="button"
+									class="j-toc-item j-toc-cover"
+									data-year={book.year}
+									data-go="0"
+								>
+									<span class="j-toc-dot">封</span> {book.year} 年 · 封面
+								</button>
+								{book.intro.paragraphs.length > 0 && (
+									<button
+										type="button"
+										class="j-toc-item j-toc-cover"
+										data-year={book.year}
+										data-go="1"
+									>
+										<span class="j-toc-dot">序</span> 引言 · {book.intro.title}
+									</button>
+								)}
+								{book.monthGroups.map((g) => (
+									<div class="j-toc-month">
+										<div class="j-toc-month-label">{g.label}</div>
+										<div class="j-toc-days">
+											{g.days.map((day) => (
+												<button
+													type="button"
+													class="j-toc-item"
+													data-year={book.year}
+													data-go={day.pageIdx}
+												>
+													<span class="j-toc-dot">{day.day}</span>
+													{fmtDay(day.date)}
+												</button>
+											))}
+										</div>
+									</div>
+								))}
+							</div>
+						))}
+					</div>
+				</aside>
+
+				<!-- ══ 分享卡片弹窗 ══ -->
+				<div class="j-share-mask" id="j-share-mask" hidden></div>
+				<div class="j-share-panel" id="j-share-panel" role="dialog" aria-label="分享卡片" hidden>
+					<div class="j-share-head">
+						<h3>分享卡片</h3>
+						<button type="button" class="j-btn j-share-close" id="j-share-close" aria-label="关闭">
+							<span aria-hidden="true">✕</span>
+						</button>
+					</div>
+					<div class="j-share-body">
+						<img id="j-share-img" alt="手账分享卡片" />
+						<p class="j-share-loading" id="j-share-loading">正在绘制卡片…</p>
+					</div>
+					<div class="j-share-foot">
+						<button type="button" class="j-btn j-share-download" id="j-share-download">
+							<span aria-hidden="true">↓</span> 下载图片
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</MainGridLayout>
+
+<script is:inline data-astro-rerun>
+function initJournal() {
+  const yearsEl = document.getElementById("j-years");
+  if (!yearsEl || yearsEl.dataset.init === "1") return;
+  yearsEl.dataset.init = "1";
+  const books = Array.from(yearsEl.querySelectorAll(".j-year-book")).map((el) => ({
+    el,
+    book: el.querySelector(".j-book"),
+    source: el.querySelector(".j-diary-source"),
+    sheets: [],
+    current: 0,
+    ready: false
+  })).filter((b) => b.book);
+  if (books.length === 0) return;
+  const indicator = document.getElementById("j-page-indicator");
+  const yearSelect = document.getElementById("j-year-select");
+  const paperSelect = document.getElementById("j-paper-select");
+  const tocPanel = document.getElementById("j-toc");
+  const tocMask = document.getElementById("j-toc-mask");
+  const tocBtn = document.getElementById("j-toc-btn");
+  const tocClose = document.getElementById("j-toc-close");
+  function getCurrentBook() {
+    return books.find((b) => b.el.dataset.year === yearSelect.value);
+  }
+  function injectDiary(b) {
+    if (!b.source) return;
+    const heads = b.source.querySelectorAll("h2");
+    heads.forEach((h) => {
+      h.querySelector(".anchor")?.remove();
+      const key = h.textContent.trim();
+      const target = b.book.querySelector(
+        `.j-sheet[data-date="${key}"] .j-diary-slot`
+      );
+      if (!target) return;
+      const nodes = [];
+      let n = h.nextElementSibling;
+      while (n && n.tagName !== "H2") {
+        nodes.push(n);
+        n = n.nextElementSibling;
+      }
+      if (nodes.length === 0) return;
+      const wrap = document.createElement("div");
+      wrap.className = "j-diary-content";
+      nodes.forEach((node) => wrap.appendChild(node.cloneNode(true)));
+      target.innerHTML = "";
+      target.appendChild(wrap);
+      const block = target.closest(".j-diary");
+      if (block) block.classList.add("has-content");
+    });
+  }
+  const T = 550;
+  function renderBook(b, instant) {
+    b.sheets.forEach((s, i) => {
+      const dist = i - b.current;
+      const abs = Math.abs(dist);
+      let tx = 0;
+      let ry = 0;
+      let sc = 1;
+      let op = 1;
+      s.dataset.state = dist === 0 ? "active" : abs <= 1 ? "near" : "hidden";
+      if (abs > 1) {
+        tx = (dist > 0 ? 1 : -1) * (abs - 1) * 30;
+        ry = (dist > 0 ? 1 : -1) * 10;
+        op = 0;
+      } else {
+        tx = dist * 18;
+        ry = dist * -16;
+        sc = 1 - abs * 0.05;
+      }
+      s.style.transition = instant ? "none" : `transform ${T}ms cubic-bezier(0.22, 1, 0.36, 1), opacity ${T * 0.7}ms ease`;
+      s.style.transform = `translateX(${tx}%) translateZ(0) rotateY(${ry}deg) scale(${sc})`;
+      s.style.opacity = String(op);
+      s.style.zIndex = String(100 - abs);
+    });
+  }
+  function goTo(delta, instant = false) {
+    const b = getCurrentBook();
+    if (!b || b.sheets.length === 0) return;
+    const next = Math.max(0, Math.min(b.sheets.length - 1, b.current + delta));
+    if (next === b.current) return;
+    b.current = next;
+    renderBook(b, instant);
+    updateIndicator();
+    saveState();
+  }
+  function updateIndicator() {
+    const b = getCurrentBook();
+    if (!b) return;
+    if (indicator) {
+      indicator.textContent = `${b.current + 1} / ${b.sheets.length}`;
+    }
+  }
+  function saveState() {
+    const b = getCurrentBook();
+    if (!b) return;
+    try {
+      localStorage.setItem(
+        "journal-state",
+        JSON.stringify({ year: yearSelect.value, page: b.current })
+      );
+    } catch (e) {
+    }
+  }
+  const prevBtn = document.getElementById("j-prev");
+  const nextBtn = document.getElementById("j-next");
+  prevBtn?.addEventListener("click", () => goTo(-1));
+  nextBtn?.addEventListener("click", () => goTo(1));
+  document.addEventListener("keydown", function(e) {
+    if (tocPanel && !tocPanel.hidden) {
+      if (e.key === "Escape") closeToc();
+      return;
+    }
+    if (e.key === "ArrowLeft") goTo(-1);
+    if (e.key === "ArrowRight") goTo(1);
+  });
+  function bindTouch(b) {
+    let startX = 0;
+    let startY = 0;
+    let tracking = false;
+    b.book.addEventListener(
+      "touchstart",
+      (e) => {
+        const t = e.touches[0];
+        startX = t.clientX;
+        startY = t.clientY;
+        tracking = true;
+      },
+      { passive: true }
+    );
+    b.book.addEventListener(
+      "touchmove",
+      (e) => {
+        if (!tracking) return;
+        const t = e.touches[0];
+        const dx = t.clientX - startX;
+        const dy = t.clientY - startY;
+        if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) {
+          e.preventDefault();
+        }
+      },
+      { passive: false }
+    );
+    b.book.addEventListener(
+      "touchend",
+      (e) => {
+        if (!tracking) return;
+        tracking = false;
+        if (b.el.hidden) return;
+        const t = e.changedTouches[0];
+        const dx = t.clientX - startX;
+        if (Math.abs(dx) < 55) return;
+        const next = Math.max(
+          0,
+          Math.min(b.sheets.length - 1, b.current + (dx < 0 ? 1 : -1))
+        );
+        if (next === b.current) return;
+        b.current = next;
+        renderBook(b);
+        updateIndicator();
+        saveState();
+      },
+      { passive: true }
+    );
+  }
+  function prepareBook(b) {
+    if (b.ready) return;
+    b.sheets = Array.from(b.book.querySelectorAll(".j-sheet"));
+    if (b.sheets.length === 0) return;
+    injectDiary(b);
+    bindTouch(b);
+    b.sheets.forEach((s) => {
+      s.addEventListener("click", (e) => {
+        if (e.target instanceof Element) {
+          if (e.target.closest("input, label, a, button, select")) return;
+        }
+        if (s.dataset.state === "active" || s.dataset.state === "hidden") return;
+        const idx = Number(s.dataset.page);
+        if (idx < b.current) {
+          const next = Math.max(0, b.current - 1);
+          if (next !== b.current) {
+            b.current = next;
+            renderBook(b);
+            updateIndicator();
+            saveState();
+          }
+        } else if (idx > b.current) {
+          const next = Math.min(b.sheets.length - 1, b.current + 1);
+          if (next !== b.current) {
+            b.current = next;
+            renderBook(b);
+            updateIndicator();
+            saveState();
+          }
+        }
+      });
+    });
+    b.book.querySelectorAll(".j-img:not([data-portrait-checked])").forEach((img) => {
+      img.dataset.portraitChecked = "1";
+      const mark = () => {
+        if (img.naturalWidth && img.naturalHeight && img.naturalHeight > img.naturalWidth) {
+          img.classList.add("j-img-portrait");
+        }
+      };
+      // 已加载完成 → 立即判断；否则等 load（懒加载图片在整页加载时可能延迟/不触发，
+      // 因此下面再用 window load 兜底重查一次）
+      if (img.complete && img.naturalWidth > 0) mark();
+      else img.addEventListener("load", mark);
+    });
+    // 兜底：页面全部资源加载完后，重查所有图片（覆盖懒加载未触发/缓存命中先加载的情况）
+    const recheck = () => {
+      b.book.querySelectorAll(".j-img").forEach((img) => {
+        if (img.naturalWidth && img.naturalHeight && img.naturalHeight > img.naturalWidth) {
+          img.classList.add("j-img-portrait");
+        }
+      });
+    };
+    if (document.readyState === "complete") recheck();
+    else window.addEventListener("load", recheck, { once: true });
+    b.ready = true;
+  }
+  function switchYear(year) {
+    yearSelect.value = year;
+    books.forEach((b) => {
+      const show = b.el.dataset.year === year;
+      b.el.hidden = !show;
+      if (show) {
+        prepareBook(b);
+        // 每本书优先用该年记忆的纸张，没有则用书自己的（frontmatter paper）
+        // 记忆值需为有效纸张（grid 已移除，历史残留直接忽略）
+        let mem = null;
+        try {
+          mem = localStorage.getItem("journal-paper-" + year);
+        } catch (e) {
+        }
+        if (mem !== "lined" && mem !== "blank" && mem !== "kraft") mem = null;
+        b.book.dataset.paper = mem || b.book.dataset.paper;
+        renderBook(b, true);
+        refreshTodoCounts(b.book);
+      }
+    });
+    // 下拉框同步为当前书的纸张，避免显示与实际不符
+    const cur = getCurrentBook();
+    if (cur && cur.book.dataset.paper) paperSelect.value = cur.book.dataset.paper;
+    updateToc(year);
+    updateIndicator();
+  }
+  function updateToc(year) {
+    document.querySelectorAll(".j-toc-year").forEach((el) => {
+      el.hidden = el.dataset.tocYear !== year;
+    });
+  }
+  function setPaper(paper) {
+    paperSelect.value = paper;
+    const b = getCurrentBook();
+    if (b) b.book.dataset.paper = paper;
+    // 按年份记忆纸张，避免全局偏好覆盖其他年份的纸张
+    try {
+      const y = yearSelect.value;
+      if (y) localStorage.setItem("journal-paper-" + y, paper);
+    } catch (e) {
+    }
+  }
+  function openToc() {
+    if (!tocPanel || !tocMask) return;
+    tocPanel.hidden = false;
+    tocMask.hidden = false;
+    requestAnimationFrame(() => {
+      tocPanel.classList.add("open");
+      tocMask.classList.add("open");
+    });
+  }
+  function closeToc() {
+    if (!tocPanel || !tocMask) return;
+    tocPanel.classList.remove("open");
+    tocMask.classList.remove("open");
+    setTimeout(() => {
+      tocPanel.hidden = true;
+      tocMask.hidden = true;
+    }, 260);
+  }
+  tocBtn?.addEventListener("click", openToc);
+  tocClose?.addEventListener("click", closeToc);
+  tocMask?.addEventListener("click", closeToc);
+  tocPanel?.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-go]");
+    if (!btn) return;
+    const year = btn.dataset.year;
+    if (year && year !== yearSelect.value) switchYear(year);
+    const b = getCurrentBook();
+    if (b) {
+      b.current = Number(btn.dataset.go);
+      renderBook(b);
+      updateIndicator();
+      saveState();
+    }
+    closeToc();
+  });
+  function refreshTodoCounts(bookEl) {
+    bookEl.querySelectorAll(".j-sheet").forEach((sheet) => {
+      const boxes = sheet.querySelectorAll(".j-todo-label input[type=checkbox]");
+      const numEl = sheet.querySelector(".j-todo-num");
+      if (!boxes.length || !numEl) return;
+      numEl.textContent = String(
+        sheet.querySelectorAll(".j-todo-label input:checked").length
+      );
+    });
+  }
+  document.addEventListener("change", function(e) {
+    const t = e.target;
+    if (t && t.matches('.j-todo-label input[type="checkbox"]')) {
+      const b = getCurrentBook();
+      if (b) refreshTodoCounts(b.book);
+    }
+  });
+  const SELECT_LOCK_MS = 350;
+  let yearLockUntil = 0;
+  let paperLockUntil = 0;
+  yearSelect?.addEventListener("change", () => {
+    const now = Date.now();
+    if (now < yearLockUntil) return;
+    yearLockUntil = now + SELECT_LOCK_MS;
+    switchYear(yearSelect.value);
+    saveState();
+    yearSelect.blur();
+  });
+  yearSelect?.addEventListener("pointerdown", (e) => {
+    if (Date.now() < yearLockUntil) e.preventDefault();
+  });
+  paperSelect?.addEventListener("change", () => {
+    const now = Date.now();
+    if (now < paperLockUntil) return;
+    paperLockUntil = now + SELECT_LOCK_MS;
+    setPaper(paperSelect.value);
+    paperSelect.blur();
+  });
+  paperSelect?.addEventListener("pointerdown", (e) => {
+    if (Date.now() < paperLockUntil) e.preventDefault();
+  });
+  let savedState = null;
+  try {
+    const raw = localStorage.getItem("journal-state");
+    if (raw) savedState = JSON.parse(raw);
+  } catch (e) {
+  }
+  // URL 参数优先（?year=&page=，如从总结页返回时一步到位，服务端已按此渲染）
+  const urlYear = new URLSearchParams(location.search).get("year");
+  const urlPageRaw = new URLSearchParams(location.search).get("page");
+  const urlPage = urlPageRaw !== null ? Number(urlPageRaw) : null;
+  const restoreYear =
+    (urlYear && books.some((b) => b.el.dataset.year === urlYear) ? urlYear : null) ||
+    (savedState?.year && books.some((b) => b.el.dataset.year === savedState.year) ? savedState.year : null) ||
+    yearSelect.value;
+  switchYear(restoreYear);
+  const rb = getCurrentBook();
+  const restorePage =
+    urlPage !== null && Number.isFinite(urlPage)
+      ? urlPage
+      : savedState && typeof savedState.page === "number"
+        ? savedState.page
+        : null;
+  if (rb && restorePage !== null) {
+    rb.current = Math.max(0, Math.min(rb.sheets.length - 1, restorePage));
+    renderBook(rb, true);
+    updateIndicator();
+  }
+  const shareBtn = document.getElementById("j-share-btn");
+  const sharePanel = document.getElementById("j-share-panel");
+  const shareMask = document.getElementById("j-share-mask");
+  const shareImg = document.getElementById("j-share-img");
+  const shareLoading = document.getElementById("j-share-loading");
+  const shareClose = document.getElementById("j-share-close");
+  const shareDownload = document.getElementById("j-share-download");
+  let shareDataUrl = "";
+  function openShare() {
+    if (!sharePanel || !shareMask) return;
+    sharePanel.hidden = false;
+    shareMask.hidden = false;
+    requestAnimationFrame(() => {
+      sharePanel.classList.add("open");
+      shareMask.classList.add("open");
+    });
+  }
+  function closeShare() {
+    if (!sharePanel || !shareMask) return;
+    sharePanel.classList.remove("open");
+    shareMask.classList.remove("open");
+    setTimeout(() => {
+      sharePanel.hidden = true;
+      shareMask.hidden = true;
+    }, 260);
+  }
+  shareClose?.addEventListener("click", closeShare);
+  shareMask?.addEventListener("click", closeShare);
+  shareDownload?.addEventListener("click", () => {
+    if (!shareDataUrl) return;
+    const a = document.createElement("a");
+    a.href = shareDataUrl;
+    a.download = `journal-card-${Date.now()}.png`;
+    a.click();
+  });
+  function drawRoundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+  function wrapText(ctx, text, x, y, maxWidth, lineHeight, maxLines) {
+    const chars = Array.from(text);
+    let line = "";
+    let drawn = 0;
+    for (const ch of chars) {
+      if (ctx.measureText(line + ch).width <= maxWidth) {
+        line += ch;
+      } else {
+        ctx.fillText(line, x, y + drawn * lineHeight);
+        drawn++;
+        if (drawn >= maxLines) return drawn * lineHeight;
+        line = ch;
+      }
+    }
+    if (line && drawn < maxLines) {
+      ctx.fillText(line, x, y + drawn * lineHeight);
+      drawn++;
+    }
+    return drawn * lineHeight;
+  }
+  async function drawShareCard(b, pageIdx) {
+    const W = 900;
+    const H = 1200;
+    const canvas = document.createElement("canvas");
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return "";
+    const FONT = "'ZCOOL KuaiLe','KaiTi','STKaiti','\u6977\u4F53',cursive";
+    const ink = "#5c5040";
+    const inkSoft = "rgba(92,80,64,0.62)";
+    const pink = "rgba(242,199,208,0.9)";
+    const mint = "rgba(188,221,200,0.9)";
+    const bg = "#fdf9f1";
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+    const g1 = ctx.createRadialGradient(160, 140, 0, 160, 140, 430);
+    g1.addColorStop(0, "rgba(242,199,208,0.32)");
+    g1.addColorStop(1, "rgba(242,199,208,0)");
+    ctx.fillStyle = g1;
+    ctx.fillRect(0, 0, W, H);
+    const g2 = ctx.createRadialGradient(W - 160, H - 140, 0, W - 160, H - 140, 430);
+    g2.addColorStop(0, "rgba(188,221,200,0.32)");
+    g2.addColorStop(1, "rgba(188,221,200,0)");
+    ctx.fillStyle = g2;
+    ctx.fillRect(0, 0, W, H);
+    ctx.save();
+    ctx.setLineDash([14, 11]);
+    ctx.strokeStyle = "rgba(141,196,162,0.6)";
+    ctx.lineWidth = 3;
+    drawRoundRect(ctx, 30, 30, W - 60, H - 60, 32);
+    ctx.stroke();
+    ctx.restore();
+    ctx.save();
+    ctx.translate(150, 62);
+    ctx.rotate(-0.11);
+    ctx.fillStyle = mint;
+    drawRoundRect(ctx, -95, -22, 190, 44, 6);
+    ctx.fill();
+    ctx.restore();
+    ctx.save();
+    ctx.translate(W - 150, 62);
+    ctx.rotate(0.1);
+    ctx.fillStyle = pink;
+    drawRoundRect(ctx, -95, -22, 190, 44, 6);
+    ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = "rgba(242,180,92,0.5)";
+    ctx.beginPath();
+    ctx.arc(66, 380, 9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(242,199,208,0.65)";
+    ctx.beginPath();
+    ctx.arc(W - 66, 520, 12, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(188,221,200,0.7)";
+    ctx.beginPath();
+    ctx.arc(80, 830, 8, 0, Math.PI * 2);
+    ctx.fill();
+    const sheet = b.book.querySelector(`.j-sheet[data-page="${pageIdx}"]`);
+    ctx.textAlign = "center";
+    if (pageIdx === 0) {
+      const dateText = sheet?.querySelector(".j-cover-date")?.textContent?.trim() || "";
+      if (dateText) {
+        ctx.font = `400 26px ${FONT}`;
+        const dw = ctx.measureText(dateText).width + 60;
+        ctx.fillStyle = "rgba(242,199,208,0.32)";
+        drawRoundRect(ctx, W / 2 - dw / 2, 168, dw, 46, 999);
+        ctx.fill();
+        ctx.fillStyle = "rgba(124,111,99,0.78)";
+        ctx.fillText(dateText, W / 2, 168 + 32);
+      }
+      const title = sheet?.querySelector(".j-cover-title")?.textContent?.trim() || "\u6211\u7684\u624B\u8D26";
+      ctx.font = `400 96px ${FONT}`;
+      ctx.fillStyle = "#5f554b";
+      ctx.fillText(title, W / 2, 340);
+      ctx.save();
+      ctx.strokeStyle = "rgba(242,166,181,0.75)";
+      ctx.lineWidth = 5;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      for (let x = W / 2 - 190; x <= W / 2 + 190; x += 10) {
+        const y = 388 + Math.sin((x - W / 2 + 190) / 22) * 5;
+        if (x === W / 2 - 190) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.restore();
+      const sub = sheet?.querySelector(".j-cover-subtitle")?.textContent?.trim() || "";
+      if (sub) {
+        ctx.font = `400 34px ${FONT}`;
+        ctx.fillStyle = inkSoft;
+        ctx.fillText(sub, W / 2, 460);
+      }
+      ctx.save();
+      ctx.setLineDash([10, 9]);
+      ctx.strokeStyle = "rgba(188,221,200,0.85)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(W / 2 - 130, 530);
+      ctx.lineTo(W / 2 + 130, 530);
+      ctx.stroke();
+      ctx.restore();
+      const paras = Array.from(sheet?.querySelectorAll(".j-cover-text p") || []).map((p) => p.textContent?.trim() || "").filter(Boolean);
+      ctx.font = `400 30px ${FONT}`;
+      ctx.fillStyle = inkSoft;
+      let py = 590;
+      paras.slice(0, 4).forEach((para) => {
+        py += wrapText(ctx, para, W / 2, py, 620, 46, 2) + 10;
+      });
+      const author = sheet?.querySelector(".j-cover-author")?.textContent?.trim() || "\u2014\u2014 \u7267\u6CB3\u4F0A\u7409";
+      ctx.font = `400 30px ${FONT}`;
+      ctx.fillStyle = "rgba(124,111,99,0.78)";
+      ctx.fillText(author, W / 2, 1050);
+      ctx.font = `400 22px ${FONT}`;
+      ctx.fillStyle = "rgba(124,111,99,0.45)";
+      ctx.fillText("\u6211\u7684\u6570\u5B57\u624B\u8D26 \xB7 \u4E00\u5E74\u4E00\u4F1A", W / 2, 1120);
+    } else if (pageIdx === 1) {
+      // ══ 引言页卡片 ══
+      const introTitle =
+        sheet?.querySelector(".j-intro-title")?.textContent?.trim() || "\u5199\u5728\u524D\u9762";
+      const paras = Array.from(sheet?.querySelectorAll(".j-intro-text p") || [])
+        .map((p) => p.textContent?.trim() || "")
+        .filter(Boolean);
+      ctx.font = `400 24px ${FONT}`;
+      const badge = "\u5E8F";
+      const bw = ctx.measureText(badge).width + 44;
+      ctx.fillStyle = "rgba(188,221,200,0.4)";
+      drawRoundRect(ctx, W / 2 - bw / 2, 150, bw, 40, 999);
+      ctx.fill();
+      ctx.fillStyle = "#3f7a5c";
+      ctx.fillText(badge, W / 2, 150 + 27);
+      ctx.font = `400 52px ${FONT}`;
+      ctx.fillStyle = "#5f554b";
+      ctx.fillText(introTitle, W / 2, 280);
+      ctx.save();
+      ctx.strokeStyle = "rgba(242,166,181,0.75)";
+      ctx.lineWidth = 4;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      for (let x = W / 2 - 110; x <= W / 2 + 110; x += 9) {
+        const y = 320 + Math.sin((x - W / 2 + 110) / 20) * 4;
+        if (x === W / 2 - 110) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.restore();
+      ctx.font = `400 32px ${FONT}`;
+      ctx.fillStyle = "rgba(92,80,64,0.9)";
+      let iy = 400;
+      paras.slice(0, 10).forEach((para) => {
+        iy += wrapText(ctx, para, W / 2, iy, 640, 54, 3) + 14;
+      });
+      const introAuthor =
+        b.book.querySelector(".j-cover-author")?.textContent?.trim() || "\u2014\u2014 \u7267\u6CB3\u4F0A\u7409";
+      ctx.font = `400 30px ${FONT}`;
+      ctx.fillStyle = "rgba(124,111,99,0.78)";
+      ctx.fillText(introAuthor, W / 2, 1140);
+    } else {
+      ctx.textAlign = "left";
+      const dateText = sheet?.querySelector(".j-head-date")?.textContent?.trim() || "\u65E5\u8BB0";
+      const moodText = sheet?.querySelector(".j-head-mood")?.textContent?.trim() || "";
+      const titleText = sheet?.querySelector(".j-head-title")?.textContent?.trim() || "";
+      ctx.font = `400 64px ${FONT}`;
+      ctx.fillStyle = ink;
+      ctx.fillText(dateText, 70, 150);
+      if (moodText) {
+        const dateW = ctx.measureText(dateText).width;
+        ctx.font = "46px sans-serif";
+        ctx.fillText(moodText, 70 + dateW + 26, 148);
+      }
+      ctx.font = `400 32px ${FONT}`;
+      ctx.fillStyle = inkSoft;
+      ctx.fillText(titleText, 70, 205);
+      ctx.save();
+      ctx.setLineDash([10, 9]);
+      ctx.strokeStyle = "rgba(188,221,200,0.85)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(70, 240);
+      ctx.lineTo(W - 70, 240);
+      ctx.stroke();
+      ctx.restore();
+      let diaryText = sheet?.querySelector(".j-diary-slot")?.textContent?.trim().replace(/\s+/g, " ");
+      if (!diaryText || diaryText === "\uFF08\u8FD9\u4E00\u5929\u8FD8\u6CA1\u6709\u5199\u65E5\u8BB0\u2026\u2026\uFF09") {
+        diaryText = "\u8FD9\u4E00\u5929\uFF0C\u4EC0\u4E48\u4E5F\u6CA1\u6765\u5F97\u53CA\u5199\u3002";
+      }
+      ctx.font = `400 32px ${FONT}`;
+      ctx.fillStyle = "rgba(92,80,64,0.9)";
+      const diaryY = 280;
+      const diaryMaxLines = 10;
+      const diaryHeight = wrapText(ctx, diaryText, 70, diaryY, W - 140, 54, diaryMaxLines);
+      let contentBottom = diaryY + diaryHeight + 20;
+      const imgEls = Array.from(sheet?.querySelectorAll(".j-img") || []);
+      if (imgEls.length > 0) {
+        const imgSrcs = imgEls.map((el) => el.getAttribute("src") || "").filter(Boolean);
+        const loaded = await Promise.all(
+          imgSrcs.map(
+            (src) => new Promise((resolve) => {
+              const img = new Image();
+              img.crossOrigin = "anonymous";
+              img.onload = () => resolve(img);
+              img.onerror = () => resolve(null);
+              img.src = src;
+            })
+          )
+        );
+        const imgs = loaded.filter(Boolean);
+        if (imgs.length > 0) {
+          const imgH = imgs.length > 1 ? 130 : 165;
+          const gap = 14;
+          const totalW = W - 140;
+          const colW = imgs.length > 1 ? (totalW - gap) / 2 : totalW;
+          let ix = 70;
+          const imgY = contentBottom;
+          let maxDrawH = imgH;
+          imgs.slice(0, 2).forEach((img) => {
+            const isPortrait = img.naturalHeight > img.naturalWidth;
+            let dw = colW;
+            let dh = imgH;
+            let dx = ix;
+            if (isPortrait) {
+              const ratio = img.naturalWidth / img.naturalHeight;
+              dw = colW * 0.62;
+              dh = dw / ratio;
+              if (dh > 250) {
+                dh = 250;
+                dw = dh * ratio;
+              }
+              dx = ix + (colW - dw) / 2;
+              maxDrawH = Math.max(maxDrawH, dh);
+            }
+            const sRatio = img.naturalWidth / img.naturalHeight;
+            const tRatio = dw / dh;
+            let sx = 0, sy = 0, sW = img.naturalWidth, sH = img.naturalHeight;
+            if (!isPortrait) {
+              if (sRatio > tRatio) {
+                sH = img.naturalHeight;
+                sW = sH * tRatio;
+                sx = (img.naturalWidth - sW) / 2;
+              } else {
+                sW = img.naturalWidth;
+                sH = sW / tRatio;
+                sy = (img.naturalHeight - sH) / 2;
+              }
+            }
+            ctx.save();
+            ctx.beginPath();
+            drawRoundRect(ctx, dx, imgY, dw, dh, 10);
+            ctx.clip();
+            ctx.drawImage(img, sx, sy, sW, sH, dx, imgY, dw, dh);
+            ctx.restore();
+            ix += colW + gap;
+          });
+          contentBottom = imgY + maxDrawH + 16;
+        }
+      }
+      const notes = Array.from(sheet?.querySelectorAll(".j-note") || []).slice(0, 2);
+      let notesBottom = contentBottom;
+      if (notes.length) {
+        // 单个便签 → 长条形铺满整行（与页面 .j-notes-single 一致）；多个 → 双列
+        const isSingle = notes.length === 1;
+        const nw = isSingle ? W - 140 : 340;
+        const nh = 200;
+        const ny = notesBottom + 10;
+        notes.forEach((n, i) => {
+          const nx = isSingle ? 70 : 70 + i * (nw + 30);
+          const cls = n.className;
+          const isPink = cls.includes("note-pink");
+          const isBlue = cls.includes("note-blue");
+          const isGreen = cls.includes("note-green");
+          const isOrange = cls.includes("note-orange");
+          const isPurple = cls.includes("note-purple");
+          const isGray = cls.includes("note-gray");
+          const nb = isPink
+            ? "#ffdbe4"
+            : isBlue
+              ? "#d9ecff"
+              : isGreen
+                ? "#ddf2d8"
+                : isOrange
+                  ? "#ffe6c8"
+                  : isPurple
+                    ? "#f0e0ff"
+                    : isGray
+                      ? "#e8e6e2"
+                      : "#fff7c2";
+          const nink = isPink
+            ? "#8c2f44"
+            : isBlue
+              ? "#1e4d7a"
+              : isGreen
+                ? "#2c5f33"
+                : isOrange
+                  ? "#8a4a12"
+                  : isPurple
+                    ? "#5b2d8a"
+                    : isGray
+                      ? "#4a4740"
+                      : "#5d5310";
+          ctx.save();
+          ctx.translate(nx + nw / 2, ny + nh / 2);
+          ctx.rotate(i === 0 ? -0.03 : 0.03);
+          ctx.fillStyle = nb;
+          ctx.shadowColor = "rgba(0,0,0,0.12)";
+          ctx.shadowBlur = 14;
+          ctx.shadowOffsetY = 6;
+          drawRoundRect(ctx, -nw / 2, -nh / 2, nw, nh, 10);
+          ctx.fill();
+          ctx.shadowColor = "transparent";
+          const t = n.querySelector(".j-note-title")?.textContent?.trim() || "";
+          const c = n.querySelector(".j-note-content")?.textContent?.trim() || "";
+          ctx.fillStyle = nink;
+          ctx.textAlign = "left";
+          ctx.font = `400 26px ${FONT}`;
+          ctx.fillText(t, -nw / 2 + 26, -nh / 2 + 48);
+          ctx.font = `400 22px ${FONT}`;
+          wrapText(ctx, c, -nw / 2 + 26, -nh / 2 + 88, nw - 52, 32, 3);
+          ctx.restore();
+        });
+        notesBottom = ny + nh;
+      }
+      const bookAuthor = b.book.querySelector(".j-cover-author")?.textContent?.trim() || "\u2014\u2014 \u7267\u6CB3\u4F0A\u7409";
+      ctx.font = `400 30px ${FONT}`;
+      ctx.fillStyle = "rgba(124,111,99,0.78)";
+      ctx.textAlign = "center";
+      const authorY = Math.max(notesBottom + 40, 1100);
+      ctx.fillText(bookAuthor, W / 2, Math.min(authorY, 1150));
+    }
+    return canvas.toDataURL("image/png");
+  }
+  async function generateShare() {
+    const b = getCurrentBook();
+    if (!b || !sharePanel) return;
+    openShare();
+    if (shareImg) shareImg.style.opacity = "0";
+    if (shareLoading) shareLoading.style.display = "block";
+    try {
+      await document.fonts.ready;
+    } catch (e) {
+    }
+    shareDataUrl = await drawShareCard(b, b.current);
+    if (shareImg) {
+      shareImg.src = shareDataUrl;
+      shareImg.style.opacity = "1";
+    }
+    if (shareLoading) shareLoading.style.display = "none";
+  }
+  shareBtn?.addEventListener("click", generateShare);
+
+  // 总结按钮：点击时携带当前选中的手账年份，让总结页默认打开该年
+  // #main-grid 锚点：整页加载时浏览器原生定位到正文，避免先闪全屏壁纸再滚动
+  const summaryBtn = document.getElementById("j-summary-btn");
+  summaryBtn?.addEventListener("click", () => {
+    if (summaryBtn && yearSelect.value) {
+      summaryBtn.href = "/journal/summary/?year=" + yearSelect.value + "#main-grid";
+    }
+  });
+
+  // 全屏壁纸模式定位：手账页被 data-no-swup 整页加载（绕过 Swup 的 scroll:top 钩子），
+  // 这里手动复刻 Layout.astro scroll:top 钩子的逻辑：
+  // 全屏壁纸模式 + 非首页 → 滚动到 #main-grid（正文容器顶部），避免停在壁纸顶部
+  function scrollToContentIfFullscreen() {
+    try {
+      if (document.documentElement.getAttribute("data-wallpaper-mode") !== "fullscreen") return;
+      if (window.location.pathname.replace(/\/+$/, "") === "") return; // 首页不滚
+      const mainGrid = document.getElementById("main-grid");
+      if (mainGrid) mainGrid.scrollIntoView({ behavior: "auto" });
+    } catch (e) {}
+  }
+  // 时机：等 DOMContentLoaded 同步初始化（initWallpaperMode 已把主内容定位到壁纸下方并显示）后再滚动，
+  // 避免整页加载时先在壁纸位置滚动导致"闪一下壁纸"；load 兜底保证图片/字体就绪后位置正确
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => {
+      setTimeout(scrollToContentIfFullscreen, 0);
+    });
+  } else {
+    scrollToContentIfFullscreen();
+  }
+  window.addEventListener("load", scrollToContentIfFullscreen);
+}
+initJournal();
+if (!window.__journalSwupBound) {
+  window.__journalSwupBound = true;
+  document.addEventListener("swup:contentReplaced", () => initJournal());
+}
+</script>
+
+<style>
+	/* ── 手写字体：站酷快乐体（在线）→ 系统楷体回退 ── */
+	.j-app {
+		--font-hand:
+			"ZCOOL KuaiLe", "Kaiti SC", "KaiTi", "STKaiti", "DFKai-SB",
+			"FangSong", "仿宋", "楷体", cursive;
+
+		--paper-bg: #fdf6e8;
+		--paper-ink: #4a4238;
+		--paper-ink-soft: rgba(74, 66, 56, 0.55);
+		--paper-line: rgba(74, 66, 56, 0.09);
+		--paper-hole: rgba(74, 66, 56, 0.14);
+		--accent: #e8a04c;
+
+		--sw: min(88vw, 600px);
+		--sh: calc(var(--sw) * 4 / 3);
+
+		font-family: var(--font-hand);
+		color: var(--paper-ink);
+
+		.dark & {
+			--paper-bg: #2b2620;
+			--paper-ink: #e8dcc4;
+			--paper-ink-soft: rgba(232, 220, 196, 0.55);
+			--paper-line: rgba(232, 220, 196, 0.08);
+			--paper-hole: rgba(232, 220, 196, 0.16);
+			--accent: #e8a04c;
+		}
+	}
+
+	/* ── 工具栏 ── */
+	.j-toolbar {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		padding: 0.35rem 0.25rem 0.85rem;
+		flex-wrap: wrap;
+		row-gap: 0.5rem;
+		position: relative;
+		z-index: 10;
+	}
+	.j-controls {
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
+	}
+	.j-select {
+		font-family: var(--font-hand);
+		font-size: 0.88rem;
+		color: var(--paper-ink);
+		background: color-mix(in srgb, var(--paper-bg) 70%, #ffffff 30%);
+		border: 1px solid color-mix(in srgb, var(--paper-ink) 18%, transparent);
+		border-radius: 0.6rem;
+		padding: 0.35rem 0.45rem;
+		cursor: pointer;
+		transition: background 0.2s ease, transform 0.15s ease;
+		/* 去掉原生聚焦黑框（点击后不再残留粗边框） */
+		outline: none;
+	}
+	/* 键盘导航仍保留柔和焦点圈，保证可访问性 */
+	.j-select:focus-visible {
+		outline: 2px solid color-mix(in srgb, var(--accent) 65%, transparent);
+		outline-offset: 2px;
+	}
+	.j-select:hover {
+		background: color-mix(in srgb, var(--paper-bg) 45%, #ffffff 55%);
+	}
+	.j-select:active {
+		transform: scale(0.97);
+	}
+	.j-select option {
+		font-family: var(--font-hand);
+		background: var(--paper-bg);
+		color: var(--paper-ink);
+	}
+	.j-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.35rem;
+		font-family: var(--font-hand);
+		font-size: 0.95rem;
+		color: var(--paper-ink);
+		background: color-mix(in srgb, var(--paper-bg) 70%, #ffffff 30%);
+		border: 1px solid color-mix(in srgb, var(--paper-ink) 18%, transparent);
+		border-radius: 0.6rem;
+		padding: 0.4rem 0.8rem;
+		cursor: pointer;
+		transition: background 0.2s ease, transform 0.15s ease;
+	}
+	.j-btn:hover {
+		background: color-mix(in srgb, var(--paper-bg) 45%, #ffffff 55%);
+	}
+	.j-btn:active {
+		transform: scale(0.95);
+	}
+	.j-btn-icon {
+		font-size: 1.05rem;
+		line-height: 1;
+	}
+	.j-nav {
+		display: flex;
+		gap: 0.45rem;
+	}
+	.j-nav-btn {
+		width: 2.4rem;
+		padding: 0.4rem 0;
+	}
+	.j-page-indicator {
+		font-size: 0.9rem;
+		color: var(--paper-ink-soft);
+		letter-spacing: 0.08em;
+		white-space: nowrap;
+	}
+
+	/* ── 书册舞台 ── */
+	.j-stage {
+		position: relative;
+		width: var(--sw);
+		margin: 0 auto;
+	}
+
+	/* ── 书册 ── */
+	.j-book {
+		position: relative;
+		width: var(--sw);
+		height: var(--sh);
+		margin: 0 auto;
+		perspective: 1800px;
+		-webkit-tap-highlight-color: transparent;
+		touch-action: pan-y;
+	}
+
+	/* 两侧被压住的卡片 = 可点击翻页（鼠标提示 + hover 浮起） */
+	.j-sheet[data-state="near"] {
+		cursor: pointer;
+	}
+	.j-sheet[data-state="near"]:hover {
+		box-shadow: 0 10px 26px rgba(0, 0, 0, 0.22);
+	}
+	.j-sheet[data-state="active"] {
+		cursor: default;
+	}
+
+	.j-sheet {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		border-radius: 0.7rem;
+		box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16);
+		backface-visibility: hidden;
+		will-change: transform, opacity;
+	}
+	.j-sheet[data-state="hidden"] {
+		visibility: hidden;
+		pointer-events: none;
+		opacity: 0;
+	}
+	.j-sheet[data-state="active"],
+	.j-sheet[data-state="near"] {
+		visibility: visible;
+		pointer-events: auto;
+	}
+
+	/* ── 封面：清新自然手账风 ── */
+	.j-cover {
+		--cv-bg: #fdf9f1;
+		--cv-ink: #7c6f63;
+		--cv-ink-soft: rgba(124, 111, 99, 0.62);
+		--cv-pink: #f5c7cf;
+		--cv-pink-soft: rgba(245, 199, 207, 0.45);
+		--cv-mint: #b7dcc4;
+		--cv-mint-soft: rgba(183, 220, 196, 0.45);
+		--cv-sun: #f6c453;
+
+		background:
+			radial-gradient(circle at 12% 18%, var(--cv-pink-soft), transparent 34%),
+			radial-gradient(circle at 88% 82%, var(--cv-mint-soft), transparent 38%),
+			linear-gradient(160deg, #fdfbf4 0%, var(--cv-bg) 55%, #f6f2ea 100%);
+		box-shadow: 0 12px 30px rgba(0, 0, 0, 0.14);
+	}
+	.j-cover-frame {
+		position: absolute;
+		inset: 0.85rem;
+		border: 2px dashed color-mix(in srgb, var(--cv-mint) 75%, transparent);
+		border-radius: 0.85rem;
+	}
+	.j-cover-inner {
+		position: relative;
+		height: 100%;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		padding: 3.2rem 2.4rem 3.4rem;
+		color: var(--cv-ink);
+		text-align: center;
+		overflow: hidden;
+	}
+
+	/* 胶带 */
+	.j-cover-tape {
+		position: absolute;
+		top: -0.35rem;
+		width: 6.5rem;
+		height: 1.5rem;
+		opacity: 0.85;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+		border-left: 1px dashed rgba(255, 255, 255, 0.5);
+		border-right: 1px dashed rgba(255, 255, 255, 0.5);
+		z-index: 3;
+	}
+	.j-cover-tape-a {
+		left: 16%;
+		transform: rotate(-8deg);
+		background: color-mix(in srgb, var(--cv-mint) 78%, transparent);
+	}
+	.j-cover-tape-b {
+		right: 16%;
+		transform: rotate(7deg);
+		background: color-mix(in srgb, var(--cv-pink) 74%, transparent);
+	}
+
+	/* 手绘小花（左上 / 右下） */
+	.j-cover-flower {
+		position: absolute;
+		width: 4.2rem;
+		height: 4.2rem;
+		z-index: 2;
+		opacity: 0.92;
+	}
+	.j-cover-flower-tl {
+		top: 0.8rem;
+		left: 0.9rem;
+		transform: rotate(-12deg);
+		color: #f2a6b5;
+	}
+	.j-cover-flower-br {
+		bottom: 0.8rem;
+		right: 0.9rem;
+		transform: rotate(10deg);
+		color: #6ba58a;
+	}
+
+	/* 圆角贴纸（郁金香图标） */
+	.j-cover-sticker {
+		position: absolute;
+		top: 0.6rem;
+		right: 1.4rem;
+		z-index: 3;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 2.9rem;
+		height: 2.9rem;
+		color: #4f8f68;
+		background: color-mix(in srgb, var(--cv-mint) 70%, #ffffff 30%);
+		border: 2px solid #ffffff;
+		border-radius: 0.9rem;
+		box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+		transform: rotate(8deg);
+	}
+	.j-cover-sticker-icon {
+		width: 1.55rem;
+		height: 1.55rem;
+	}
+
+	/* 小圆点 */
+	.j-cover-dot {
+		position: absolute;
+		width: 0.7rem;
+		height: 0.7rem;
+		border-radius: 9999px;
+		z-index: 1;
+	}
+	.j-cover-dot-1 {
+		top: 26%;
+		left: 9%;
+		background: var(--cv-pink);
+		opacity: 0.75;
+	}
+	.j-cover-dot-2 {
+		bottom: 24%;
+		left: 14%;
+		background: var(--cv-sun);
+		opacity: 0.6;
+		width: 0.55rem;
+		height: 0.55rem;
+	}
+	.j-cover-dot-3 {
+		top: 34%;
+		right: 10%;
+		background: var(--cv-mint);
+		opacity: 0.8;
+		width: 0.5rem;
+		height: 0.5rem;
+	}
+
+	/* 日期小标签 */
+	.j-cover-date {
+		display: inline-block;
+		font-size: 0.82rem;
+		letter-spacing: 0.3em;
+		color: color-mix(in srgb, var(--cv-ink) 72%, transparent);
+		background: color-mix(in srgb, var(--cv-pink) 32%, transparent);
+		padding: 0.28rem 1rem;
+		border-radius: 9999px;
+		border: 1px dashed color-mix(in srgb, var(--cv-ink) 22%, transparent);
+		margin-bottom: 1rem;
+		transform: rotate(-1deg);
+	}
+
+	/* 主标题 */
+	.j-cover-title {
+		font-size: clamp(2.8rem, 10.5vw, 4.4rem);
+		font-weight: 400;
+		letter-spacing: 0.14em;
+		color: #5f554b;
+		margin: 0.1rem 0;
+		transform: rotate(-1.5deg);
+		position: relative;
+		z-index: 1;
+	}
+	.j-cover-title::after {
+		content: "";
+		position: absolute;
+		left: 8%;
+		right: 8%;
+		bottom: -0.35rem;
+		height: 0.55rem;
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 10' preserveAspectRatio='none'%3E%3Cpath d='M0 6 Q 12 2, 25 6 T 50 6 T 75 6 T 100 6' fill='none' stroke='%23f2a6b5' stroke-width='2.6' stroke-linecap='round' opacity='0.7'/%3E%3C/svg%3E");
+		background-repeat: no-repeat;
+		background-size: 100% 100%;
+	}
+
+	/* 副标题 */
+	.j-cover-subtitle {
+		font-size: 1rem;
+		color: var(--cv-ink-soft);
+		letter-spacing: 0.12em;
+		margin-top: 1.15rem;
+		position: relative;
+		z-index: 1;
+	}
+
+	/* 虚线分割线 */
+	.j-cover-divider {
+		width: 11rem;
+		margin: 1.05rem auto 0;
+		border-top: 2px dashed color-mix(in srgb, var(--cv-mint) 85%, transparent);
+		position: relative;
+		z-index: 1;
+	}
+	.j-cover-divider::after {
+		content: "✦";
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		font-size: 0.75rem;
+		color: var(--cv-sun);
+		background: var(--cv-bg);
+		padding: 0 0.45rem;
+		line-height: 1;
+	}
+
+	/* 正文段落 */
+	.j-cover-text {
+		position: relative;
+		z-index: 1;
+		margin-top: 1rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.45rem;
+		max-width: 78%;
+	}
+	.j-cover-text p {
+		font-size: 0.95rem;
+		line-height: 1.85;
+		color: var(--cv-ink-soft);
+		letter-spacing: 0.04em;
+	}
+
+	/* 署名 */
+	.j-cover-author {
+		position: absolute;
+		bottom: 1.15rem;
+		left: 0;
+		right: 0;
+		font-size: 0.88rem;
+		letter-spacing: 0.24em;
+		color: color-mix(in srgb, var(--cv-ink) 78%, transparent);
+		z-index: 2;
+	}
+
+	/* ── 引言页（封面后的第二页） ── */
+	.j-intro-body {
+		min-height: 100%;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		text-align: center;
+		padding: 2.5rem 1.8rem 2rem;
+	}
+	.j-intro-badge {
+		font-size: 0.85rem;
+		letter-spacing: 0.35em;
+		padding: 0.32rem 1rem 0.32rem 1.35rem;
+		border-radius: 9999px;
+		color: #3f7a5c;
+		background: color-mix(in srgb, var(--paper-ink) 8%, transparent);
+		border: 1px solid color-mix(in srgb, var(--paper-ink) 16%, transparent);
+		margin-bottom: 1.3rem;
+	}
+	.j-intro-title {
+		font-size: clamp(1.9rem, 5vw, 2.5rem);
+		font-weight: 400;
+		letter-spacing: 0.14em;
+		color: var(--paper-ink);
+		margin-bottom: 1rem;
+	}
+	.j-intro-rule {
+		width: 11rem;
+		height: 1px;
+		background: color-mix(in srgb, var(--paper-ink) 20%, transparent);
+		position: relative;
+		margin-bottom: 1.6rem;
+	}
+	.j-intro-rule::after {
+		content: "✦";
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		font-size: 0.85rem;
+		color: #d98a5f;
+		background: var(--paper-bg);
+		padding: 0 0.6rem;
+	}
+	.j-intro-text {
+		max-width: 78%;
+	}
+	.j-intro-text p {
+		font-size: 1.02rem;
+		line-height: 2.1;
+		letter-spacing: 0.04em;
+		color: color-mix(in srgb, var(--paper-ink) 88%, transparent);
+		margin-bottom: 0.9rem;
+	}
+
+	/* 内页纸张（默认：横线 + 极淡点阵纹理） */
+	.j-sheet:not(.j-cover) {
+		background: var(--paper-bg);
+		background-image:
+			repeating-linear-gradient(
+				to bottom,
+				transparent,
+				transparent 30px,
+				var(--paper-line) 30px,
+				var(--paper-line) 31px
+			),
+			radial-gradient(
+				color-mix(in srgb, var(--paper-ink) 2.5%, transparent) 1px,
+				transparent 1.5px
+			);
+		background-size:
+			auto,
+			26px 26px;
+	}
+	/* ── 纸张主题：空白 / 牛皮纸 ── */
+	.j-book[data-paper="blank"] .j-sheet:not(.j-cover) {
+		background-image: none;
+	}
+	.j-book[data-paper="kraft"] {
+		--paper-bg: #f1e3c4;
+		--paper-ink: #5c5040;
+		--paper-ink-soft: rgba(92, 80, 64, 0.6);
+		--paper-line: rgba(92, 80, 64, 0.1);
+		--paper-hole: rgba(92, 80, 64, 0.16);
+	}
+	.j-book[data-paper="kraft"] .j-sheet:not(.j-cover) {
+		background-image: repeating-linear-gradient(
+			to bottom,
+			transparent,
+			transparent 30px,
+			var(--paper-line) 30px,
+			var(--paper-line) 31px
+		);
+	}
+	.dark .j-book[data-paper="kraft"] {
+		--paper-bg: #3a3024;
+		--paper-ink: #e6d5b5;
+		--paper-ink-soft: rgba(230, 213, 181, 0.55);
+		--paper-line: rgba(230, 213, 181, 0.09);
+		--paper-hole: rgba(230, 213, 181, 0.16);
+	}
+	.j-sheet-inner {
+		height: 100%;
+		overflow-y: auto;
+		padding: 1.5rem 1.7rem 1.8rem;
+		scrollbar-width: thin;
+		scrollbar-color: color-mix(in srgb, var(--paper-ink) 22%, transparent) transparent;
+		/* 纯 CSS 垂直居中：内容少时正文在头部下方居中，内容多时自动顶部对齐（auto margin 溢出归零） */
+		display: flex;
+		flex-direction: column;
+	}
+	.j-content {
+		flex-shrink: 0;
+		margin-top: auto;
+		margin-bottom: auto;
+	}
+	/* 底部占位：花印顶部(1.15rem + 2.5rem = 3.65rem) - 内容区 padding-bottom(1.8rem) = 1.85rem，
+	   将 .j-content 的居中下界精确对齐到花印顶部；滚动页底部多出的空间也避免内容被花印遮挡。
+	   再额外上推 0.6rem 让内容视觉上更靠上（--foot-space 可调）。 */
+	.j-foot-spacer {
+		flex-shrink: 0;
+		height: 5.8rem;
+	}
+	.j-sheet-inner::-webkit-scrollbar {
+		width: 5px;
+	}
+	.j-sheet-inner::-webkit-scrollbar-thumb {
+		background: color-mix(in srgb, var(--paper-ink) 22%, transparent);
+		border-radius: 3px;
+	}
+
+	/* ── 第 2 层：页脚收尾（固定在卡片底部，填补空白） ── */
+	.j-footer {
+		position: absolute;
+		left: 0;
+		right: 0;
+		bottom: 0.5rem;
+		display: flex;
+		align-items: center;
+		gap: 0.65rem;
+		padding: 0 1.6rem;
+		pointer-events: none;
+		z-index: 2;
+	}
+	.j-footer-line {
+		flex: 1;
+		border-top: 1.5px dashed color-mix(in srgb, var(--paper-ink) 15%, transparent);
+	}
+	.j-footer-mark {
+		font-size: 0.72rem;
+		letter-spacing: 0.22em;
+		color: color-mix(in srgb, var(--paper-ink) 42%, transparent);
+	}
+
+	/* ── 第 3 层：角落水印（极淡花印，填补留白、不干扰阅读） ── */
+	.j-watermark {
+		position: absolute;
+		bottom: 1.15rem;
+		right: 1.3rem;
+		color: color-mix(in srgb, var(--paper-ink) 11%, transparent);
+		pointer-events: none;
+		z-index: 1;
+	}
+	.j-watermark svg {
+		width: 2.5rem;
+		height: 2.5rem;
+	}
+
+	/* 日期头 */
+	.j-head {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 0.75rem;
+		margin-bottom: 0.9rem;
+		padding-bottom: 0.7rem;
+		border-bottom: 2px dashed color-mix(in srgb, var(--paper-ink) 16%, transparent);
+	}
+	.j-head-left {
+		display: flex;
+		align-items: baseline;
+		gap: 0.6rem;
+		flex-wrap: wrap;
+	}
+	.j-head-date {
+		font-size: 1.65rem;
+		font-weight: 400;
+		letter-spacing: 0.06em;
+		transform: rotate(-1deg);
+	}
+	.j-head-title {
+		font-size: 1rem;
+		color: var(--paper-ink-soft);
+	}
+	.j-head-mood {
+		font-size: 1.5rem;
+		line-height: 1;
+		transform: rotate(6deg);
+	}
+	/* 心情图标（mood 填图标名时，如 material-symbols:wb-twilight） */
+	.j-head-mood-icon {
+		font-size: 1.5rem;
+		width: 1.5rem;
+		height: 1.5rem;
+		color: color-mix(in srgb, var(--paper-ink) 80%, transparent);
+		transform: rotate(6deg);
+		flex-shrink: 0;
+	}
+	.j-mood-line {
+		font-size: 0.95rem;
+		color: var(--paper-ink-soft);
+		margin-bottom: 0.8rem;
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+	}
+	/* 心情文字行里的图标（mood 填图标名时） */
+	.j-mood-line-icon {
+		font-size: 1.05rem;
+		width: 1.05rem;
+		height: 1.05rem;
+		flex-shrink: 0;
+		color: color-mix(in srgb, var(--paper-ink) 75%, transparent);
+	}
+
+	/* 图片 */
+	.j-imgs {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 0.6rem;
+		margin-bottom: 1rem;
+	}
+	.j-imgs-multi {
+		grid-template-columns: 1fr 1fr;
+	}
+	.j-img {
+		width: 100%;
+		height: 9.5rem;
+		object-fit: cover;
+		border-radius: 0.55rem;
+		border: 1px solid color-mix(in srgb, var(--paper-ink) 12%, transparent);
+		box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+	}
+	/* 单张图片裁切位置微调：2月28日 sz(2).jpg 往下挪（默认居中 50% 50%） */
+	.j-img[src*="sz (2).jpg"] {
+		object-position: 50% 65%;
+	}
+	/* sz (9).jpg 略微往下挪 */
+	.j-img[src*="sz (9).jpg"] {
+		object-position: 50% 58%;
+	}
+	/* sz (12).jpg 以 4:3 比例显示（图片本身 1248×936 即 4:3） */
+	.j-img[src*="sz (12).jpg"] {
+		height: auto;
+		aspect-ratio: 4 / 3;
+		object-fit: cover;
+	}
+	/* 竖版图：完整显示不裁切，缩小并居中 */
+	.j-img-portrait {
+		width: auto;
+		max-width: 66%;
+		height: auto;
+		max-height: 16rem;
+		margin: 0 auto;
+		justify-self: center;
+		object-fit: contain;
+	}
+
+	/* 分区块 */
+	.j-block {
+		margin-top: 1.05rem;
+	}
+	.j-sec-title {
+		font-size: 1.1rem;
+		font-weight: 400;
+		letter-spacing: 0.08em;
+		display: inline-block;
+		position: relative;
+		padding-bottom: 0.3rem;
+		margin-bottom: 0.6rem;
+	}
+	.j-sec-title::after {
+		content: "";
+		position: absolute;
+		left: 0;
+		bottom: 0;
+		width: 100%;
+		height: 3px;
+		border-radius: 2px;
+		background: linear-gradient(to right, var(--accent) 0%, var(--accent) 32%, transparent 32%);
+		opacity: 0.8;
+	}
+
+	/* 便签 */
+	.j-notes {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 0.7rem;
+		margin-top: 0.6rem;
+	}
+	/* 只有一个便签：单列占满整行，水平居中长条
+	   （用 .j-notes.j-notes-single 提升特异性，避免被移动端媒体查询的 .j-notes 两列规则覆盖） */
+	.j-notes.j-notes-single {
+		grid-template-columns: 1fr;
+	}
+	.j-notes-single .j-note {
+		width: 100%;
+		max-width: 100%;
+	}
+	/* 奇数个便签（3/5）：最后一个横跨整行，变长条 */
+	.j-notes-last-full .j-note:last-child {
+		grid-column: 1 / -1;
+	}
+	.j-note {
+		--nb-bg: #fff7c2;
+		--nb-ink: #5d5310;
+		--nb-edge: #e8dc9a;
+		position: relative;
+		background: var(--nb-bg);
+		color: var(--nb-ink);
+		padding: 0.8rem 0.85rem 0.95rem;
+		border-radius: 2px 7px 4px 2px;
+		transform: rotate(var(--note-rotate, 0deg));
+		box-shadow: 0 2px 5px rgba(0, 0, 0, 0.12), 0 6px 14px rgba(0, 0, 0, 0.07);
+		transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease;
+	}
+	.j-note:hover {
+		transform: rotate(0deg) translateY(-3px);
+		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.14), 0 12px 24px rgba(0, 0, 0, 0.12);
+	}
+	.j-note::before {
+		content: "";
+		position: absolute;
+		top: -0.42rem;
+		left: 50%;
+		transform: translateX(-50%) rotate(1deg);
+		width: 4rem;
+		height: 0.95rem;
+		background: color-mix(in srgb, var(--nb-bg) 60%, transparent);
+		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+		opacity: 0.9;
+	}
+	.j-note-title {
+		font-size: 0.98rem;
+		font-weight: 400;
+		margin-bottom: 0.3rem;
+		letter-spacing: 0.03em;
+	}
+	.j-note-content {
+		font-size: 0.88rem;
+		line-height: 1.75;
+		opacity: 0.92;
+	}
+	.note-pink {
+		--nb-bg: #ffdbe4;
+		--nb-ink: #8c2f44;
+		--nb-edge: #f2b6c6;
+	}
+	.note-blue {
+		--nb-bg: #d9ecff;
+		--nb-ink: #1e4d7a;
+		--nb-edge: #a9cdf2;
+	}
+	.note-green {
+		--nb-bg: #ddf2d8;
+		--nb-ink: #2c5f33;
+		--nb-edge: #b4d9ac;
+	}
+	.note-orange {
+		--nb-bg: #ffe6c8;
+		--nb-ink: #8a4a12;
+		--nb-edge: #f2c9a0;
+	}
+	.note-purple {
+		--nb-bg: #f0e0ff;
+		--nb-ink: #5b2d8a;
+		--nb-edge: #cfaef2;
+	}
+	.note-gray {
+		--nb-bg: #e8e6e2;
+		--nb-ink: #4a4740;
+		--nb-edge: #c2bfb8;
+	}
+	.dark {
+		.j-note {
+			--nb-bg: #4d4427;
+			--nb-ink: #f3e7bf;
+			--nb-edge: #6a5d33;
+		}
+		.note-pink {
+			--nb-bg: #54303c;
+			--nb-ink: #f7c9d5;
+			--nb-edge: #6e4150;
+		}
+		.note-blue {
+			--nb-bg: #2b3d54;
+			--nb-ink: #c2ddff;
+			--nb-edge: #3a5270;
+		}
+		.note-green {
+			--nb-bg: #2d4230;
+			--nb-ink: #c9eccd;
+			--nb-edge: #3c5740;
+		}
+		.note-orange {
+			--nb-bg: #4d3a24;
+			--nb-ink: #f6d3a8;
+			--nb-edge: #674f30;
+		}
+		.note-purple {
+			--nb-bg: #3d2c52;
+			--nb-ink: #e2ccff;
+			--nb-edge: #534170;
+		}
+		.note-gray {
+			--nb-bg: #37352f;
+			--nb-ink: #d8d3c8;
+			--nb-edge: #4d4a42;
+		}
+	}
+
+	/* 待办 */
+	.j-todos {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+	.j-todo-label {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+		cursor: pointer;
+	}
+	.j-todo-label input[type="checkbox"] {
+		appearance: none;
+		-webkit-appearance: none;
+		flex-shrink: 0;
+		width: 1.15rem;
+		height: 1.15rem;
+		border: 2px solid color-mix(in srgb, var(--paper-ink) 45%, transparent);
+		border-radius: 0.3rem;
+		background: transparent;
+		position: relative;
+		transition: background 0.2s ease, border-color 0.2s ease;
+		cursor: pointer;
+	}
+	.j-todo-label input[type="checkbox"]:checked {
+		background: var(--accent);
+		border-color: var(--accent);
+	}
+	.j-todo-label input[type="checkbox"]:checked::after {
+		content: "✓";
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: #fff;
+		font-size: 0.75rem;
+		font-weight: 700;
+		line-height: 1;
+	}
+	.j-todo-text {
+		font-size: 0.95rem;
+		line-height: 1.5;
+		transition: opacity 0.2s ease;
+	}
+	.j-todo-label input:checked + .j-todo-text {
+		text-decoration: line-through;
+		text-decoration-color: color-mix(in srgb, var(--paper-ink) 55%, transparent);
+		text-decoration-thickness: 1.5px;
+		opacity: 0.6;
+	}
+	.j-todo-count {
+		margin-top: 0.6rem;
+		font-size: 0.85rem;
+		color: var(--paper-ink-soft);
+		text-align: right;
+		letter-spacing: 0.05em;
+	}
+
+	/* 日记 */
+	.j-diary-empty {
+		font-size: 0.92rem;
+		color: var(--paper-ink-soft);
+	}
+	.j-diary-content {
+		font-size: 0.98rem;
+		line-height: 1.95;
+		color: var(--paper-ink);
+	}
+	/* 覆盖 markdown.css 的默认排版，保持手写风格 */
+	.j-diary-content p,
+	.j-diary-content ul,
+	.j-diary-content ol,
+	.j-diary-content blockquote,
+	.j-diary-content h1,
+	.j-diary-content h2,
+	.j-diary-content h3,
+	.j-diary-content h4,
+	.j-diary-content pre,
+	.j-diary-content table {
+		font-family: var(--font-hand);
+		color: var(--paper-ink);
+		font-size: 0.98rem;
+		line-height: 1.95;
+		margin: 0.45rem 0;
+	}
+	.j-diary-content ul {
+		padding-left: 1.2rem;
+		list-style: disc;
+	}
+	.j-diary-content ol {
+		padding-left: 1.2rem;
+		list-style: decimal;
+	}
+	.j-diary-content blockquote {
+		border-left: 3px solid var(--accent);
+		padding-left: 0.8rem;
+		color: var(--paper-ink-soft);
+	}
+	.j-diary-content strong {
+		font-weight: 500;
+	}
+	.j-diary-content a {
+		color: #c07a2e;
+		text-decoration: underline;
+		text-underline-offset: 2px;
+	}
+
+	/* 摘抄 */
+	.j-quotes {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 0.6rem;
+	}
+	.j-quote {
+		padding: 0.75rem 0.95rem 0.6rem;
+		border-radius: 0.7rem;
+		background: color-mix(in srgb, var(--paper-bg) 55%, transparent);
+		border: 1.5px dashed color-mix(in srgb, #d98a5f 45%, transparent);
+	}
+	.j-quote-text {
+		font-size: 0.95rem;
+		line-height: 1.8;
+		letter-spacing: 0.03em;
+	}
+	.j-quote-author {
+		margin-top: 0.5rem;
+		font-size: 0.85rem;
+		color: var(--paper-ink-soft);
+		text-align: right;
+		transform: rotate(-0.5deg);
+	}
+
+	/* 翻页提示 */
+	.j-hint {
+		text-align: center;
+		margin-top: 0.9rem;
+		font-size: 0.82rem;
+		color: var(--paper-ink-soft);
+		letter-spacing: 0.06em;
+	}
+
+	/* ── 目录面板 ── */
+	.j-toc-mask {
+		position: fixed;
+		inset: 0;
+		z-index: 60;
+		background: rgba(0, 0, 0, 0.35);
+		opacity: 0;
+		transition: opacity 0.25s ease;
+	}
+	.j-toc-mask.open {
+		opacity: 1;
+	}
+	.j-toc {
+		position: fixed;
+		top: 0;
+		right: 0;
+		height: 100dvh;
+		width: min(84vw, 320px);
+		z-index: 61;
+		background: var(--paper-bg);
+		color: var(--paper-ink);
+		box-shadow: -8px 0 28px rgba(0, 0, 0, 0.18);
+		transform: translateX(100%);
+		transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+		display: flex;
+		flex-direction: column;
+		font-family: var(--font-hand);
+	}
+	.j-toc.open {
+		transform: translateX(0);
+	}
+	.j-toc-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 1rem 1.2rem;
+		border-bottom: 2px dashed color-mix(in srgb, var(--paper-ink) 14%, transparent);
+	}
+	.j-toc-head h3 {
+		font-size: 1.15rem;
+		font-weight: 400;
+		letter-spacing: 0.1em;
+	}
+	.j-toc-close {
+		font-size: 0.95rem;
+		padding: 0.25rem 0.6rem;
+	}
+	.j-toc-body {
+		flex: 1;
+		overflow-y: auto;
+		padding: 0.9rem 1rem 1.4rem;
+	}
+	.j-toc-month {
+		margin-bottom: 0.8rem;
+	}
+	.j-toc-month-label {
+		font-size: 0.95rem;
+		color: #c07a2e;
+		letter-spacing: 0.14em;
+		margin-bottom: 0.45rem;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+	.j-toc-month-label::after {
+		content: "";
+		flex: 1;
+		height: 2px;
+		background: color-mix(in srgb, var(--paper-ink) 12%, transparent);
+		border-radius: 1px;
+	}
+	.j-toc-days {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 0.4rem;
+	}
+	.j-toc-item {
+		display: flex;
+		align-items: center;
+		gap: 0.55rem;
+		width: 100%;
+		text-align: left;
+		font-family: var(--font-hand);
+		font-size: 0.95rem;
+		color: var(--paper-ink);
+		background: transparent;
+		border: 1px solid color-mix(in srgb, var(--paper-ink) 12%, transparent);
+		border-radius: 0.55rem;
+		padding: 0.42rem 0.6rem;
+		cursor: pointer;
+		transition: background 0.2s ease, border-color 0.2s ease;
+	}
+	.j-toc-item:hover {
+		background: color-mix(in srgb, var(--paper-bg) 55%, #ffffff 45%);
+		border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+	}
+	.j-toc-cover {
+		margin-bottom: 0.9rem;
+	}
+	.j-toc-dot {
+		flex-shrink: 0;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 1.5rem;
+		height: 1.5rem;
+		border-radius: 9999px;
+		background: color-mix(in srgb, var(--accent) 18%, transparent);
+		color: #c07a2e;
+		font-size: 0.8rem;
+	}
+
+	/* ── 分享卡片弹窗 ── */
+	.j-share-mask {
+		position: fixed;
+		inset: 0;
+		z-index: 70;
+		background: rgba(0, 0, 0, 0.4);
+		opacity: 0;
+		transition: opacity 0.25s ease;
+	}
+	.j-share-mask.open {
+		opacity: 1;
+	}
+	.j-share-panel {
+		position: fixed;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -46%) scale(0.96);
+		z-index: 71;
+		width: min(88vw, 460px);
+		max-height: 88vh;
+		background: var(--paper-bg);
+		color: var(--paper-ink);
+		border-radius: 1rem;
+		box-shadow: 0 18px 50px rgba(0, 0, 0, 0.25);
+		display: flex;
+		flex-direction: column;
+		font-family: var(--font-hand);
+		opacity: 0;
+		transition:
+			opacity 0.25s ease,
+			transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+	}
+	.j-share-panel.open {
+		opacity: 1;
+		transform: translate(-50%, -50%) scale(1);
+	}
+	.j-share-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 0.9rem 1.1rem;
+		border-bottom: 2px dashed color-mix(in srgb, var(--paper-ink) 14%, transparent);
+	}
+	.j-share-head h3 {
+		font-size: 1.1rem;
+		font-weight: 400;
+		letter-spacing: 0.1em;
+	}
+	.j-share-close {
+		padding: 0.25rem 0.6rem;
+	}
+	.j-share-body {
+		position: relative;
+		flex: 1;
+		overflow-y: auto;
+		padding: 1rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: color-mix(in srgb, var(--paper-bg) 55%, #ffffff 45%);
+	}
+	.j-share-body img {
+		max-width: 100%;
+		height: auto;
+		border-radius: 0.6rem;
+		box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14);
+		transition: opacity 0.2s ease;
+	}
+	.j-share-loading {
+		position: absolute;
+		font-size: 0.95rem;
+		color: var(--paper-ink-soft);
+	}
+	.j-share-foot {
+		padding: 0.8rem 1rem;
+		display: flex;
+		justify-content: center;
+		border-top: 2px dashed color-mix(in srgb, var(--paper-ink) 14%, transparent);
+	}
+	.j-share-download {
+		background: color-mix(in srgb, var(--accent) 18%, transparent);
+		border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+	}
+
+	/* 正文源隐藏 */
+	.j-diary-source {
+		display: none;
+	}
+
+	/* 响应式 */
+	@media (max-width: 640px) {
+		.j-sheet-inner {
+			padding: 1.1rem 1.15rem 1.3rem;
+		}
+		.j-img {
+			height: 8rem;
+		}
+		.j-img-portrait {
+			max-height: 13rem;
+		}
+		.j-notes {
+			grid-template-columns: 1fr 1fr;
+			gap: 0.55rem;
+		}
+		.j-toolbar {
+			padding: 0.2rem 0 0.7rem;
+		}
+	}
+	@media (max-width: 400px) {
+		.j-cover-title {
+			font-size: 2.6rem;
+		}
+		.j-page-indicator {
+			font-size: 0.82rem;
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.j-sheet {
+			transition: none !important;
+		}
+	}
+</style>

@@ -600,6 +600,23 @@ const siteLang = lang.replace("_", "-");
     <!-- 移动端底部导航 -->
     <MobileBottomNav />
 
+    <!-- 手账/总结页：整页加载（Swup 转场下页面级脚本可能不执行导致只有封面，data-no-swup 保证脚本完整运行） -->
+    <script is:inline data-swup-ignore-script>
+      (function() {
+        function markJournalLinks() {
+          document.querySelectorAll('a[href^="/journal/"]').forEach(function(a) {
+            if (!a.hasAttribute("data-no-swup")) {
+              a.setAttribute("data-no-swup", "");
+            }
+          });
+        }
+        markJournalLinks();
+        document.addEventListener("swup:contentReplaced", function() {
+          setTimeout(markJournalLinks, 50);
+        });
+      })();
+    </script>
+
     <!-- 文章阅读进度条脚本 -->
     <script is:inline data-swup-ignore-script>
       (function() {

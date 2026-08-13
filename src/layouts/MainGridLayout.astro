@@ -144,12 +144,10 @@ const showBannerPostMeta =
 const showBannerDim = (isBannerMode || isFullscreenMode) && isBackgroundEnabled;
 const dimOpacity = backgroundWallpaper.common?.dimOpacity ?? 0.15;
 
+// 非首页非文章页的壁纸标题：始终渲染（不依赖当前配置模式），显隐交给 CSS 按模式控制。
+// 这样 overlay/none 配置下元素仍存在于 DOM，用户切换到全屏壁纸模式时标题才能显示。
 const showBannerPageTitle =
-	(isBannerMode || isFullscreenMode) &&
-	isBackgroundEnabled &&
-	!isHomePageCheck &&
-	!isPostPage &&
-	!!title;
+	isBackgroundEnabled && !isHomePageCheck && !isPostPage && !!title;
 // 手机端非首页不显示banner的CSS类
 const mobileNonHomeBannerClass = !isHomePageCheck ? "mobile-hide-banner" : "";
 

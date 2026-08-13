@@ -138,6 +138,8 @@ export const siteConfig: SiteConfig = {
 		bangumi: false,
 		// 相册页面开关
 		gallery: true,
+		// 手账页面开关，内容在 src/data/journal.ts 修改
+		journal: true,
 	},
 
 	// 分类导航栏开关，在首页和归档页顶部显示分类快捷导航

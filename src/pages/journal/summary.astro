@@ -1,0 +1,1176 @@
+---
+import MainGridLayout from "@/layouts/MainGridLayout.astro";
+import { Icon } from "astro-icon/components";
+import { getCollection } from "astro:content";
+
+const allEntries = await getCollection("spec");
+const journalEntries = allEntries.filter((e) => e.id.startsWith("journal-"));
+if (journalEntries.length === 0) {
+	return Astro.redirect("/404/");
+}
+
+// 解析每本手账的年度/月度总结数据（数字自动统计：总记录数、覆盖月份数）
+const CN_MONTHS = ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十", "十一", "十二"];
+
+// ── 心情 = 天气拼音 → 图标（与 journal.astro 保持一致）──
+const MOOD_ICONS: Record<string, string> = {
+	qing: "material-symbols:wb-sunny",
+	duoyun: "material-symbols:partly-cloudy-day",
+	yin: "material-symbols:cloud",
+	yu: "material-symbols:rainy",
+	xiaoyu: "material-symbols:rainy-light",
+	dayu: "material-symbols:rainy-heavy",
+	lei: "material-symbols:thunderstorm",
+	xue: "material-symbols:weather-snowy",
+	qingxue: "material-symbols:sunny-snowing",
+	wu: "material-symbols:foggy",
+	ye: "material-symbols:nightlight",
+	xingguang: "material-symbols:auto-awesome",
+};
+// 把 mood 解析成可直接渲染的图标名（拼音 → 图标，完整图标名原样返回）
+const resolveMoodIcon = (mood?: string): string => {
+	if (!mood) return "";
+	if (mood.includes(":")) return mood;
+	return MOOD_ICONS[mood.trim()] || mood;
+};
+
+const books = journalEntries
+	.map((entry) => {
+		const d = entry.data;
+		const pages = d.pages ?? [];
+		const monthly = (d.monthly ?? []).map((m: any) => ({
+			...m,
+			year: m.month.slice(0, 4),
+			monthLabel: `${CN_MONTHS[Number(m.month.slice(5, 7)) - 1] ?? m.month}月`,
+			paragraphs: (m.body ?? "")
+				.split("\n")
+				.map((s: string) => s.trim())
+				.filter((s: string) => s.length > 0),
+			events: (m.events ?? []).map((ev: any) => ({
+				...ev,
+				mood: resolveMoodIcon(ev.mood),
+			})),
+		}));
+		return {
+			year: d.year ?? entry.id.replace(/^journal-/, "").replace(/\.md$/, ""),
+			title: d.title ?? "我的手账",
+			annual: d.annual ?? null,
+			monthly,
+			hideAnnual: d.hideAnnual ?? false,
+			hideMonthly: d.hideMonthly ?? false,
+			stats: {
+				records: pages.length,
+				months: new Set(pages.map((p: any) => p.date.slice(0, 7))).size,
+			},
+		};
+	})
+	.sort((a, b) => a.year.localeCompare(b.year));
+
+// 总结页可切换的年份：有可见的年度总结或月度总结的年份（hideAnnual/hideMonthly 控制）
+const yearGroups = books
+	.filter((b) => (b.annual && !b.hideAnnual) || (b.monthly.length > 0 && !b.hideMonthly))
+	.map((b) => b.year)
+	.sort();
+const activeYear = yearGroups.at(-1) ?? "";
+// 年度视图数据（有 annual 且未隐藏的年份）
+const annualBooks = books.filter((b) => b.annual && !b.hideAnnual);
+// 月度视图数据（有 monthly 且未隐藏的年份）
+const monthlyBooks = books.filter((b) => b.monthly.length > 0 && !b.hideMonthly);
+// 第一个有月度数据的月份（默认展开）
+const firstMonthKey = books.flatMap((b) => b.monthly)[0]?.month ?? "";
+---
+
+<MainGridLayout
+	title="我的总结"
+	description="年度回顾与月度档案"
+>
+	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+	<link
+		href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap"
+		rel="stylesheet"
+	/>
+
+	<div class="sum-app" id="sum-app" data-default-year={activeYear} data-default-month={firstMonthKey}>
+		<!-- ══ 顶部：返回 + 标题 + 视图切换 ══ -->
+		<header class="sum-head">
+			<div class="sum-head-left">
+				<a class="sum-back" href="/journal/" data-sum-back aria-label="返回手账">
+					<span aria-hidden="true">←</span> 返回手账
+				</a>
+				<h1 class="sum-title">手账总结</h1>
+			</div>
+			<div class="sum-tabs" role="tablist" aria-label="切换总结视图">
+				<button type="button" class="sum-tab" data-sum-tab="annual" role="tab">
+					年度回顾
+				</button>
+				<button type="button" class="sum-tab" data-sum-tab="monthly" role="tab">
+					月度档案
+				</button>
+			</div>
+		</header>
+
+		<!-- 年份选择器：点击切换年份，两个视图内容自动更新 -->
+		<nav class="sum-yearbar" aria-label="选择总结年份">
+			{yearGroups.map((y) => (
+				<button
+					type="button"
+					class="sum-year-btn"
+					data-sum-year-btn={y}
+					class:list={[
+						"sum-year-btn",
+						y === activeYear && "sum-year-btn-active",
+					]}
+				>
+					{y}
+				</button>
+			))}
+		</nav>
+
+		<!-- ══ 年度视图（暖橙 · 里程碑回顾） ══ -->
+		<section class="sum-pane" data-sum-pane="annual">
+			{annualBooks.map((b) => (
+				<article
+					class="sum-annual"
+					data-sum-annual-year={b.year}
+					hidden={b.year !== activeYear}
+				>
+				{b.annual ? (
+				<>
+					<!-- Hero -->
+					<div class="sum-hero">
+						<span class="sum-hero-year">{b.year}</span>
+						<p class="sum-hero-tagline">{b.annual?.tagline ?? "把这一年，好好收个尾。"}</p>
+						<div class="sum-hero-rule" aria-hidden="true"></div>
+					</div>
+
+					<!-- 全年概览（数字自动统计） -->
+					<div class="sum-section">
+						<h2 class="sum-sec-title"><span class="sum-sec-no">01</span> 全年概览</h2>
+						<div class="sum-cards">
+							<div class="sum-card">
+								<p class="sum-card-label">记录天数</p>
+								<p class="sum-card-num">{b.stats.records}</p>
+								<p class="sum-card-note">页</p>
+							</div>
+							<div class="sum-card">
+								<p class="sum-card-label">覆盖月份</p>
+								<p class="sum-card-num">{b.stats.months}</p>
+								<p class="sum-card-note">个月</p>
+							</div>
+							<div class="sum-card">
+								<p class="sum-card-label">重要事件</p>
+								<p class="sum-card-num">{(b.annual?.events ?? []).length}</p>
+								<p class="sum-card-note">件</p>
+							</div>
+						</div>
+					</div>
+
+					<!-- 重要事件回顾 -->
+					{b.annual?.events && b.annual.events.length > 0 && (
+						<div class="sum-section">
+							<h2 class="sum-sec-title"><span class="sum-sec-no">02</span> 重要事件回顾</h2>
+							<ol class="sum-timeline">
+								{b.annual.events.map((ev) => (
+									<li class="sum-tl-item">
+										<span class="sum-tl-dot" aria-hidden="true">✦</span>
+										<div class="sum-tl-body">
+											<p class="sum-tl-date">{ev.date}</p>
+											<p class="sum-tl-title">{ev.title}</p>
+											{ev.note && <p class="sum-tl-note">{ev.note}</p>}
+										</div>
+									</li>
+								))}
+							</ol>
+						</div>
+					)}
+
+					<!-- 年度关键词 -->
+					{b.annual?.keywords && b.annual.keywords.length > 0 && (
+						<div class="sum-section">
+							<h2 class="sum-sec-title"><span class="sum-sec-no">03</span> 年度关键词</h2>
+							<div class="sum-tags">
+								{b.annual.keywords.map((k) => (
+									<span class="sum-tag">{k}</span>
+								))}
+							</div>
+						</div>
+					)}
+
+					<!-- 进步与遗憾 -->
+					{(b.annual?.growth?.length > 0 || b.annual?.regrets?.length > 0) && (
+						<div class="sum-section">
+							<h2 class="sum-sec-title"><span class="sum-sec-no">04</span> 进步与遗憾</h2>
+							<div class="sum-gr">
+								{b.annual?.growth && b.annual.growth.length > 0 && (
+									<div class="sum-gr-col sum-gr-growth">
+										<h3 class="sum-gr-head">这一年的进步</h3>
+										<ul class="sum-gr-list">
+											{b.annual.growth.map((g) => (
+												<li>{g}</li>
+											))}
+										</ul>
+									</div>
+								)}
+								{b.annual?.regrets && b.annual.regrets.length > 0 && (
+									<div class="sum-gr-col sum-gr-regrets">
+										<h3 class="sum-gr-head">这一年的遗憾</h3>
+										<ul class="sum-gr-list">
+											{b.annual.regrets.map((g) => (
+												<li>{g}</li>
+											))}
+										</ul>
+									</div>
+								)}
+							</div>
+						</div>
+					)}
+
+					<!-- 下一年期许 -->
+					{b.annual?.outlook && (
+						<div class="sum-section">
+							<h2 class="sum-sec-title"><span class="sum-sec-no">05</span> 下一年的期许</h2>
+							<p class="sum-outlook">「{b.annual.outlook}」</p>
+						</div>
+					)}
+
+					<!-- 该年月度档案入口 -->
+					{b.monthly.length > 0 && !b.hideMonthly && (
+						<div class="sum-section sum-month-entry">
+							<h2 class="sum-sec-title">去翻阅月度档案</h2>
+							<div class="sum-pills">
+								{b.monthly.map((m) => (
+									<button
+										type="button"
+										class="sum-pill"
+										data-goto-month={m.month}
+									>
+										{m.monthLabel}
+									</button>
+								))}
+							</div>
+						</div>
+					)}
+								</>
+								) : (
+									<div class="sum-empty">
+										<p class="sum-empty-mark" aria-hidden="true">✦</p>
+										<p class="sum-empty-title">{b.year} 年的年度总结还没有写</p>
+										<p class="sum-empty-hint">
+											在 src/content/spec/journal-{b.year}.md 的 frontmatter 里添加
+											<code>annual:</code> 字段即可。
+										</p>
+									</div>
+								)}
+							</article>
+						))}
+					</section>
+
+		<!-- ══ 月度视图（琥珀 · 叙事档案） ══ -->
+		<section class="sum-pane" data-sum-pane="monthly" hidden>
+			{monthlyBooks.map((g) => (
+				<div class="sum-m-year" data-sum-month-group={g.year} hidden={g.year !== activeYear}>
+					<p class="sum-m-year-label">{g.year} 年</p>
+					{g.monthly.length > 0 ? (
+					<>
+					<div class="sum-pills sum-m-pills">
+						{g.monthly.map((m) => (
+							<button
+								type="button"
+								class="sum-pill"
+								data-sum-month={m.month}
+							>
+								{m.monthLabel}
+							</button>
+						))}
+					</div>
+
+					{g.monthly.map((m) => (
+						<article
+							class="sum-m-doc"
+							data-sum-month-doc={m.month}
+							hidden={m.month !== firstMonthKey}
+						>
+							{/* 扉页 */}
+							<header class="sum-m-cover">
+								<span class="sum-m-badge" aria-hidden="true">
+									{m.monthLabel}
+								</span>
+								<p class="sum-m-theme">{m.theme ?? "这个月的故事"}</p>
+							</header>
+
+							{/* 正文区 */}
+							{m.paragraphs.length > 0 && (
+								<div class="sum-m-body">
+									{m.paragraphs.map((para) => (
+										<p>{para}</p>
+									))}
+								</div>
+							)}
+
+							{/* 情感时间线（故事主体） */}
+							{m.events && m.events.length > 0 && (
+								<div class="sum-m-section">
+									<h2 class="sum-m-sec-title">这个月，发生了什么</h2>
+									<ol class="sum-m-events">
+										{m.events.map((ev, i) => (
+											<li class="sum-m-event" style={{ "--m-ev-rot": `${i % 2 === 0 ? -0.6 : 0.6}deg` }}>
+												<div class="sum-m-ev-head">
+													{ev.date && <span class="sum-m-ev-date">{ev.date}</span>}
+													<span class="sum-m-ev-title">{ev.title}</span>
+													{ev.mood && (
+														<Icon name={ev.mood} class="sum-m-ev-mood" />
+													)}
+												</div>
+												<p class="sum-m-ev-text">{ev.text}</p>
+											</li>
+										))}
+									</ol>
+								</div>
+							)}
+
+							{/* 情绪小径 */}
+							{m.events && m.events.filter((e) => e.mood).length > 0 && (
+								<div class="sum-m-section">
+									<h2 class="sum-m-sec-title">这个月的心情</h2>
+									<div class="sum-m-moodpath">
+										{m.events
+											.filter((e) => e.mood)
+											.map((ev) => (
+												<span class="sum-m-moodstep">
+													<Icon name={ev.mood!} class="sum-m-moodicon" />
+													{ev.title && <em class="sum-m-moodlabel">{ev.title}</em>}
+												</span>
+											))}
+									</div>
+								</div>
+							)}
+
+							{/* 亮点瞬间 */}
+							{m.moments && m.moments.length > 0 && (
+								<div class="sum-m-section">
+									<h2 class="sum-m-sec-title">值得记住的瞬间</h2>
+									<div class="sum-m-moments">
+										{m.moments.map((mo) => (
+											<span class="sum-m-moment">✦ {mo}</span>
+										))}
+									</div>
+								</div>
+							)}
+
+							{/* 月尾金句 */}
+							{m.quote && <p class="sum-m-quote">「{m.quote}」</p>}
+						</article>
+					))}
+					</>
+					) : (
+						<div class="sum-empty">
+							<p class="sum-empty-mark" aria-hidden="true">✦</p>
+							<p class="sum-empty-title">{g.year} 年的月度档案还没有写</p>
+							<p class="sum-empty-hint">
+								在 src/content/spec/journal-{g.year}.md 的 frontmatter 里添加
+								<code>monthly:</code> 字段即可。
+							</p>
+						</div>
+					)}
+				</div>
+			))}
+		</section>
+	</div>
+
+	<script is:inline data-astro-rerun>
+		(function () {
+			function initSummary() {
+				var root = document.getElementById("sum-app");
+				if (!root || root.dataset.init === "1") return;
+				root.dataset.init = "1";
+				var tabs = Array.from(root.querySelectorAll("[data-sum-tab]"));
+				var panes = Array.from(root.querySelectorAll("[data-sum-pane]"));
+
+				function showPane(name) {
+					panes.forEach(function (p) {
+						p.hidden = p.dataset.sumPane !== name;
+					});
+					tabs.forEach(function (t) {
+						t.classList.toggle("sum-tab-active", t.dataset.sumTab === name);
+					});
+				}
+
+				function selectMonth(y, m) {
+					var pills = root.querySelectorAll(
+						'[data-sum-month-group="' + y + '"] [data-sum-month]'
+					);
+					pills.forEach(function (p) {
+						p.classList.toggle("sum-pill-active", p.dataset.sumMonth === m);
+					});
+					var docs = root.querySelectorAll("[data-sum-month-doc]");
+					docs.forEach(function (d) {
+						d.hidden = d.dataset.sumMonthDoc !== m;
+					});
+				}
+
+				// 返回按钮：回到手账之前的位置（带 year/page，一步到位，避免先封面再跳页）
+				var backBtn = root.querySelector("[data-sum-back]");
+				if (backBtn) {
+					backBtn.addEventListener("click", function (e) {
+						e.preventDefault();
+						var y = root.dataset.defaultYear || "";
+						var p = 0;
+						try {
+							var st = JSON.parse(localStorage.getItem("journal-state") || "null");
+							if (st && st.year) y = st.year;
+							if (st && typeof st.page === "number") p = st.page;
+						} catch (err) {}
+						window.location.assign(
+							"/journal/?year=" +
+								encodeURIComponent(y) +
+								"&page=" +
+								p +
+								"#main-grid"
+						);
+					});
+				}
+
+				// 统一切换年份：顶部年份按钮高亮 + 年度视图显隐 + 月度分组显隐 + 选中该年第一月
+				var yearBtnEls = Array.from(root.querySelectorAll("[data-sum-year-btn]"));
+				var annualDocs = Array.from(root.querySelectorAll("[data-sum-annual-year]"));
+
+				function switchYear(y) {
+					yearBtnEls.forEach(function (b) {
+						b.classList.toggle("sum-year-btn-active", b.dataset.sumYearBtn === y);
+					});
+					annualDocs.forEach(function (d) {
+						d.hidden = d.dataset.sumAnnualYear !== y;
+					});
+					root.querySelectorAll("[data-sum-month-group]").forEach(function (g) {
+						g.hidden = g.dataset.sumMonthGroup !== y;
+					});
+					var first = root.querySelector(
+						'[data-sum-month-group="' + y + '"] [data-sum-month]'
+					);
+					if (first) selectMonth(y, first.dataset.sumMonth);
+					try {
+						history.replaceState(null, "", "?year=" + y);
+					} catch (e) {}
+				}
+
+				yearBtnEls.forEach(function (b) {
+					b.addEventListener("click", function () {
+						switchYear(b.dataset.sumYearBtn);
+						saveView(null, b.dataset.sumYearBtn, null);
+					});
+				});
+
+				tabs.forEach(function (t) {
+					t.addEventListener("click", function () {
+						showPane(t.dataset.sumTab);
+						saveView(t.dataset.sumTab);
+					});
+				});
+
+				// 月度视图里的年份分组（点击同等于顶部年份按钮）
+				root.querySelectorAll("[data-sum-month-group]").forEach(function (g) {
+					var label = g.querySelector(".sum-m-year-label");
+					if (!label) return;
+					label.style.cursor = "pointer";
+					label.addEventListener("click", function () {
+						switchYear(g.dataset.sumMonthGroup);
+						saveView("monthly", g.dataset.sumMonthGroup, null);
+					});
+				});
+
+				// 月份胶囊 + 年度页入口：点击 → 切到月度视图并选中该月
+				root.querySelectorAll("[data-sum-month], [data-goto-month]").forEach(function (el) {
+					el.addEventListener("click", function () {
+						var m = el.dataset.sumMonth || el.dataset.gotoMonth;
+						var y = m.slice(0, 4);
+						showPane("monthly");
+						switchYear(y);
+						selectMonth(y, m);
+						saveView("monthly", y, m);
+					});
+				});
+
+				// 初始年份：URL ?year → 手账当前选中年份(journal-state) → 上次记忆 → 默认
+				var availableYears = yearBtnEls.map(function (b) {
+					return b.dataset.sumYearBtn;
+				});
+				var params = null;
+				try {
+					params = new URLSearchParams(location.search);
+				} catch (e) {}
+				var urlYear = params && params.get("year") ? params.get("year") : null;
+				var journalYear = null;
+				try {
+					var st = JSON.parse(localStorage.getItem("journal-state") || "null");
+					journalYear = st && st.year ? st.year : null;
+				} catch (e) {}
+				var saved = null;
+				try {
+					saved = JSON.parse(localStorage.getItem("journal-summary") || "null");
+				} catch (e) {}
+				var defYear = root.dataset.defaultYear;
+				var defMonth = root.dataset.defaultMonth;
+				var v = saved && saved.view ? saved.view : "annual";
+				var y =
+					urlYear ||
+					journalYear ||
+					(saved && saved.year ? saved.year : null) ||
+					defYear;
+				if (availableYears.indexOf(y) === -1) y = defYear;
+				var m = saved && saved.month ? saved.month : defMonth;
+				showPane(v);
+				switchYear(y);
+				if (v === "monthly" && m && m.slice(0, 4) === y) {
+					selectMonth(y, m);
+				}
+
+				function saveView(view, year, month) {
+					try {
+						localStorage.setItem(
+							"journal-summary",
+							JSON.stringify({
+								view: view,
+								year: year || root.dataset.defaultYear,
+								month: month || null,
+							})
+						);
+					} catch (e) {}
+				}
+
+				// 全屏壁纸模式定位：总结页被 data-no-swup 整页加载（绕过 Swup 的 scroll:top 钩子），
+				// 这里手动复刻 Layout.astro scroll:top 钩子的逻辑：
+				// 全屏壁纸模式 + 非首页 → 滚动到 #main-grid（正文容器顶部），避免停在壁纸顶部
+				function scrollToContentIfFullscreen() {
+					try {
+						if (
+							document.documentElement.getAttribute("data-wallpaper-mode") !==
+							"fullscreen"
+						)
+							return;
+						if (window.location.pathname.replace(/\/+$/, "") === "") return; // 首页不滚
+						var mainGrid = document.getElementById("main-grid");
+						if (mainGrid) mainGrid.scrollIntoView({ behavior: "auto" });
+					} catch (e) {}
+				}
+				// 时机：等 DOMContentLoaded 同步初始化（initWallpaperMode 已把主内容定位到壁纸下方并显示）后再滚动，
+				// 避免整页加载时先在壁纸位置滚动导致"闪一下壁纸"；load 兜底保证图片/字体就绪后位置正确
+				if (document.readyState === "loading") {
+					document.addEventListener("DOMContentLoaded", function () {
+						setTimeout(scrollToContentIfFullscreen, 0);
+					});
+				} else {
+					scrollToContentIfFullscreen();
+				}
+				window.addEventListener("load", scrollToContentIfFullscreen);
+			}
+
+			initSummary();
+			if (!window.__summaryBound) {
+				window.__summaryBound = true;
+				document.addEventListener("swup:contentReplaced", initSummary);
+			}
+		})();
+	</script>
+
+	<style is:global>
+		/* 总结页：暖橙（年度）+ 琥珀（月度），延续手账语言 */
+		.sum-app {
+			--sum-bg: #fdf6e8;
+			--sum-ink: #4a4238;
+			--sum-ink-soft: rgba(74, 66, 56, 0.62);
+			--sum-coral: #d85a30;
+			--sum-coral-bg: #faece7;
+			--sum-coral-ink: #712b13;
+			--sum-amber: #ba7517;
+			--sum-amber-bg: #faeeda;
+			--sum-amber-ink: #633806;
+			max-width: 760px;
+			margin: 0 auto;
+			padding: 1.6rem 1.1rem 2.6rem;
+			font-family: "ZCOOL KuaiLe", "Kaiti SC", "KaiTi", "STKaiti", "DFKai-SB", "FangSong",
+				"仿宋", "楷体", cursive;
+			color: var(--sum-ink);
+		}
+
+		/* ── 顶部 ── */
+		.sum-head {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 1rem;
+			flex-wrap: wrap;
+			margin-bottom: 1.4rem;
+		}
+		.sum-head-left {
+			display: flex;
+			align-items: center;
+			gap: 0.9rem;
+			flex-wrap: wrap;
+		}
+		.sum-back {
+			display: inline-flex;
+			align-items: center;
+			gap: 0.35rem;
+			font-size: 0.9rem;
+			text-decoration: none;
+			padding: 0.32rem 0.9rem;
+			border-radius: 999px;
+			border: 1px solid color-mix(in srgb, var(--sum-amber) 30%, transparent);
+			color: var(--sum-amber-ink);
+			background: color-mix(in srgb, var(--sum-amber-bg) 55%, transparent);
+			transition: background 0.2s ease, border-color 0.2s ease;
+		}
+		.sum-back:hover {
+			background: var(--sum-amber-bg);
+			border-color: color-mix(in srgb, var(--sum-amber) 55%, transparent);
+		}
+		.sum-back:focus-visible {
+			outline: 2px solid color-mix(in srgb, var(--sum-amber) 60%, transparent);
+			outline-offset: 2px;
+		}
+		.sum-title {
+			font-size: 1.7rem;
+			font-weight: 400;
+			letter-spacing: 0.1em;
+			margin: 0;
+			color: var(--sum-ink);
+		}
+		.sum-tabs {
+			display: flex;
+			gap: 0.5rem;
+			background: color-mix(in srgb, var(--sum-ink) 6%, transparent);
+			border-radius: 999px;
+			padding: 0.25rem;
+		}
+		.sum-tab {
+			border: none;
+			background: transparent;
+			font-family: inherit;
+			font-size: 0.95rem;
+			color: var(--sum-ink-soft);
+			padding: 0.4rem 1.1rem;
+			border-radius: 999px;
+			cursor: pointer;
+			transition: background 0.2s ease, color 0.2s ease;
+			outline: none;
+		}
+		.sum-tab:hover {
+			color: var(--sum-ink);
+		}
+		.sum-tab-active {
+			background: #fff;
+			color: var(--sum-ink);
+			box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+		}
+		.sum-tab:focus-visible {
+			outline: 2px solid color-mix(in srgb, var(--sum-amber) 60%, transparent);
+			outline-offset: 2px;
+		}
+
+		/* ── 年份选择器 ── */
+		.sum-yearbar {
+			display: flex;
+			justify-content: center;
+			flex-wrap: wrap;
+			gap: 0.5rem;
+			margin-bottom: 1.6rem;
+		}
+		.sum-year-btn {
+			font-family: inherit;
+			font-size: 1rem;
+			letter-spacing: 0.1em;
+			padding: 0.35rem 1.25rem;
+			border-radius: 999px;
+			border: 1px solid color-mix(in srgb, var(--sum-amber) 30%, transparent);
+			background: transparent;
+			color: var(--sum-amber-ink);
+			cursor: pointer;
+			transition: background 0.2s ease, color 0.2s ease;
+			outline: none;
+		}
+		.sum-year-btn:hover {
+			background: color-mix(in srgb, var(--sum-amber-bg) 60%, transparent);
+		}
+		.sum-year-btn-active {
+			background: var(--sum-amber-bg);
+			border-color: color-mix(in srgb, var(--sum-amber) 55%, transparent);
+			font-weight: 500;
+		}
+		.sum-year-btn:focus-visible {
+			outline: 2px solid color-mix(in srgb, var(--sum-amber) 60%, transparent);
+			outline-offset: 2px;
+		}
+
+		/* ── 通用章节 ── */
+		.sum-section {
+			margin-top: 1.9rem;
+		}
+		.sum-sec-title {
+			display: flex;
+			align-items: baseline;
+			gap: 0.6rem;
+			font-size: 1.1rem;
+			font-weight: 400;
+			letter-spacing: 0.06em;
+			margin: 0 0 0.85rem;
+			padding-bottom: 0.45rem;
+			border-bottom: 2px dashed color-mix(in srgb, var(--sum-ink) 14%, transparent);
+		}
+		.sum-sec-no {
+			font-size: 0.85rem;
+			color: var(--sum-coral);
+			letter-spacing: 0.1em;
+		}
+
+		/* ── Hero ── */
+		.sum-hero {
+			text-align: center;
+			padding: 1.4rem 1rem 0.4rem;
+		}
+		.sum-hero-year {
+			font-size: clamp(3.2rem, 10vw, 4.6rem);
+			line-height: 1;
+			letter-spacing: 0.06em;
+			color: var(--sum-coral);
+			display: block;
+		}
+		.sum-hero-tagline {
+			font-size: 1.05rem;
+			color: var(--sum-ink-soft);
+			margin: 0.8rem auto 0;
+			max-width: 30rem;
+			line-height: 1.9;
+		}
+		.sum-hero-rule {
+			width: 8rem;
+			height: 1px;
+			background: color-mix(in srgb, var(--sum-ink) 18%, transparent);
+			margin: 1.3rem auto 0;
+			position: relative;
+		}
+		.sum-hero-rule::after {
+			content: "✦";
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			font-size: 0.8rem;
+			color: var(--sum-coral);
+			background: var(--sum-bg);
+			padding: 0 0.6rem;
+		}
+
+		/* ── 概览卡片 ── */
+		.sum-cards {
+			display: grid;
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+			gap: 0.7rem;
+		}
+		.sum-card {
+			background: color-mix(in srgb, var(--sum-bg) 60%, #fff 40%);
+			border: 1px solid color-mix(in srgb, var(--sum-coral) 26%, transparent);
+			border-radius: 0.8rem;
+			padding: 0.95rem 0.8rem;
+			text-align: center;
+		}
+		.sum-card-label {
+			font-size: 0.85rem;
+			color: var(--sum-ink-soft);
+			margin: 0 0 0.3rem;
+			letter-spacing: 0.08em;
+		}
+		.sum-card-num {
+			font-size: 2rem;
+			line-height: 1;
+			margin: 0;
+			color: var(--sum-coral-ink);
+		}
+		.sum-card-note {
+			font-size: 0.8rem;
+			color: var(--sum-ink-soft);
+			margin: 0.25rem 0 0;
+		}
+
+		/* ── 时间线 ── */
+		.sum-timeline {
+			list-style: none;
+			margin: 0;
+			padding: 0;
+			position: relative;
+		}
+		.sum-timeline::before {
+			content: "";
+			position: absolute;
+			left: 7px;
+			top: 4px;
+			bottom: 4px;
+			width: 2px;
+			background: color-mix(in srgb, var(--sum-coral) 30%, transparent);
+			border-radius: 2px;
+		}
+		.sum-tl-item {
+			position: relative;
+			padding-left: 2rem;
+			margin-bottom: 1rem;
+		}
+		.sum-tl-dot {
+			position: absolute;
+			left: 0;
+			top: 2px;
+			width: 16px;
+			height: 16px;
+			border-radius: 50%;
+			background: var(--sum-coral-bg);
+			color: var(--sum-coral);
+			font-size: 0.6rem;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+		.sum-tl-date {
+			font-size: 0.8rem;
+			color: var(--sum-ink-soft);
+			margin: 0;
+			letter-spacing: 0.06em;
+		}
+		.sum-tl-title {
+			font-size: 1.02rem;
+			margin: 0.1rem 0 0.15rem;
+			color: var(--sum-ink);
+		}
+		.sum-tl-note {
+			font-size: 0.92rem;
+			line-height: 1.75;
+			color: var(--sum-ink-soft);
+			margin: 0;
+		}
+
+		/* ── 关键词 ── */
+		.sum-tags {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 0.5rem;
+		}
+		.sum-tag {
+			font-size: 0.92rem;
+			padding: 0.3rem 0.95rem;
+			border-radius: 999px;
+			background: var(--sum-coral-bg);
+			color: var(--sum-coral-ink);
+			border: 1px solid color-mix(in srgb, var(--sum-coral) 24%, transparent);
+		}
+
+		/* ── 进步与遗憾 ── */
+		.sum-gr {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 0.9rem;
+		}
+		.sum-gr-col {
+			border-radius: 0.8rem;
+			padding: 1rem 1.05rem;
+			border: 1px solid color-mix(in srgb, var(--sum-ink) 14%, transparent);
+		}
+		.sum-gr-growth {
+			background: color-mix(in srgb, #eaf3de 60%, #fff 40%);
+			border-color: color-mix(in srgb, #639922 28%, transparent);
+		}
+		.sum-gr-regrets {
+			background: color-mix(in srgb, var(--sum-coral-bg) 60%, #fff 40%);
+			border-color: color-mix(in srgb, var(--sum-coral) 26%, transparent);
+		}
+		.sum-gr-head {
+			font-size: 0.98rem;
+			font-weight: 400;
+			margin: 0 0 0.5rem;
+			letter-spacing: 0.04em;
+		}
+		.sum-gr-list {
+			margin: 0;
+			padding-left: 1.1rem;
+			font-size: 0.92rem;
+			line-height: 1.85;
+			color: color-mix(in srgb, var(--sum-ink) 85%, transparent);
+		}
+
+		/* ── 展望 ── */
+		.sum-outlook {
+			font-size: 1rem;
+			line-height: 2;
+			color: var(--sum-coral-ink);
+			background: color-mix(in srgb, var(--sum-coral-bg) 55%, #fff 45%);
+			border-radius: 0.8rem;
+			padding: 1rem 1.2rem;
+			margin: 0;
+			text-align: center;
+		}
+
+		/* ── 年度页 → 月度入口 ── */
+		.sum-month-entry .sum-sec-title {
+			border-bottom-color: color-mix(in srgb, var(--sum-amber) 30%, transparent);
+		}
+		.sum-pills {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 0.5rem;
+		}
+		.sum-pill {
+			font-family: inherit;
+			font-size: 0.92rem;
+			padding: 0.32rem 1rem;
+			border-radius: 999px;
+			border: 1px solid color-mix(in srgb, var(--sum-amber) 30%, transparent);
+			background: transparent;
+			color: var(--sum-amber-ink);
+			cursor: pointer;
+			transition: background 0.2s ease, color 0.2s ease;
+			outline: none;
+		}
+		.sum-pill:hover {
+			background: var(--sum-amber-bg);
+		}
+		.sum-pill-active {
+			background: var(--sum-amber-bg);
+			border-color: color-mix(in srgb, var(--sum-amber) 55%, transparent);
+		}
+		.sum-pill:focus-visible {
+			outline: 2px solid color-mix(in srgb, var(--sum-amber) 60%, transparent);
+			outline-offset: 2px;
+		}
+
+		/* ── 月度视图 ── */
+		.sum-m-year {
+			margin-bottom: 1.4rem;
+		}
+		.sum-m-year-label {
+			font-size: 1rem;
+			letter-spacing: 0.12em;
+			color: var(--sum-amber);
+			margin: 0 0 0.6rem;
+			user-select: none;
+		}
+		.sum-m-pills {
+			margin-bottom: 1.4rem;
+		}
+
+		/* 月度文档 */
+		.sum-m-doc {
+			background: color-mix(in srgb, var(--sum-bg) 62%, #fff 38%);
+			border-radius: 1rem;
+			border: 1px solid color-mix(in srgb, var(--sum-amber) 22%, transparent);
+			padding: 1.6rem 1.5rem 1.8rem;
+		}
+		.sum-m-cover {
+			text-align: center;
+			padding-bottom: 1.1rem;
+			border-bottom: 2px dashed color-mix(in srgb, var(--sum-amber) 30%, transparent);
+			margin-bottom: 1.2rem;
+		}
+		.sum-m-badge {
+			display: inline-block;
+			font-size: 0.85rem;
+			letter-spacing: 0.3em;
+			padding: 0.28rem 1rem 0.28rem 1.3rem;
+			border-radius: 999px;
+			background: var(--sum-amber-bg);
+			color: var(--sum-amber-ink);
+			border: 1px solid color-mix(in srgb, var(--sum-amber) 34%, transparent);
+		}
+		.sum-m-theme {
+			font-size: clamp(1.7rem, 6vw, 2.3rem);
+			margin: 0.9rem 0 0;
+			color: var(--sum-amber-ink);
+			letter-spacing: 0.08em;
+		}
+		.sum-m-body p {
+			font-size: 1.02rem;
+			line-height: 2.05;
+			color: color-mix(in srgb, var(--sum-ink) 88%, transparent);
+			margin: 0 0 0.9rem;
+			text-align: center;
+		}
+		.sum-m-section {
+			margin-top: 1.6rem;
+		}
+		.sum-m-sec-title {
+			font-size: 1rem;
+			font-weight: 400;
+			letter-spacing: 0.05em;
+			margin: 0 0 0.8rem;
+			color: var(--sum-amber);
+		}
+
+		/* 情感时间线 */
+		.sum-m-events {
+			list-style: none;
+			margin: 0;
+			padding: 0;
+			display: flex;
+			flex-direction: column;
+			gap: 0.9rem;
+		}
+		.sum-m-event {
+			background: #fff;
+			border-radius: 0.85rem;
+			border: 1px solid color-mix(in srgb, var(--sum-amber) 24%, transparent);
+			padding: 0.9rem 1.05rem 0.95rem;
+			transform: rotate(var(--m-ev-rot, 0deg));
+			transition: transform 0.25s ease;
+		}
+		.sum-m-event:hover {
+			transform: rotate(0deg);
+		}
+		.sum-m-ev-head {
+			display: flex;
+			align-items: center;
+			gap: 0.6rem;
+			flex-wrap: wrap;
+			margin-bottom: 0.4rem;
+		}
+		.sum-m-ev-date {
+			font-size: 0.8rem;
+			color: var(--sum-amber);
+			letter-spacing: 0.06em;
+		}
+		.sum-m-ev-title {
+			font-size: 1.02rem;
+			color: var(--sum-amber-ink);
+		}
+		.sum-m-ev-mood {
+			font-size: 1.15rem;
+			width: 1.15rem;
+			height: 1.15rem;
+			color: var(--sum-amber);
+			margin-left: auto;
+			flex-shrink: 0;
+		}
+		.sum-m-ev-text {
+			font-size: 0.96rem;
+			line-height: 1.9;
+			color: color-mix(in srgb, var(--sum-ink) 86%, transparent);
+			margin: 0;
+		}
+
+		/* 情绪小径 */
+		.sum-m-moodpath {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: 0;
+			flex-wrap: wrap;
+		}
+		.sum-m-moodstep {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 0.35rem;
+			padding: 0.5rem 0.8rem;
+			position: relative;
+		}
+		.sum-m-moodstep:not(:last-child)::after {
+			content: "";
+			position: absolute;
+			top: 50%;
+			right: -0.55rem;
+			width: 1.1rem;
+			height: 2px;
+			background: color-mix(in srgb, var(--sum-amber) 40%, transparent);
+		}
+		.sum-m-moodicon {
+			font-size: 1.7rem;
+			width: 1.7rem;
+			height: 1.7rem;
+			color: var(--sum-amber);
+		}
+		.sum-m-moodlabel {
+			font-style: normal;
+			font-size: 0.78rem;
+			color: var(--sum-ink-soft);
+		}
+
+		/* 亮点瞬间 */
+		.sum-m-moments {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 0.5rem;
+		}
+		.sum-m-moment {
+			font-size: 0.92rem;
+			padding: 0.3rem 0.9rem;
+			border-radius: 0.6rem;
+			background: var(--sum-amber-bg);
+			color: var(--sum-amber-ink);
+			border: 1px dashed color-mix(in srgb, var(--sum-amber) 40%, transparent);
+		}
+
+		/* 月尾金句 */
+		.sum-m-quote {
+			text-align: center;
+			font-size: 1.05rem;
+			line-height: 2;
+			color: var(--sum-amber-ink);
+			margin: 1.8rem 0 0;
+			padding-top: 1.2rem;
+			border-top: 2px dashed color-mix(in srgb, var(--sum-amber) 30%, transparent);
+		}
+
+		/* ── 空态（该年暂无总结数据） ── */
+		.sum-empty {
+			text-align: center;
+			padding: 2.6rem 1.2rem 3rem;
+			border: 1.5px dashed color-mix(in srgb, var(--sum-amber) 30%, transparent);
+			border-radius: 1rem;
+			margin-top: 0.4rem;
+		}
+		.sum-empty-mark {
+			font-size: 1.6rem;
+			color: var(--sum-amber);
+			margin: 0 0 0.6rem;
+		}
+		.sum-empty-title {
+			font-size: 1.1rem;
+			color: var(--sum-ink);
+			margin: 0 0 0.5rem;
+			letter-spacing: 0.05em;
+		}
+		.sum-empty-hint {
+			font-size: 0.88rem;
+			color: var(--sum-ink-soft);
+			margin: 0;
+			line-height: 1.9;
+		}
+		.sum-empty-hint code {
+			background: color-mix(in srgb, var(--sum-amber-bg) 70%, transparent);
+			border-radius: 0.3rem;
+			padding: 0.05rem 0.35rem;
+			font-family: var(--font-mono, monospace);
+			font-size: 0.85em;
+			color: var(--sum-amber-ink);
+		}
+
+		/* ── 响应式 ── */
+		@media (max-width: 640px) {
+			.sum-app {
+				padding: 1.2rem 0.9rem 2rem;
+			}
+			.sum-head {
+				justify-content: center;
+				flex-direction: column;
+				text-align: center;
+			}
+			.sum-cards {
+				gap: 0.5rem;
+			}
+			.sum-card-num {
+				font-size: 1.6rem;
+			}
+			.sum-gr {
+				grid-template-columns: 1fr;
+			}
+			.sum-m-doc {
+				padding: 1.2rem 1.05rem 1.4rem;
+			}
+		}
+	</style>
+</MainGridLayout>
