@@ -366,7 +366,7 @@ pages:
     title: "100天！ · 开心"
     mood: "material-symbols:wb-sunny"
     images:
-      - "/assets/szimages/sz (11).jpg"
+      - "/assets/szimages/sz (12).jpg"
     notes:
       - color: "orange"
         title: "100天！"
@@ -381,7 +381,7 @@ pages:
     title: "520！ · 开心"
     mood: "material-symbols:wb-sunny"
     images:
-      - "/assets/szimages/sz (12).jpg"
+      - "/assets/szimages/sz (11).jpg"
     notes:
       - color: "pink"
         title: "520红包"
