@@ -182,6 +182,7 @@ const cover = (books.find((b) => b.year === activeYear) ?? books[books.length - 
 
 				<!-- ══ 工具栏 ══ -->
 				<div class="j-toolbar">
+					<div class="j-btn-group">
 					<button type="button" class="j-btn" id="j-toc-btn" aria-label="打开目录">
 						<span class="j-btn-icon" aria-hidden="true">☰</span>
 						<span>目录</span>
@@ -195,6 +196,16 @@ const cover = (books.find((b) => b.year === activeYear) ?? books[books.length - 
 						<span class="j-btn-icon" aria-hidden="true">✦</span>
 						<span>总结</span>
 					</a>
+					<a
+						class="j-btn"
+						id="j-todo-btn"
+						href="/todo/"
+						aria-label="打开待办事项"
+					>
+						<span class="j-btn-icon" aria-hidden="true">✓</span>
+						<span>待办</span>
+					</a>
+					</div>
 					<span class="j-page-indicator" id="j-page-indicator">1 / 1</span>
 					<div class="j-controls">
 						<select class="j-select" id="j-year-select" aria-label="切换手账年份">
@@ -989,14 +1000,29 @@ function initJournal() {
   }
   async function drawShareCard(b, pageIdx) {
     const W = 900;
-    const H = 1200;
-    const canvas = document.createElement("canvas");
-    canvas.width = W;
-    canvas.height = H;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return "";
-    const FONT = "'ZCOOL KuaiLe','KaiTi','STKaiti','\u6977\u4F53',cursive";
-    const ink = "#5c5040";
+    const sheet = b.book.querySelector(`.j-sheet[data-page="${pageIdx}"]`);
+    // 预加载本页所有图片（供测量与绘制共用）
+    const imgEls = Array.from(sheet?.querySelectorAll(".j-img") || []);
+    const imgs = (
+      await Promise.all(
+        imgEls.map(
+          (el) =>
+            new Promise((resolve) => {
+              const src = el.getAttribute("src") || "";
+              if (!src) return resolve(null);
+              const img = new Image();
+              img.crossOrigin = "anonymous";
+              img.onload = () => resolve(img);
+              img.onerror = () => resolve(null);
+              img.src = src;
+            }),
+        ),
+      )
+    ).filter(Boolean);
+    // 渲染一版完整卡片：返回内容底部 y（用于计算总高度）
+    function render(ctx, H) {
+      const FONT = "'ZCOOL KuaiLe','KaiTi','STKaiti','\u6977\u4F53',cursive";
+      const ink = "#5c5040";
     const inkSoft = "rgba(92,80,64,0.62)";
     const pink = "rgba(242,199,208,0.9)";
     const mint = "rgba(188,221,200,0.9)";
@@ -1046,7 +1072,6 @@ function initJournal() {
     ctx.beginPath();
     ctx.arc(80, 830, 8, 0, Math.PI * 2);
     ctx.fill();
-    const sheet = b.book.querySelector(`.j-sheet[data-page="${pageIdx}"]`);
     ctx.textAlign = "center";
     if (pageIdx === 0) {
       const dateText = sheet?.querySelector(".j-cover-date")?.textContent?.trim() || "";
@@ -1094,16 +1119,18 @@ function initJournal() {
       ctx.font = `400 30px ${FONT}`;
       ctx.fillStyle = inkSoft;
       let py = 590;
-      paras.slice(0, 4).forEach((para) => {
-        py += wrapText(ctx, para, W / 2, py, 620, 46, 2) + 10;
+      paras.forEach((para) => {
+        py += wrapText(ctx, para, W / 2, py, 620, 46, 6) + 10;
       });
       const author = sheet?.querySelector(".j-cover-author")?.textContent?.trim() || "\u2014\u2014 \u7267\u6CB3\u4F0A\u7409";
       ctx.font = `400 30px ${FONT}`;
       ctx.fillStyle = "rgba(124,111,99,0.78)";
-      ctx.fillText(author, W / 2, 1050);
+      const authorY = Math.max(py + 30, 1050);
+      ctx.fillText(author, W / 2, authorY);
       ctx.font = `400 22px ${FONT}`;
       ctx.fillStyle = "rgba(124,111,99,0.45)";
-      ctx.fillText("\u6211\u7684\u6570\u5B57\u624B\u8D26 \xB7 \u4E00\u5E74\u4E00\u4F1A", W / 2, 1120);
+      ctx.fillText("\u6211\u7684\u6570\u5B57\u624B\u8D26 \xB7 \u4E00\u5E74\u4E00\u4F1A", W / 2, authorY + 70);
+      return authorY + 110;
     } else if (pageIdx === 1) {
       // ══ 引言页卡片 ══
       const introTitle =
@@ -1137,14 +1164,16 @@ function initJournal() {
       ctx.font = `400 32px ${FONT}`;
       ctx.fillStyle = "rgba(92,80,64,0.9)";
       let iy = 400;
-      paras.slice(0, 10).forEach((para) => {
-        iy += wrapText(ctx, para, W / 2, iy, 640, 54, 3) + 14;
+      paras.forEach((para) => {
+        iy += wrapText(ctx, para, W / 2, iy, 640, 54, 10) + 14;
       });
       const introAuthor =
         b.book.querySelector(".j-cover-author")?.textContent?.trim() || "\u2014\u2014 \u7267\u6CB3\u4F0A\u7409";
       ctx.font = `400 30px ${FONT}`;
       ctx.fillStyle = "rgba(124,111,99,0.78)";
-      ctx.fillText(introAuthor, W / 2, 1140);
+      const introAuthorY = Math.max(iy + 20, 1140);
+      ctx.fillText(introAuthor, W / 2, introAuthorY);
+      return introAuthorY + 40;
     } else {
       ctx.textAlign = "left";
       const dateText = sheet?.querySelector(".j-head-date")?.textContent?.trim() || "\u65E5\u8BB0";
@@ -1177,145 +1206,166 @@ function initJournal() {
       ctx.font = `400 32px ${FONT}`;
       ctx.fillStyle = "rgba(92,80,64,0.9)";
       const diaryY = 280;
-      const diaryMaxLines = 10;
-      const diaryHeight = wrapText(ctx, diaryText, 70, diaryY, W - 140, 54, diaryMaxLines);
+      const diaryHeight = wrapText(ctx, diaryText, 70, diaryY, W - 140, 54, 9999);
       let contentBottom = diaryY + diaryHeight + 20;
-      const imgEls = Array.from(sheet?.querySelectorAll(".j-img") || []);
-      if (imgEls.length > 0) {
-        const imgSrcs = imgEls.map((el) => el.getAttribute("src") || "").filter(Boolean);
-        const loaded = await Promise.all(
-          imgSrcs.map(
-            (src) => new Promise((resolve) => {
-              const img = new Image();
-              img.crossOrigin = "anonymous";
-              img.onload = () => resolve(img);
-              img.onerror = () => resolve(null);
-              img.src = src;
-            })
-          )
-        );
-        const imgs = loaded.filter(Boolean);
-        if (imgs.length > 0) {
-          const imgH = imgs.length > 1 ? 130 : 165;
-          const gap = 14;
-          const totalW = W - 140;
-          const colW = imgs.length > 1 ? (totalW - gap) / 2 : totalW;
-          let ix = 70;
-          const imgY = contentBottom;
-          let maxDrawH = imgH;
-          imgs.slice(0, 2).forEach((img) => {
+      // 图片：全部绘制，单张更大，多张 2 列并排、超过 2 张换行
+      if (imgs.length > 0) {
+        const gap = 14;
+        const totalW = W - 140;
+        const colW = (totalW - gap) / 2;
+        let imgY = contentBottom;
+        // 逐行排布：每行最多 2 张
+        for (let r = 0; r * 2 < imgs.length; r++) {
+          const rowImgs = imgs.slice(r * 2, r * 2 + 2);
+          const single = rowImgs.length === 1;
+          let rowH = 0;
+          const laid = rowImgs.map((img, c) => {
             const isPortrait = img.naturalHeight > img.naturalWidth;
-            let dw = colW;
-            let dh = imgH;
-            let dx = ix;
-            if (isPortrait) {
+            let dw = single ? totalW : colW;
+            let dh = single ? 220 : 150;
+            if (single && isPortrait) {
+              // 单张竖图：高按比例，最大 320
+              const ratio = img.naturalWidth / img.naturalHeight;
+              dw = Math.min(totalW * 0.62, 340);
+              dh = dw / ratio;
+              if (dh > 320) {
+                dh = 320;
+                dw = dh * ratio;
+              }
+            } else if (!single && isPortrait) {
+              // 多张中的竖图：保持比例，限高 220
               const ratio = img.naturalWidth / img.naturalHeight;
               dw = colW * 0.62;
               dh = dw / ratio;
-              if (dh > 250) {
-                dh = 250;
+              if (dh > 220) {
+                dh = 220;
                 dw = dh * ratio;
               }
-              dx = ix + (colW - dw) / 2;
-              maxDrawH = Math.max(maxDrawH, dh);
             }
+            rowH = Math.max(rowH, dh);
+            return { img, dw, dh, dx: 70 + c * (colW + gap), dy: imgY, isPortrait };
+          });
+          // 单张且横向图片：横图保持 220 高全宽
+          laid.forEach(({ img, dw, dh, dx, dy }) => {
             const sRatio = img.naturalWidth / img.naturalHeight;
             const tRatio = dw / dh;
             let sx = 0, sy = 0, sW = img.naturalWidth, sH = img.naturalHeight;
-            if (!isPortrait) {
-              if (sRatio > tRatio) {
-                sH = img.naturalHeight;
-                sW = sH * tRatio;
-                sx = (img.naturalWidth - sW) / 2;
-              } else {
-                sW = img.naturalWidth;
-                sH = sW / tRatio;
-                sy = (img.naturalHeight - sH) / 2;
-              }
+            if (sRatio > tRatio) {
+              sH = img.naturalHeight;
+              sW = sH * tRatio;
+              sx = (img.naturalWidth - sW) / 2;
+            } else {
+              sW = img.naturalWidth;
+              sH = sW / tRatio;
+              sy = (img.naturalHeight - sH) / 2;
             }
+            const cdx = dx + (colW - dw) / 2;
             ctx.save();
             ctx.beginPath();
-            drawRoundRect(ctx, dx, imgY, dw, dh, 10);
+            drawRoundRect(ctx, cdx, dy, dw, dh, 10);
             ctx.clip();
-            ctx.drawImage(img, sx, sy, sW, sH, dx, imgY, dw, dh);
+            ctx.drawImage(img, sx, sy, sW, sH, cdx, dy, dw, dh);
             ctx.restore();
-            ix += colW + gap;
           });
-          contentBottom = imgY + maxDrawH + 16;
+          imgY += rowH + gap;
         }
+        contentBottom = imgY;
       }
-      const notes = Array.from(sheet?.querySelectorAll(".j-note") || []).slice(0, 2);
+      const notes = Array.from(sheet?.querySelectorAll(".j-note") || []);
       let notesBottom = contentBottom;
       if (notes.length) {
-        // 单个便签 → 长条形铺满整行（与页面 .j-notes-single 一致）；多个 → 双列
-        const isSingle = notes.length === 1;
-        const nw = isSingle ? W - 140 : 340;
+        // 便签全部绘制：每行最多 2 张，超过换行；单张 → 长条铺满整行
+        const nw = 340;
         const nh = 200;
-        const ny = notesBottom + 10;
-        notes.forEach((n, i) => {
-          const nx = isSingle ? 70 : 70 + i * (nw + 30);
-          const cls = n.className;
-          const isPink = cls.includes("note-pink");
-          const isBlue = cls.includes("note-blue");
-          const isGreen = cls.includes("note-green");
-          const isOrange = cls.includes("note-orange");
-          const isPurple = cls.includes("note-purple");
-          const isGray = cls.includes("note-gray");
-          const nb = isPink
-            ? "#ffdbe4"
-            : isBlue
-              ? "#d9ecff"
-              : isGreen
-                ? "#ddf2d8"
-                : isOrange
-                  ? "#ffe6c8"
-                  : isPurple
-                    ? "#f0e0ff"
-                    : isGray
-                      ? "#e8e6e2"
-                      : "#fff7c2";
-          const nink = isPink
-            ? "#8c2f44"
-            : isBlue
-              ? "#1e4d7a"
-              : isGreen
-                ? "#2c5f33"
-                : isOrange
-                  ? "#8a4a12"
-                  : isPurple
-                    ? "#5b2d8a"
-                    : isGray
-                      ? "#4a4740"
-                      : "#5d5310";
-          ctx.save();
-          ctx.translate(nx + nw / 2, ny + nh / 2);
-          ctx.rotate(i === 0 ? -0.03 : 0.03);
-          ctx.fillStyle = nb;
-          ctx.shadowColor = "rgba(0,0,0,0.12)";
-          ctx.shadowBlur = 14;
-          ctx.shadowOffsetY = 6;
-          drawRoundRect(ctx, -nw / 2, -nh / 2, nw, nh, 10);
-          ctx.fill();
-          ctx.shadowColor = "transparent";
-          const t = n.querySelector(".j-note-title")?.textContent?.trim() || "";
-          const c = n.querySelector(".j-note-content")?.textContent?.trim() || "";
-          ctx.fillStyle = nink;
-          ctx.textAlign = "left";
-          ctx.font = `400 26px ${FONT}`;
-          ctx.fillText(t, -nw / 2 + 26, -nh / 2 + 48);
-          ctx.font = `400 22px ${FONT}`;
-          wrapText(ctx, c, -nw / 2 + 26, -nh / 2 + 88, nw - 52, 32, 3);
-          ctx.restore();
-        });
-        notesBottom = ny + nh;
+        const nGap = 30;
+        for (let r = 0; r * 2 < notes.length; r++) {
+          const rowNotes = notes.slice(r * 2, r * 2 + 2);
+          const rowSingle = rowNotes.length === 1;
+          const rw = rowSingle ? W - 140 : nw;
+          const ny = notesBottom + 10;
+          rowNotes.forEach((n, c) => {
+            const nx = rowSingle ? 70 : 70 + c * (rw + nGap);
+            const cls = n.className;
+            const isPink = cls.includes("note-pink");
+            const isBlue = cls.includes("note-blue");
+            const isGreen = cls.includes("note-green");
+            const isOrange = cls.includes("note-orange");
+            const isPurple = cls.includes("note-purple");
+            const isGray = cls.includes("note-gray");
+            const nb = isPink
+              ? "#ffdbe4"
+              : isBlue
+                ? "#d9ecff"
+                : isGreen
+                  ? "#ddf2d8"
+                  : isOrange
+                    ? "#ffe6c8"
+                    : isPurple
+                      ? "#f0e0ff"
+                      : isGray
+                        ? "#e8e6e2"
+                        : "#fff7c2";
+            const nink = isPink
+              ? "#8c2f44"
+              : isBlue
+                ? "#1e4d7a"
+                : isGreen
+                  ? "#2c5f33"
+                  : isOrange
+                    ? "#8a4a12"
+                    : isPurple
+                      ? "#5b2d8a"
+                      : isGray
+                        ? "#4a4740"
+                        : "#5d5310";
+            ctx.save();
+            ctx.translate(nx + rw / 2, ny + nh / 2);
+            ctx.rotate((c === 0 ? -1 : 1) * 0.03);
+            ctx.fillStyle = nb;
+            ctx.shadowColor = "rgba(0,0,0,0.12)";
+            ctx.shadowBlur = 14;
+            ctx.shadowOffsetY = 6;
+            drawRoundRect(ctx, -rw / 2, -nh / 2, rw, nh, 10);
+            ctx.fill();
+            ctx.shadowColor = "transparent";
+            const t = n.querySelector(".j-note-title")?.textContent?.trim() || "";
+            const cc = n.querySelector(".j-note-content")?.textContent?.trim() || "";
+            ctx.fillStyle = nink;
+            ctx.textAlign = "left";
+            ctx.font = `400 26px ${FONT}`;
+            ctx.fillText(t, -rw / 2 + 26, -nh / 2 + 48);
+            ctx.font = `400 22px ${FONT}`;
+            wrapText(ctx, cc, -rw / 2 + 26, -nh / 2 + 88, rw - 52, 32, 3);
+            ctx.restore();
+          });
+          notesBottom = ny + nh;
+        }
       }
       const bookAuthor = b.book.querySelector(".j-cover-author")?.textContent?.trim() || "\u2014\u2014 \u7267\u6CB3\u4F0A\u7409";
       ctx.font = `400 30px ${FONT}`;
       ctx.fillStyle = "rgba(124,111,99,0.78)";
       ctx.textAlign = "center";
-      const authorY = Math.max(notesBottom + 40, 1100);
-      ctx.fillText(bookAuthor, W / 2, Math.min(authorY, 1150));
+      const authorY = notesBottom + 40;
+      ctx.fillText(bookAuthor, W / 2, authorY);
+      return authorY + 30;
     }
+    return 1200;
+  }
+    // 第一遍：用临时 canvas 测量内容底部，得到总高度（确保长内容完整容纳）
+    const measureCanvas = document.createElement("canvas");
+    measureCanvas.width = W;
+    measureCanvas.height = 6000;
+    const mctx = measureCanvas.getContext("2d");
+    if (!mctx) return "";
+    const contentBottom = render(mctx, 6000);
+    const H = Math.max(1200, contentBottom + 60);
+    // 第二遍：按算出的高度正式绘制
+    const canvas = document.createElement("canvas");
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return "";
+    render(ctx, H);
     return canvas.toDataURL("image/png");
   }
   async function generateShare() {
@@ -1410,12 +1460,18 @@ if (!window.__journalSwupBound) {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 0.75rem;
+		gap: 0.4rem;
 		padding: 0.35rem 0.25rem 0.85rem;
 		flex-wrap: wrap;
 		row-gap: 0.5rem;
 		position: relative;
 		z-index: 10;
+	}
+	/* 目录/总结/待办三个按钮：独立容器内紧密排列（不受 toolbar gap 叠加影响） */
+	.j-btn-group {
+		display: flex;
+		align-items: center;
+		gap: 0.2rem;
 	}
 	.j-controls {
 		display: flex;
@@ -2509,12 +2565,12 @@ if (!window.__journalSwupBound) {
 		overflow-y: auto;
 		padding: 1rem;
 		display: flex;
-		align-items: center;
+		align-items: flex-start; /* 长图顶部对齐，不缩放居中 */
 		justify-content: center;
 		background: color-mix(in srgb, var(--paper-bg) 55%, #ffffff 45%);
 	}
 	.j-share-body img {
-		max-width: 100%;
+		width: 100%;
 		height: auto;
 		border-radius: 0.6rem;
 		box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14);

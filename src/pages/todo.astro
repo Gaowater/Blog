@@ -1,0 +1,355 @@
+---
+import MainGridLayout from "@/layouts/MainGridLayout.astro";
+import { getEntry } from "astro:content";
+import { siteConfig } from "@/config";
+
+// 页面开关：siteConfig.pages.todo 为 false 时返回 404
+if (!siteConfig.pages.todo) {
+	return Astro.redirect("/404/");
+}
+
+const todoEntry = await getEntry("spec", "todo");
+const data = todoEntry?.data ?? {};
+const title = data.todoTitle || "待办事项";
+const description = data.todoDescription || "";
+const items = data.todoItems || [];
+const total = items.length;
+const doneCount = items.filter((t) => t.done).length;
+---
+
+<MainGridLayout title={title} description={description}>
+	<!-- 手写字体：站酷快乐体（Google Fonts，运行时加载，与手账一致） -->
+	<Fragment slot="head">
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap"
+			rel="stylesheet"
+		/>
+	</Fragment>
+	<div class="td-wrap">
+		<article class="td-paper">
+			<a
+				class="td-back"
+				href="/journal/"
+				data-td-back
+				aria-label="返回手账"
+			>
+				<span aria-hidden="true">←</span> 返回手账
+			</a>
+			<header class="td-head">
+				<h1 class="td-title">{title}</h1>
+				{description && <p class="td-desc">{description}</p>}
+				<span class="td-rule" aria-hidden="true"></span>
+			</header>
+
+			{total > 0 && (
+				<p class="td-stats">
+					共 <span class="td-stats-num td-stats-total">{total}</span> 项 · 已完成
+					<span class="td-stats-num td-stats-done">{doneCount}</span> / {total} 项
+				</p>
+			)}
+
+			{total > 0 ? (
+				<ul class="td-todos">
+					{items.map((t) => (
+						<li class="td-todo-item">
+							<label class="td-todo-label">
+								<input
+									type="checkbox"
+									data-done-text={t.text}
+									checked={t.done || undefined}
+								/>
+								<span class="td-todo-text">{t.text}</span>
+							</label>
+						</li>
+					))}
+				</ul>
+			) : (
+				<p class="td-empty">还没有待办事项，去 spec/todo.md 里添加吧。</p>
+			)}
+
+			<footer class="td-foot">
+				<span class="td-foot-mark">✧ 完成的，都算数</span>
+			</footer>
+		</article>
+	</div>
+</MainGridLayout>
+
+<style is:global>
+	/* ── 待办页：手账纸张风 ── */
+	.td-wrap {
+		max-width: 720px;
+		margin: 0 auto;
+		padding: 1.5rem 0 3rem;
+	}
+	.td-paper {
+		/* 纸张变量与手账（.j-app）一致 */
+		--paper-bg: #fdf6e8;
+		--paper-ink: #4a4238;
+		--paper-ink-soft: rgba(74, 66, 56, 0.55);
+		background: var(--paper-bg);
+		border-radius: 1rem;
+		box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+		padding: 2rem 2.2rem 2.4rem;
+		position: relative;
+		/* 手写体：与手账（.j-app）完全一致 —— 站酷快乐体 → 系统楷体回退 */
+		font-family:
+			"ZCOOL KuaiLe", "Kaiti SC", "KaiTi", "STKaiti", "DFKai-SB",
+			"FangSong", "仿宋", "楷体", cursive;
+		color: var(--paper-ink);
+	}
+	.td-paper::before {
+		content: "";
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+		border-radius: 1rem;
+		border: 1px solid rgba(74, 66, 56, 0.1);
+	}
+	/* 顶部 */
+	.td-head {
+		text-align: center;
+		padding-bottom: 1.2rem;
+	}
+	/* 返回手账：固定左上角（参考总结页 .sum-back，用待办页纸张色变量） */
+	.td-back {
+		position: absolute;
+		top: 0.9rem;
+		left: 0.9rem;
+		z-index: 2;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		font-size: 0.9rem;
+		text-decoration: none;
+		padding: 0.32rem 0.9rem;
+		border-radius: 999px;
+		border: 1px solid rgba(74, 66, 56, 0.28);
+		color: var(--paper-ink);
+		background: rgba(74, 66, 56, 0.06);
+		transition: background 0.2s ease, border-color 0.2s ease;
+	}
+	.td-back:hover {
+		background: rgba(74, 66, 56, 0.12);
+		border-color: rgba(74, 66, 56, 0.5);
+	}
+	.td-back:focus-visible {
+		outline: 2px solid rgba(74, 66, 56, 0.55);
+		outline-offset: 2px;
+	}
+	.td-title {
+		font-size: 1.9rem;
+		font-weight: 400;
+		letter-spacing: 0.14em;
+		margin: 0;
+	}
+	.td-desc {
+		margin: 0.7rem 0 0;
+		font-size: 0.98rem;
+		color: var(--paper-ink-soft);
+		letter-spacing: 0.04em;
+	}
+	.td-rule {
+		display: block;
+		width: 100%;
+		height: 2px;
+		margin-top: 1.3rem;
+		background-image: linear-gradient(
+			90deg,
+			transparent 0%,
+			rgba(74, 66, 56, 0.18) 12%,
+			rgba(74, 66, 56, 0.18) 88%,
+			transparent 100%
+		);
+	}
+	/* 统计 */
+	.td-stats {
+		margin: 1.4rem 0 1.2rem;
+		text-align: center;
+		font-size: 0.92rem;
+		color: var(--paper-ink-soft);
+		letter-spacing: 0.05em;
+	}
+	.td-stats-num {
+		font-weight: 700;
+		padding: 0.08rem 0.5rem;
+		border-radius: 999px;
+	}
+	.td-stats-total {
+		color: #8a6a4a;
+		background: rgba(232, 141, 103, 0.14);
+	}
+	.td-stats-done {
+		color: #3f7a5c;
+		background: rgba(63, 122, 92, 0.14);
+	}
+	/* 待办列表 */
+	.td-todos {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.55rem;
+		border-top: 1px dashed rgba(74, 66, 56, 0.18);
+		padding-top: 1.1rem;
+	}
+	.td-todo-item {
+		border-bottom: 1px solid rgba(74, 66, 56, 0.06);
+		padding-bottom: 0.55rem;
+	}
+	.td-todo-label {
+		display: flex;
+		align-items: center;
+		gap: 0.7rem;
+		cursor: pointer;
+	}
+	.td-todo-label input[type="checkbox"] {
+		appearance: none;
+		-webkit-appearance: none;
+		flex-shrink: 0;
+		width: 1.2rem;
+		height: 1.2rem;
+		border: 2px solid rgba(74, 66, 56, 0.45);
+		border-radius: 0.3rem;
+		background: transparent;
+		position: relative;
+		transition: background 0.2s ease, border-color 0.2s ease;
+		cursor: pointer;
+	}
+	.td-todo-label input[type="checkbox"]:checked {
+		background: #d98a5f;
+		border-color: #d98a5f;
+	}
+	.td-todo-label input[type="checkbox"]:checked::after {
+		content: "✓";
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: #fff;
+		font-size: 0.8rem;
+		font-weight: 700;
+		line-height: 1;
+	}
+	.td-todo-text {
+		font-size: 1rem;
+		line-height: 1.5;
+		transition: opacity 0.2s ease;
+	}
+	.td-todo-label input:checked + .td-todo-text {
+		text-decoration: line-through;
+		text-decoration-color: rgba(74, 66, 56, 0.55);
+		text-decoration-thickness: 1.5px;
+		opacity: 0.6;
+	}
+	/* 底部 */
+	.td-foot {
+		margin-top: 2rem;
+		text-align: right;
+	}
+	.td-foot-mark {
+		font-size: 0.85rem;
+		color: rgba(74, 66, 56, 0.45);
+		letter-spacing: 0.08em;
+	}
+	.td-empty {
+		color: var(--paper-ink-soft);
+		text-align: center;
+		padding: 1.5rem 0;
+	}
+	@media (max-width: 640px) {
+		.td-paper {
+			padding: 1.5rem 1.3rem 1.8rem;
+			border-radius: 0.9rem;
+		}
+	}
+</style>
+
+<script is:inline>
+	// 返回手账：读取手账保存的年份/页码，带参跳转一步到位（避免先回封面再翻页）
+	const backBtn = document.querySelector("[data-td-back]");
+	if (backBtn) {
+		backBtn.addEventListener("click", (e) => {
+			e.preventDefault();
+			let y = "";
+			let p = 0;
+			try {
+				const st = JSON.parse(localStorage.getItem("journal-state") || "null");
+				if (st && st.year) y = st.year;
+				if (st && typeof st.page === "number") p = st.page;
+			} catch (err) {
+				/* ignore */
+			}
+			window.location.assign(
+				"/journal/?year=" + encodeURIComponent(y) + "&page=" + p + "#main-grid",
+			);
+		});
+	}
+
+	// 勾选状态持久化：localStorage 存已勾选待办文本列表，刷新不丢
+	const DONE_KEY = "todo-done";
+	function loadDone() {
+		try {
+			return new Set(JSON.parse(localStorage.getItem(DONE_KEY) || "[]"));
+		} catch (e) {
+			return new Set();
+		}
+	}
+	function saveDone(set) {
+		try {
+			localStorage.setItem(DONE_KEY, JSON.stringify(Array.from(set)));
+		} catch (e) {
+			/* ignore */
+		}
+	}
+	function getBoxes() {
+		return Array.from(document.querySelectorAll(".td-todo-label input[type=checkbox]"));
+	}
+	function getStatsEl() {
+		return document.querySelector(".td-stats-done");
+	}
+	// 实时统计：始终从当前 DOM 读取，不依赖静态快照
+	function refreshStats() {
+		const el = getStatsEl();
+		if (!el) return;
+		el.textContent = String(getBoxes().filter((b) => b.checked).length);
+	}
+	// 初始化：用 localStorage 恢复勾选状态（数据文件里的 done:true 也计入）
+	function init() {
+		const done = loadDone();
+		getBoxes().forEach((box) => {
+			const text = box.dataset.doneText || "";
+			if (box.checked) done.add(text); // 数据里默认完成的也记入
+		});
+		saveDone(done);
+		getBoxes().forEach((box) => {
+			const text = box.dataset.doneText || "";
+			box.checked = done.has(text);
+		});
+		refreshStats();
+	}
+	// 事件委托：绑定在 document 上，DOM 重建后依然有效（覆盖导航/视图过渡进入的场景）
+	// 防重复绑定：Swup 导航会重新执行本脚本，用 window 标记保证只绑一次
+	if (!window.__tdDoneBound) {
+		window.__tdDoneBound = true;
+		document.addEventListener("change", (e) => {
+			const box = e.target;
+			if (!box || !box.matches(".td-todo-label input[type=checkbox]")) return;
+			const text = box.dataset.doneText || "";
+			const done = loadDone();
+			if (box.checked) done.add(text);
+			else done.delete(text);
+			saveDone(done);
+			refreshStats();
+		});
+	}
+	// 初始化：整页加载立即执行；Swup 导航替换内容后重新执行（覆盖从手账进入 /todo/ 的场景）
+	init();
+	if (!window.__tdSwupBound) {
+		window.__tdSwupBound = true;
+		document.addEventListener("swup:contentReplaced", init);
+	}
+</script>

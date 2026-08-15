@@ -161,6 +161,18 @@ const specCollection = defineCollection({
 			)
 			.optional()
 			.default([]),
+		// ── 独立待办页（todo.md）专用字段 ──
+		todoTitle: z.string().optional(), // 页面标题（缺省用 "待办事项"）
+		todoDescription: z.string().optional(), // 顶部描述文字（说明这个页面是干什么的）
+		todoItems: z
+			.array(
+				z.object({
+					text: z.string(), // 待办内容
+					done: z.boolean().optional().default(false), // 默认是否已完成
+				}),
+			)
+			.optional()
+			.default([]),
 	}),
 });
 

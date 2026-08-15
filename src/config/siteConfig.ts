@@ -140,6 +140,8 @@ export const siteConfig: SiteConfig = {
 		gallery: true,
 		// 手账页面开关，内容在 src/data/journal.ts 修改
 		journal: true,
+		// 待办事项页面开关
+		todo: true,
 	},
 
 	// 分类导航栏开关，在首页和归档页顶部显示分类快捷导航
