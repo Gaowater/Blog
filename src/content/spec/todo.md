@@ -108,6 +108,9 @@ todoItems:
   - text: "一起养宠物"
     done: false
     category: "甜蜜日常"
+  - text: "在摩天轮里亲嘴"
+    done: false
+    category: "甜蜜日常"   
 
   # ── 一起吃喝 · 人间烟火气 ──
   - text: "一起喝同一杯奶茶"
@@ -155,9 +158,6 @@ todoItems:
     done: false
     category: "一起玩乐"
   - text: "一起完成一件手工作品"
-    done: false
-    category: "一起玩乐"
-  - text: "一起完成手工"
     done: false
     category: "一起玩乐"
   - text: "一起在家看恐怖片"
