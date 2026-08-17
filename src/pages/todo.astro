@@ -15,6 +15,24 @@ const description = data.todoDescription || "";
 const items = data.todoItems || [];
 const total = items.length;
 const doneCount = items.filter((t) => t.done).length;
+// 按分类分组：无分类归入「其他」且放最后，组顺序按数据中首次出现顺序
+const grouped = (() => {
+	const order = [];
+	const map = new Map();
+	items.forEach((t) => {
+		const cat = (t.category || "").trim() || "其他";
+		if (!map.has(cat)) {
+			map.set(cat, []);
+			order.push(cat);
+		}
+		map.get(cat).push(t);
+	});
+	// 「其他」固定放最后
+	const noOther = order.filter((c) => c !== "其他");
+	const hasOther = order.includes("其他");
+	const finalOrder = hasOther ? [...noOther, "其他"] : noOther;
+	return finalOrder.map((c) => ({ name: c, items: map.get(c) }));
+})();
 ---
 
 <MainGridLayout title={title} description={description}>
@@ -51,20 +69,27 @@ const doneCount = items.filter((t) => t.done).length;
 			)}
 
 			{total > 0 ? (
-				<ul class="td-todos">
-					{items.map((t) => (
-						<li class="td-todo-item">
-							<label class="td-todo-label">
-								<input
-									type="checkbox"
-									data-done-text={t.text}
-									checked={t.done || undefined}
-								/>
-								<span class="td-todo-text">{t.text}</span>
-							</label>
-						</li>
+				<div class="td-groups">
+					{grouped.map((g) => (
+						<section class="td-group" data-category={g.name}>
+							<h2 class="td-group-title">{g.name}</h2>
+							<ul class="td-todos">
+								{g.items.map((t) => (
+									<li class="td-todo-item">
+										<label class="td-todo-label">
+											<input
+												type="checkbox"
+												data-done-text={t.text}
+												checked={t.done || undefined}
+											/>
+											<span class="td-todo-text">{t.text}</span>
+										</label>
+									</li>
+								))}
+							</ul>
+						</section>
 					))}
-				</ul>
+				</div>
 			) : (
 				<p class="td-empty">还没有待办事项，去 spec/todo.md 里添加吧。</p>
 			)}
@@ -74,6 +99,125 @@ const doneCount = items.filter((t) => t.done).length;
 			</footer>
 		</article>
 	</div>
+
+	<script is:inline data-astro-rerun>
+		(function () {
+			function initTodo() {
+				// 返回手账：读取手账保存的年份/页码，带参跳转一步到位（避免先回封面再翻页）
+				const backBtn = document.querySelector("[data-td-back]");
+				if (backBtn && !backBtn.dataset.bound) {
+					backBtn.dataset.bound = "1";
+					backBtn.addEventListener("click", (e) => {
+						e.preventDefault();
+						let y = "";
+						let p = 0;
+						try {
+							const st = JSON.parse(localStorage.getItem("journal-state") || "null");
+							if (st && st.year) y = st.year;
+							if (st && typeof st.page === "number") p = st.page;
+						} catch (err) {
+							/* ignore */
+						}
+						window.location.assign(
+							"/journal/?year=" + encodeURIComponent(y) + "&page=" + p + "#main-grid",
+						);
+					});
+				}
+
+				// 勾选状态持久化：localStorage 存已勾选待办文本列表，刷新不丢
+				const DONE_KEY = "todo-done";
+				function loadDone() {
+					try {
+						return new Set(JSON.parse(localStorage.getItem(DONE_KEY) || "[]"));
+					} catch (e) {
+						return new Set();
+					}
+				}
+				function saveDone(set) {
+					try {
+						localStorage.setItem(DONE_KEY, JSON.stringify(Array.from(set)));
+					} catch (e) {
+						/* ignore */
+					}
+				}
+				function getBoxes() {
+					return Array.from(document.querySelectorAll(".td-todo-label input[type=checkbox]"));
+				}
+				function getStatsEl() {
+					return document.querySelector(".td-stats-done");
+				}
+				// 实时统计：始终从当前 DOM 读取，不依赖静态快照
+				function refreshStats() {
+					const el = getStatsEl();
+					if (!el) return;
+					el.textContent = String(getBoxes().filter((b) => b.checked).length);
+				}
+				// 用 localStorage 恢复勾选状态（数据文件里的 done:true 也计入）
+				const done = loadDone();
+				getBoxes().forEach((box) => {
+					const text = box.dataset.doneText || "";
+					if (box.checked) done.add(text);
+				});
+				saveDone(done);
+				getBoxes().forEach((box) => {
+					const text = box.dataset.doneText || "";
+					box.checked = done.has(text);
+				});
+				// 刷新后排序：每个分组内已勾选（完成）的项排前面，未勾选（未完成）的排后面，组内保持原有顺序
+				document.querySelectorAll(".td-todos").forEach((list) => {
+					const items = Array.from(list.querySelectorAll(":scope > .td-todo-item"));
+					const doneItems = items.filter((li) => {
+						const box = li.querySelector(".td-todo-label input[type=checkbox]");
+						return box && box.checked;
+					});
+					const pendingItems = items.filter((li) => {
+						const box = li.querySelector(".td-todo-label input[type=checkbox]");
+						return !box || !box.checked;
+					});
+					[...doneItems, ...pendingItems].forEach((li) => list.appendChild(li));
+				});
+				refreshStats();
+			}
+
+			// 事件委托：绑定在 document 上，勾选时实时更新计数（与手账页同一模式）
+			if (!window.__tdChangeBound) {
+				window.__tdChangeBound = true;
+				document.addEventListener("change", (e) => {
+					const box = e.target;
+					if (!box || !box.matches(".td-todo-label input[type=checkbox]")) return;
+					const text = box.dataset.doneText || "";
+					let done;
+					try {
+						done = new Set(JSON.parse(localStorage.getItem("todo-done") || "[]"));
+					} catch (err) {
+						done = new Set();
+					}
+					if (box.checked) done.add(text);
+					else done.delete(text);
+					try {
+						localStorage.setItem("todo-done", JSON.stringify(Array.from(done)));
+					} catch (err) {
+						/* ignore */
+					}
+					const el = document.querySelector(".td-stats-done");
+					if (el) {
+						el.textContent = String(
+							Array.from(document.querySelectorAll(".td-todo-label input[type=checkbox]")).filter(
+								(b) => b.checked,
+							).length,
+						);
+					}
+				});
+			}
+
+			// 整页加载立即执行；Swup 导航替换内容后重新执行（防重复绑定）
+			initTodo();
+			if (!window.__tdSwupBound) {
+				window.__tdSwupBound = true;
+				document.addEventListener("swup:contentReplaced", initTodo);
+			}
+		})();
+	</script>
 </MainGridLayout>
 
 <style is:global>
@@ -82,6 +226,11 @@ const doneCount = items.filter((t) => t.done).length;
 		max-width: 720px;
 		margin: 0 auto;
 		padding: 1.5rem 0 3rem;
+	}
+	@media (min-width: 768px) {
+		.td-wrap {
+			max-width: 920px;
+		}
 	}
 	.td-paper {
 		/* 纸张变量与手账（.j-app）一致 */
@@ -184,20 +333,59 @@ const doneCount = items.filter((t) => t.done).length;
 		color: #3f7a5c;
 		background: rgba(63, 122, 92, 0.14);
 	}
-	/* 待办列表 */
+	/* 分类分组 */
+	.td-groups {
+		display: flex;
+		flex-direction: column;
+		gap: 1.5rem;
+	}
+	.td-group {
+		border-top: 1px dashed rgba(74, 66, 56, 0.18);
+		padding-top: 1rem;
+	}
+	.td-group-title {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 1.02rem;
+		font-weight: 400;
+		letter-spacing: 0.08em;
+		color: var(--paper-ink);
+		margin: 0 0 0.8rem;
+	}
+	.td-group-title::before {
+		content: "";
+		width: 0.55rem;
+		height: 0.55rem;
+		border-radius: 50%;
+		background: #e88d67;
+		box-shadow: 0 0 0 3px rgba(232, 141, 103, 0.18);
+		flex-shrink: 0;
+	}
+	/* 待办列表：移动端单列，≥768px 双列 */
 	.td-todos {
 		list-style: none;
 		margin: 0;
 		padding: 0;
-		display: flex;
-		flex-direction: column;
+		display: grid;
+		grid-template-columns: 1fr;
 		gap: 0.55rem;
-		border-top: 1px dashed rgba(74, 66, 56, 0.18);
-		padding-top: 1.1rem;
 	}
 	.td-todo-item {
 		border-bottom: 1px solid rgba(74, 66, 56, 0.06);
 		padding-bottom: 0.55rem;
+	}
+	@media (min-width: 768px) {
+		.td-todos {
+			grid-template-columns: repeat(2, 1fr);
+			gap: 0.6rem 0.9rem;
+		}
+		.td-todo-item {
+			border: 1px solid rgba(74, 66, 56, 0.1);
+			border-radius: 0.6rem;
+			background: rgba(255, 255, 255, 0.35);
+			padding: 0.6rem 0.75rem;
+		}
 	}
 	.td-todo-label {
 		display: flex;
@@ -267,89 +455,3 @@ const doneCount = items.filter((t) => t.done).length;
 		}
 	}
 </style>
-
-<script is:inline>
-	// 返回手账：读取手账保存的年份/页码，带参跳转一步到位（避免先回封面再翻页）
-	const backBtn = document.querySelector("[data-td-back]");
-	if (backBtn) {
-		backBtn.addEventListener("click", (e) => {
-			e.preventDefault();
-			let y = "";
-			let p = 0;
-			try {
-				const st = JSON.parse(localStorage.getItem("journal-state") || "null");
-				if (st && st.year) y = st.year;
-				if (st && typeof st.page === "number") p = st.page;
-			} catch (err) {
-				/* ignore */
-			}
-			window.location.assign(
-				"/journal/?year=" + encodeURIComponent(y) + "&page=" + p + "#main-grid",
-			);
-		});
-	}
-
-	// 勾选状态持久化：localStorage 存已勾选待办文本列表，刷新不丢
-	const DONE_KEY = "todo-done";
-	function loadDone() {
-		try {
-			return new Set(JSON.parse(localStorage.getItem(DONE_KEY) || "[]"));
-		} catch (e) {
-			return new Set();
-		}
-	}
-	function saveDone(set) {
-		try {
-			localStorage.setItem(DONE_KEY, JSON.stringify(Array.from(set)));
-		} catch (e) {
-			/* ignore */
-		}
-	}
-	function getBoxes() {
-		return Array.from(document.querySelectorAll(".td-todo-label input[type=checkbox]"));
-	}
-	function getStatsEl() {
-		return document.querySelector(".td-stats-done");
-	}
-	// 实时统计：始终从当前 DOM 读取，不依赖静态快照
-	function refreshStats() {
-		const el = getStatsEl();
-		if (!el) return;
-		el.textContent = String(getBoxes().filter((b) => b.checked).length);
-	}
-	// 初始化：用 localStorage 恢复勾选状态（数据文件里的 done:true 也计入）
-	function init() {
-		const done = loadDone();
-		getBoxes().forEach((box) => {
-			const text = box.dataset.doneText || "";
-			if (box.checked) done.add(text); // 数据里默认完成的也记入
-		});
-		saveDone(done);
-		getBoxes().forEach((box) => {
-			const text = box.dataset.doneText || "";
-			box.checked = done.has(text);
-		});
-		refreshStats();
-	}
-	// 事件委托：绑定在 document 上，DOM 重建后依然有效（覆盖导航/视图过渡进入的场景）
-	// 防重复绑定：Swup 导航会重新执行本脚本，用 window 标记保证只绑一次
-	if (!window.__tdDoneBound) {
-		window.__tdDoneBound = true;
-		document.addEventListener("change", (e) => {
-			const box = e.target;
-			if (!box || !box.matches(".td-todo-label input[type=checkbox]")) return;
-			const text = box.dataset.doneText || "";
-			const done = loadDone();
-			if (box.checked) done.add(text);
-			else done.delete(text);
-			saveDone(done);
-			refreshStats();
-		});
-	}
-	// 初始化：整页加载立即执行；Swup 导航替换内容后重新执行（覆盖从手账进入 /todo/ 的场景）
-	init();
-	if (!window.__tdSwupBound) {
-		window.__tdSwupBound = true;
-		document.addEventListener("swup:contentReplaced", init);
-	}
-</script>

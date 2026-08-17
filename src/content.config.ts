@@ -169,6 +169,7 @@ const specCollection = defineCollection({
 				z.object({
 					text: z.string(), // 待办内容
 					done: z.boolean().optional().default(false), // 默认是否已完成
+					category: z.string().optional().default(""), // 分类（空归入「其他」）
 				}),
 			)
 			.optional()
