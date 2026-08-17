@@ -16,6 +16,23 @@ const fmtDay = (date: string) => {
 	return `${m}.${dd.toString().padStart(2, "0")}`;
 };
 
+// 保留 markdown 单换行：给非代码块内的行尾追加两个空格（markdown 硬换行语法），
+// 渲染后单回车对应 <br>，空行分段不受影响。代码围栏（```）内保持原样。
+const preserveLineBreaks = (body: string): string => {
+	const lines = body.split("\n");
+	let inCode = false;
+	const out = lines.map((line) => {
+		if (/^\s*```/.test(line)) {
+			inCode = !inCode;
+			return line;
+		}
+		if (inCode) return line;
+		if (line.trim() === "") return line; // 空行（段落分隔）不加
+		return line.replace(/[ \t]+$/, "") + "  "; // 行尾清掉原空格后加两个空格
+	});
+	return out.join("\n");
+};
+
 // ── 心情 = 天气拼音 → 图标 ──
 // mood 字段支持三种写法：① emoji ② 天气拼音（如 "qing" 晴）③ 完整图标名（如 "material-symbols:wb-sunny"）
 // 拼音表：心情 → 天气拼音 → material-symbols 图标
@@ -94,6 +111,17 @@ type Book = {
 
 const books: Book[] = [];
 for (const entry of journalEntries) {
+	// [diag] 验证 entry.rendered.html 是否被 render 使用
+	if (entry.id.includes("2026")) {
+		const orig = entry.rendered?.html?.slice(0, 60) ?? "无 rendered";
+		if (entry.rendered) {
+			entry.rendered = {
+				...entry.rendered,
+				html: "<p>RENDER_TEST_MARKER</p>" + entry.rendered.html,
+			};
+		}
+		console.log("[diag] entry.id:", entry.id, "| deferredRender:", entry.deferredRender, "| orig:", JSON.stringify(orig));
+	}
 	const { Content } = await render(entry);
 	const d = entry.data;
 	const pages = d.pages ?? [];
@@ -2087,6 +2115,12 @@ if (!window.__journalSwupBound) {
 	.j-img[src*="sz (12).jpg"] {
 		height: auto;
 		aspect-ratio: 4 / 3;
+		object-fit: cover;
+	}
+	/* sz (13).png 以原比例显示（图片本身 1260×761 约 5:3，不裁切） */
+	.j-img[src*="sz (13).png"] {
+		height: auto;
+		aspect-ratio: 1260 / 761;
 		object-fit: cover;
 	}
 	/* 竖版图：完整显示不裁切，缩小并居中 */
