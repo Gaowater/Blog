@@ -94,6 +94,12 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 				external: true,
 				icon: "fa7-regular:chess-rook",
 			},
+			{
+				name: "记账",
+				url: "https://8c9dc4b1fe374abca5361c3af4386de1.app.workbuddy.link/",
+				external: true,
+				icon: "material-symbols:edit-note",
+			},
 		],
 	});
 
