@@ -96,7 +96,7 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 			},
 			{
 				name: "记账",
-				url: "https://8c9dc4b1fe374abca5361c3af4386de1.app.workbuddy.link/",
+				url: "https://ledger.853697.xyz/",
 				external: true,
 				icon: "material-symbols:edit-note",
 			},
