@@ -89,10 +89,16 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 				icon: "fa7-brands:github",
 			},
 			{
-				name: "Our first webpage",
+				name: "Our 100 days",
 				url: "https://853697.xyz",
 				external: true,
 				icon: "fa7-regular:chess-rook",
+			},
+			{
+				name: "Our 200 days",
+				url: "https://200days.853697.xyz/",
+				external: true,
+				icon: "material-symbols:edit-note",
 			},
 			{
 				name: "记账",
