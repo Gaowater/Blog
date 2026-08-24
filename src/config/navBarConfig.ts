@@ -98,7 +98,7 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 				name: "Our 200 days",
 				url: "https://200days.853697.xyz/",
 				external: true,
-				icon: "material-symbols:edit-note",
+				icon: "material-symbols:celebration",
 			},
 			{
 				name: "记账",
