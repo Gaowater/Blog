@@ -811,6 +811,11 @@ function initJournal() {
     };
     if (document.readyState === "complete") recheck();
     else window.addEventListener("load", recheck, { once: true });
+    // 待办云端同步：该书第一次被展示时拉取云端状态（仅一次）
+    if (!b.todoFetched) {
+      b.todoFetched = true;
+      fetchTodoState(b.el.dataset.year);
+    }
     b.ready = true;
   }
   function switchYear(year) {
@@ -900,11 +905,116 @@ function initJournal() {
       );
     });
   }
+
+  // ═══════════ 待办勾选云端同步（worker: /api/journal-todos，配合 workers/mood.js） ═══════════
+  // 云端 KV 存整年全量快照 {date: {todo文本: bool}}；以文本为键，电脑端增删待办不引起索引错位。
+  // 离线层：本地 localStorage 缓存兜底；有网时云优先覆盖。
+  const TODO_API = "/api/journal-todos";
+  const TODO_TOKEN = "selfsync2026";
+  const TODO_CACHE_KEY = "journal-todo-cache";
+  let todoCache = null;
+  let todoPushTimer = null;
+  function loadTodoCache() {
+    if (todoCache) return todoCache;
+    try {
+      const raw = localStorage.getItem(TODO_CACHE_KEY);
+      if (raw) todoCache = JSON.parse(raw);
+    } catch (e) {
+    }
+    if (!todoCache || typeof todoCache !== "object") todoCache = {};
+    return todoCache;
+  }
+  function saveTodoCache() {
+    try {
+      localStorage.setItem(TODO_CACHE_KEY, JSON.stringify(todoCache));
+    } catch (e) {
+    }
+  }
+  function todoBookEl(year) {
+    const b = books.find((x) => x.el.dataset.year === String(year));
+    return b ? b.book : null;
+  }
+  function collectTodoMap(year) {
+    const bookEl = todoBookEl(year);
+    const map = {};
+    if (!bookEl) return map;
+    bookEl.querySelectorAll(".j-sheet").forEach((sheet) => {
+      const date = sheet.dataset.date;
+      if (!date) return;
+      const labels = sheet.querySelectorAll(".j-todo-label");
+      if (!labels.length) return;
+      const dayMap = {};
+      labels.forEach((label) => {
+        const input = label.querySelector('input[type="checkbox"]');
+        const textEl = label.querySelector(".j-todo-text");
+        if (!input || !textEl) return;
+        dayMap[textEl.textContent.trim()] = input.checked;
+      });
+      map[date] = dayMap;
+    });
+    return map;
+  }
+  function applyTodoMap(year, map) {
+    const bookEl = todoBookEl(year);
+    if (!bookEl || !map) return;
+    bookEl.querySelectorAll(".j-sheet").forEach((sheet) => {
+      const dayMap = map[sheet.dataset.date];
+      if (!dayMap) return;
+      sheet.querySelectorAll(".j-todo-label").forEach((label) => {
+        const input = label.querySelector('input[type="checkbox"]');
+        const textEl = label.querySelector(".j-todo-text");
+        if (!input || !textEl) return;
+        const text = textEl.textContent.trim();
+        if (Object.prototype.hasOwnProperty.call(dayMap, text)) {
+          input.checked = !!dayMap[text];
+        }
+      });
+    });
+    refreshTodoCounts(bookEl);
+  }
+  function pushTodoState(year) {
+    const map = collectTodoMap(year);
+    if (!Object.keys(map).length) return;
+    loadTodoCache()[year] = map;
+    saveTodoCache();
+    // 失败静默：本地缓存已兜底，下次勾选/切年会自动重推
+    fetch(TODO_API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ year: String(year), token: TODO_TOKEN, todos: map }),
+    }).catch(() => {
+    });
+  }
+  function fetchTodoState(year) {
+    // 先以本地缓存兜底（离线时至少两端各自的最新状态不丢）
+    const cache = loadTodoCache();
+    if (cache[year]) applyTodoMap(year, cache[year]);
+    fetch(
+      TODO_API + "?year=" + encodeURIComponent(year) + "&token=" + encodeURIComponent(TODO_TOKEN)
+    )
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data && data.ok && data.todos) {
+          loadTodoCache()[year] = data.todos;
+          saveTodoCache();
+          applyTodoMap(year, data.todos);
+        }
+      })
+      .catch(() => {
+      });
+  }
+
   document.addEventListener("change", function(e) {
     const t = e.target;
     if (t && t.matches('.j-todo-label input[type="checkbox"]')) {
       const b = getCurrentBook();
       if (b) refreshTodoCounts(b.book);
+      // 云端同步：防抖 600ms 后把当前年全量快照推上去
+      const year = yearSelect.value;
+      clearTimeout(todoPushTimer);
+      todoPushTimer = setTimeout(() => {
+        if (year) pushTodoState(year);
+      }, 600);
     }
   });
   const SELECT_LOCK_MS = 350;

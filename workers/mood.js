@@ -61,6 +61,91 @@ export default {
       });
     }
 
+    // ═══════════ Journal Todo API（手账待办云端同步，与 Mood 共用 KV，key 前缀 jt: 隔离） ═══════════
+    // GET  /api/journal-todos?year=2026&token=xxx         → 获取该年待办勾选全量快照
+    // POST /api/journal-todos  body:{year, token, todos}   → 覆盖保存（todos:{date:{text:bool}}）
+    const JOURNAL_TOKEN = "selfsync2026";
+    const todoTokenOk = (a) => a === JOURNAL_TOKEN;
+    const yearOk = (y) => typeof y === "string" && /^\d{4}$/.test(y);
+
+    if (path === "/api/journal-todos") {
+      if (request.method === "GET") {
+        const year = url.searchParams.get("year");
+        const token = url.searchParams.get("token");
+        if (!yearOk(year)) {
+          return new Response(JSON.stringify({ error: "year required (yyyy)" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json", ...corsHeaders },
+          });
+        }
+        if (!todoTokenOk(token)) {
+          return new Response(JSON.stringify({ error: "forbidden" }), {
+            status: 403,
+            headers: { "Content-Type": "application/json", ...corsHeaders },
+          });
+        }
+        const raw = await env.MOOD_KV.get("jt:" + year);
+        let todos = {};
+        if (raw) {
+          try {
+            todos = JSON.parse(raw);
+          } catch (e) {
+            todos = {};
+          }
+        }
+        return new Response(JSON.stringify({ ok: true, year, todos }), {
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+
+      if (request.method === "POST") {
+        let body = null;
+        try {
+          body = await request.json();
+        } catch (e) {
+          body = null;
+        }
+        const { year, token, todos } = body || {};
+        if (!yearOk(year)) {
+          return new Response(JSON.stringify({ error: "year required (yyyy)" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json", ...corsHeaders },
+          });
+        }
+        if (!todoTokenOk(token)) {
+          return new Response(JSON.stringify({ error: "forbidden" }), {
+            status: 403,
+            headers: { "Content-Type": "application/json", ...corsHeaders },
+          });
+        }
+        // 结构/体积防护：仅收 {date:{text:bool}}，date 必须是 YYYY-MM-DD，总量限 5000 键
+        let safe = {};
+        let entryCount = 0;
+        try {
+          for (const [date, dayMap] of Object.entries(todos || {})) {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+            if (typeof dayMap !== "object" || dayMap === null || Array.isArray(dayMap)) continue;
+            const d = {};
+            for (const [text, done] of Object.entries(dayMap)) {
+              if (entryCount >= 5000) break;
+              if (typeof text !== "string" || text.length === 0 || text.length > 300) continue;
+              d[text] = !!done;
+              entryCount++;
+            }
+            if (Object.keys(d).length > 0) safe[date] = d;
+          }
+        } catch (e) {
+          safe = {};
+        }
+        await env.MOOD_KV.put("jt:" + year, JSON.stringify(safe));
+        return new Response(JSON.stringify({ ok: true, year, saved: entryCount }), {
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+
+      return new Response("Method Not Allowed", { status: 405, headers: corsHeaders });
+    }
+
     // 404
     return new Response("Not Found", { status: 404, headers: corsHeaders });
   },
