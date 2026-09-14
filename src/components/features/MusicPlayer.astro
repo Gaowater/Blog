@@ -23,6 +23,8 @@ const viewConfigStr = JSON.stringify({
 		failedLyrics: i18n(I18nKey.musicFailedLyrics),
 		noSongs: i18n(I18nKey.musicNoSongs),
 		error: i18n(I18nKey.musicError),
+		loading: i18n(I18nKey.musicLoading),
+		retry: i18n(I18nKey.musicRetry),
 		play: i18n(I18nKey.musicPlay),
 		pause: i18n(I18nKey.musicPause),
 		noCover: i18n(I18nKey.musicNoCover),
@@ -154,17 +156,18 @@ const widgetId =
 </div>
 
 <!-- Loading Overlay -->
-    <div class="music-loading absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/60 dark:bg-[#1e1e1e]/60 backdrop-blur-[2px] transition-opacity duration-300 opacity-0 pointer-events-none rounded-xl" aria-busy="true" aria-hidden="true">
+<div class="music-loading absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 bg-white/60 dark:bg-[#1e1e1e]/60 backdrop-blur-[2px] transition-opacity duration-300 opacity-0 pointer-events-none rounded-xl" aria-busy="true" aria-hidden="true">
     <div class="w-8 h-8 text-(--primary) animate-spin">
         <Icon name="material-symbols:sync-rounded" class="text-3xl" aria-hidden="true" />
     </div>
+    <div class="music-loading-text text-xs text-neutral-500 dark:text-neutral-400">{i18n(I18nKey.musicLoading)}</div>
 </div>
 </div>
 
 <template id={`playlist-item-template-${widgetId}`}>
 <div class="playlist-item flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors group">
     <div class="w-8 h-8 rounded-md overflow-hidden shrink-0 relative bg-neutral-200 dark:bg-neutral-700">
-        <img src="" class="item-cover w-full h-full object-cover" loading="lazy" alt="" />
+        <img src="" class="item-cover w-full h-full object-cover" loading="lazy" decoding="async" alt="" />
         <!-- Active Indicator overlay -->
         <div class="item-active-overlay absolute inset-0 bg-(--primary)/20 hidden items-center justify-center">
             <Icon name="material-symbols:graphic-eq-rounded" class="text-(--primary) text-sm" />
@@ -183,8 +186,20 @@ const widgetId =
     var widget = document.getElementById(widgetId);
     if (!widget) return;
 
-    var mgr = window.__fireflyMusic;
-    if (!mgr) return;
+    // 管理器脚本理应先执行（Layout 里排在 slot 之前），但 Swup 转场、
+    // 构建差异都可能打乱顺序。以前这里一旦取不到就直接 return，
+    // 整个播放器会永久失效；现在改成短暂轮询等待。
+    var attempts = 0;
+    (function waitForManager() {
+        if (window.__fireflyMusic) {
+            boot(window.__fireflyMusic);
+            return;
+        }
+        attempts += 1;
+        if (attempts < 60) setTimeout(waitForManager, 50);
+    })();
+
+    function boot(mgr) {
 
     // ── UI element refs ──────────────────────────────────────
     var ui = {
@@ -223,26 +238,55 @@ const widgetId =
         itemTemplate: document.getElementById('playlist-item-template-' + widgetId)
     };
 
-    // Verify critical elements
     var _critical = [ui.btnPlay, ui.btnRepeat, ui.btnMute, ui.volContainer,
         ui.btnDrawer, ui.btnLrc, ui.lrcDrawer, ui.lrcContainer,
         ui.progressContainer, ui.btnNext, ui.btnPrev, ui.loading,
         ui.cover, ui.title, ui.artist, ui.playlistContainer, ui.itemTemplate];
-    if (_critical.some(function(el) { return !el; })) return;
+    if (_critical.some(function (el) { return !el; })) return;
 
-    // ── Local state (drawers, user scrolling) ────────────────
+    // ── 本地状态（抽屉、用户滚动、高亮节点）──────────────────
     var local = {
         isUserScrolling: false,
         scrollTimeout: null,
-        currentLrcIndex: -1
+        currentLrcIndex: -1,
+        activeItemEl: null,
+        hintTimer: null,
+        loadingGuard: null
     };
 
-    // ── UI update functions ──────────────────────────────────
+    // ── 加载遮罩 ─────────────────────────────────────────────
+    // 关键修复：遮罩始终保留 pointer-events-none。
+    // 之前显示时把它移除了，于是这层 absolute inset-0 z-20 的浮层
+    // 直接盖住整个播放器，播放按钮物理上点不到 —— 用户感受到的「死活不播放」。
     function setLoading(bool) {
         if (bool) {
-            ui.loading.classList.remove('opacity-0', 'pointer-events-none');
+            ui.loading.classList.remove('opacity-0');
+            ui.loading.setAttribute('aria-hidden', 'false');
+            ui.loading.setAttribute('aria-busy', 'true');
+            startLoadingGuard();
         } else {
-            ui.loading.classList.add('opacity-0', 'pointer-events-none');
+            ui.loading.classList.add('opacity-0');
+            ui.loading.setAttribute('aria-hidden', 'true');
+            ui.loading.setAttribute('aria-busy', 'false');
+            clearLoadingGuard();
+        }
+    }
+
+    // 兜底：万一初始化既不成功也不失败（脚本异常、请求悬挂），
+    // 也不能让遮罩永远转下去。
+    function startLoadingGuard() {
+        clearLoadingGuard();
+        local.loadingGuard = setTimeout(function () {
+            local.loadingGuard = null;
+            setLoading(false);
+            ui.artist.innerText = cfg.i18n.retry;
+        }, 12000);
+    }
+
+    function clearLoadingGuard() {
+        if (local.loadingGuard) {
+            clearTimeout(local.loadingGuard);
+            local.loadingGuard = null;
         }
     }
 
@@ -311,18 +355,17 @@ const widgetId =
             ui.cover.src = track.pic;
             ui.cover.alt = track.name + ' - ' + track.artist;
         } else {
-            ui.cover.src = '';
+            ui.cover.removeAttribute('src');
             ui.cover.classList.add('opacity-0');
             ui.cover.alt = cfg.i18n.noCover;
         }
 
-        // Reset cover rotation
+        // 重置封面旋转
         ui.cover.classList.remove('animate-spin-slow');
         void ui.cover.offsetWidth;
         ui.cover.classList.add('animate-spin-slow');
         ui.cover.style.animationPlayState = 'paused';
 
-        // Reset progress
         ui.progressBar.style.width = '0%';
         ui.progressThumb.style.left = '0%';
         ui.progressContainer.setAttribute('aria-valuenow', '0');
@@ -332,6 +375,7 @@ const widgetId =
 
     function renderPlaylist(playlist, currentIndex) {
         ui.playlistContainer.innerHTML = '';
+        var fragment = document.createDocumentFragment();
         playlist.forEach(function (track, idx) {
             var clone = ui.itemTemplate.content.cloneNode(true);
             var itemEl = clone.querySelector('.playlist-item');
@@ -339,8 +383,13 @@ const widgetId =
             var title = clone.querySelector('.item-title');
             var artist = clone.querySelector('.item-artist');
 
-            img.src = track.pic || '';
-            img.alt = track.name + ' - ' + track.artist;
+            if (track.pic) {
+                img.src = track.pic;
+                img.alt = track.name + ' - ' + track.artist;
+            } else {
+                img.removeAttribute('src');
+                img.alt = '';
+            }
             title.innerText = track.name;
             artist.innerText = track.artist;
 
@@ -350,31 +399,42 @@ const widgetId =
             itemEl.onclick = function () {
                 mgr.playTrackByIndex(idx);
             };
-            ui.playlistContainer.appendChild(clone);
+            fragment.appendChild(clone);
         });
+        ui.playlistContainer.appendChild(fragment);
+
+        local.activeItemEl = null;
         updatePlaylistActiveUI(currentIndex);
     }
 
+    function applyActiveState(el, active) {
+        if (!el) return;
+        var overlay = el.querySelector('.item-active-overlay');
+        var title = el.querySelector('.item-title');
+        if (active) {
+            el.classList.add('bg-neutral-100', 'dark:bg-white/10');
+            el.setAttribute('aria-current', 'true');
+            if (overlay) { overlay.classList.remove('hidden'); overlay.classList.add('flex'); }
+            if (title) title.classList.add('text-(--primary)');
+        } else {
+            el.classList.remove('bg-neutral-100', 'dark:bg-white/10');
+            el.removeAttribute('aria-current');
+            if (overlay) { overlay.classList.add('hidden'); overlay.classList.remove('flex'); }
+            if (title) title.classList.remove('text-(--primary)');
+        }
+    }
+
+    // 只切换发生变化的那两个节点，不再每次遍历整个列表。
+    // 歌单有 181 首，每次切歌遍历两遍会肉眼可见地掉帧。
     function updatePlaylistActiveUI(currentIndex) {
-        var items = ui.playlistContainer.querySelectorAll('.playlist-item');
-        items.forEach(function (el) {
-            var idx = parseInt(el.dataset.index);
-            var overlay = el.querySelector('.item-active-overlay');
-            var title = el.querySelector('.item-title');
-            if (idx === currentIndex) {
-                el.classList.add('bg-neutral-100', 'dark:bg-white/10');
-                el.setAttribute('aria-current', 'true');
-                overlay.classList.remove('hidden');
-                overlay.classList.add('flex');
-                title.classList.add('text-(--primary)');
-            } else {
-                el.classList.remove('bg-neutral-100', 'dark:bg-white/10');
-                el.removeAttribute('aria-current');
-                overlay.classList.add('hidden');
-                overlay.classList.remove('flex');
-                title.classList.remove('text-(--primary)');
-            }
-        });
+        if (local.activeItemEl &&
+            parseInt(local.activeItemEl.dataset.index, 10) === currentIndex) {
+            return;
+        }
+        applyActiveState(local.activeItemEl, false);
+        var next = ui.playlistContainer.querySelector('.playlist-item[data-index="' + currentIndex + '"]');
+        applyActiveState(next, true);
+        local.activeItemEl = next || null;
     }
 
     function renderLyricsUI(lyrics, status) {
@@ -421,7 +481,6 @@ const widgetId =
             }
         });
 
-        // Auto-scroll unless user is scrolling
         if (index !== -1 && !local.isUserScrolling) {
             var line = ui.lrcContainer.querySelector('.lrc-line[data-index="' + index + '"]');
             if (line) {
@@ -434,16 +493,19 @@ const widgetId =
         }
     }
 
-    // ── Full sync from manager state (for late-mount) ────────
+    // ── 从管理器状态整体同步（用于晚挂载 / 转场后）───────────
     function syncAll() {
         var s = mgr.getState();
-        if (!s.initialized) return;
+        if (!s.initialized) {
+            setLoading(!!s.loading);
+            return;
+        }
 
-        // Loading off
         setLoading(false);
 
         if (s.playlist.length === 0) {
             ui.title.innerText = s.error || cfg.i18n.noSongs;
+            ui.artist.innerText = cfg.i18n.retry;
             return;
         }
 
@@ -453,8 +515,7 @@ const widgetId =
         updateModeUI(s.playMode);
         updateVolumeUI(s.volume, s.isMuted);
 
-        // Progress
-        if (s.duration > 0) {
+        if (s.duration > 0 && isFinite(s.duration)) {
             ui.progressBar.style.width = s.progress + '%';
             ui.progressThumb.style.left = s.progress + '%';
             ui.progressContainer.setAttribute('aria-valuenow', Math.round(s.progress).toString());
@@ -462,19 +523,16 @@ const widgetId =
             ui.totalTime.innerText = s.durationStr;
         }
 
-        // Lyrics
         renderLyricsUI(s.lyrics, s.lyrics.length > 0 ? 'loaded' : 'none');
         if (s.currentLrcIndex >= 0) updateLrcHighlight(s.currentLrcIndex);
 
-        // Cover image: if already set, show it
         if (s.track && s.track.pic && ui.cover.src && ui.cover.complete && ui.cover.naturalWidth > 0) {
             ui.cover.classList.remove('opacity-0');
         }
-        // Update cover animation state to match play state
         ui.cover.style.animationPlayState = s.isPlaying ? 'running' : 'paused';
     }
 
-    // ── Event listeners (fm:* from manager) ──────────────────
+    // ── 事件监听 ─────────────────────────────────────────────
     var handlers = {};
 
     function on(name, fn) {
@@ -482,15 +540,20 @@ const widgetId =
         window.addEventListener(name, fn);
     }
 
+    on('fm:loading', function (e) {
+        setLoading(!!e.detail.loading);
+    });
+
     on('fm:init', function (e) {
         var d = e.detail;
         setLoading(false);
         if (d.playlist.length > 0) {
-            renderPlaylist(d.playlist, 0);
+            renderPlaylist(d.playlist, d.currentIndex || 0);
             updateModeUI(d.playMode);
             updateVolumeUI(d.volume, d.isMuted);
         } else {
             ui.title.innerText = cfg.i18n.noSongs;
+            ui.artist.innerText = cfg.i18n.retry;
         }
     });
 
@@ -530,10 +593,23 @@ const widgetId =
     });
 
     on('fm:error', function (e) {
+        setLoading(false);
         ui.title.innerText = e.detail.message || cfg.i18n.error;
+        ui.artist.innerText = cfg.i18n.retry;
     });
 
-    // ── Button click delegates ───────────────────────────────
+    // 浏览器挡掉了自动播放时，明确告诉用户「再点一下」，而不是静默失败
+    on('fm:hint', function (e) {
+        if (local.hintTimer) clearTimeout(local.hintTimer);
+        ui.artist.innerText = e.detail.message || cfg.i18n.play;
+        local.hintTimer = setTimeout(function () {
+            local.hintTimer = null;
+            var s = mgr.getState();
+            if (s.track) ui.artist.innerText = s.track.artist;
+        }, 3000);
+    });
+
+    // ── 按钮绑定 ─────────────────────────────────────────────
     ui.btnPlay.addEventListener('click', function () { mgr.togglePlay(); });
     ui.btnNext.addEventListener('click', function () { mgr.playNext(); });
     ui.btnPrev.addEventListener('click', function () { mgr.playPrev(); });
@@ -554,7 +630,7 @@ const widgetId =
         mgr.seek(percent);
     });
 
-    // ── Drawer logic (local state) ───────────────────────────
+    // ── 抽屉 ─────────────────────────────────────────────────
     ui.btnLrc.addEventListener('click', function () {
         var isOpen = ui.lrcDrawer.style.gridTemplateRows === '1fr';
         if (isOpen) {
@@ -566,7 +642,6 @@ const widgetId =
             ui.iconLrcOn.classList.add('hidden');
             ui.iconLrcOff.classList.remove('hidden');
         } else {
-            // Close playlist if open
             ui.playlistDrawer.style.gridTemplateRows = '0fr';
             ui.playlistDrawer.classList.remove('opacity-100');
             ui.playlistDrawer.classList.add('opacity-0');
@@ -592,7 +667,6 @@ const widgetId =
             ui.btnDrawer.classList.add('text-neutral-400');
             ui.btnDrawer.classList.remove('text-(--primary)');
         } else {
-            // Close lyrics if open
             ui.lrcDrawer.style.gridTemplateRows = '0fr';
             ui.lrcDrawer.classList.remove('opacity-100');
             ui.lrcDrawer.classList.add('opacity-0');
@@ -607,12 +681,11 @@ const widgetId =
         }
     });
 
-    // ── Lyrics user scroll detection ─────────────────────────
+    // ── 歌词用户滚动检测 ─────────────────────────────────────
     function resetScrollTimeout() {
         clearTimeout(local.scrollTimeout);
         local.scrollTimeout = setTimeout(function () {
             local.isUserScrolling = false;
-            // Snap back to current lyric
             var s = mgr.getState();
             if (s.currentLrcIndex >= 0) {
                 var line = ui.lrcContainer.querySelector('.lrc-line[data-index="' + s.currentLrcIndex + '"]');
@@ -636,7 +709,7 @@ const widgetId =
         resetScrollTimeout();
     });
 
-    // ── Cover image events ───────────────────────────────────
+    // ── 封面事件 ─────────────────────────────────────────────
     ui.cover.addEventListener('load', function () {
         ui.cover.classList.remove('opacity-0');
     });
@@ -644,18 +717,20 @@ const widgetId =
         ui.cover.classList.add('opacity-0');
     });
 
-    // ── Cleanup on DOM removal ───────────────────────────────
+    // ── 组件被移除时清理 ─────────────────────────────────────
     var observer = new MutationObserver(function (mutations) {
         for (var i = 0; i < mutations.length; i++) {
             var removed = mutations[i].removedNodes;
             for (var j = 0; j < removed.length; j++) {
-                if (removed[j] === widget || (removed[j].contains && removed[j].contains(widget))) {
-                    // Widget removed from DOM – clean up event listeners
+                var node = removed[j];
+                if (node === widget || (node.contains && node.contains(widget))) {
                     Object.keys(handlers).forEach(function (name) {
                         window.removeEventListener(name, handlers[name]);
                     });
                     observer.disconnect();
                     clearTimeout(local.scrollTimeout);
+                    clearTimeout(local.hintTimer);
+                    clearLoadingGuard();
                     return;
                 }
             }
@@ -665,15 +740,15 @@ const widgetId =
         observer.observe(widget.parentNode, { childList: true });
     }
 
-    // ── Init: either sync existing state or trigger init ─────
+    // ── 初始化 ───────────────────────────────────────────────
     var currentState = mgr.getState();
     if (currentState.initialized) {
-        // Manager already initialized (late mount) – sync all UI
         syncAll();
     } else {
-        // First widget to mount – show loading and trigger init
         setLoading(true);
-        mgr.init();
+        mgr.ensureInit();
+    }
+
     }
 })();
 </script>

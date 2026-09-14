@@ -25,8 +25,10 @@ export const musicPlayerConfig: MusicPlayerConfig = {
 	// Meting API 配置
 	meting: {
 		// Meting API 地址
-		// 默认使用官方 API，也可以使用自定义 API
-		api: "https://api.i-meto.com/meting/api?server=:server&type=:type&id=:id&r=:r",
+		// 优先走自建 Worker（同域 /api/meting，实现在 workers/mood.js）：带边缘缓存、不跨域、
+		// 并把带签名的直链解析交给服务端。若部署环境没有这个 Worker（例如纯 Vercel），
+		// 请求会快速失败并自动降级到下面的公共接口。
+		api: "/api/meting?server=:server&type=:type&id=:id",
 		// 音乐平台：netease=网易云音乐, tencent=QQ音乐, kugou=酷狗音乐, xiami=虾米音乐, baidu=百度音乐
 		server: "netease",
 		// 类型：song=单曲, playlist=歌单, album=专辑, search=搜索, artist=艺术家
@@ -37,6 +39,7 @@ export const musicPlayerConfig: MusicPlayerConfig = {
 		auth: "",
 		// 备用 API 配置（当主 API 失败时使用）
 		fallbackApis: [
+			"https://api.i-meto.com/meting/api?server=:server&type=:type&id=:id&r=:r",
 			"https://api.injahow.cn/meting/?server=:server&type=:type&id=:id",
 			"https://api.moeyao.cn/meting/?server=:server&type=:type&id=:id",
 		],

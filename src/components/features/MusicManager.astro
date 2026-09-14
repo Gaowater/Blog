@@ -1,10 +1,29 @@
 ---
+import { existsSync, readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { musicPlayerConfig } from "@/config/musicConfig";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import { url } from "@/utils/url-utils";
 
 const config = musicPlayerConfig;
+
+// 歌单快照，由 scripts/fetch-playlist.mjs 生成。
+// 里面只有不会过期的元数据（歌名 / 歌手 / 歌曲 id / 封面 id），
+// 作用是让播放列表在页面加载后立刻出现，不必等一次网络往返。
+// 文件缺失不影响功能，会自动回落到运行时拉取。
+let snapshotTracks: Array<{ n: string; a: string; i: string; p: string }> = [];
+try {
+	const snapshotPath = fileURLToPath(
+		new URL("../../data/music-playlist.json", import.meta.url),
+	);
+	if (existsSync(snapshotPath)) {
+		const parsed = JSON.parse(readFileSync(snapshotPath, "utf8"));
+		if (Array.isArray(parsed?.tracks)) snapshotTracks = parsed.tracks;
+	}
+} catch {
+	snapshotTracks = [];
+}
 
 const localPlaylist =
 	config.mode === "local" && config.local?.playlist
@@ -31,6 +50,7 @@ const localPlaylist =
 const managerConfigStr = JSON.stringify({
 	mode: config.mode,
 	meting: config.meting,
+	snapshot: snapshotTracks,
 	localPlaylist: localPlaylist,
 	volume: config.volume ?? 0.7,
 	playMode: config.playMode ?? "list",
@@ -48,6 +68,8 @@ const managerConfigStr = JSON.stringify({
 		failedLyrics: i18n(I18nKey.musicFailedLyrics),
 		noSongs: i18n(I18nKey.musicNoSongs),
 		error: i18n(I18nKey.musicError),
+		loading: i18n(I18nKey.musicLoading),
+		retry: i18n(I18nKey.musicRetry),
 		play: i18n(I18nKey.musicPlay),
 		pause: i18n(I18nKey.musicPause),
 		progress: i18n(I18nKey.musicProgress),
@@ -58,14 +80,21 @@ const managerConfigStr = JSON.stringify({
 
 <script is:inline data-swup-ignore-script define:vars={{ managerConfigStr }}>
 (function () {
-    // Singleton guard – only create once
+    // 单例守卫：整个会话只创建一次（Swup 转场不会重建）
     if (window.__fireflyMusic) return;
 
     var config = JSON.parse(managerConfigStr);
+    // 兜底：i18n 万一有缺失，不能让错误处理分支自己再抛一次异常，
+    // 否则用户看到的就是「点了没反应」而不是任何提示。
+    if (!config.i18n) config.i18n = {};
 
-    // ── Helpers ──────────────────────────────────────────────
+    var NETWORK_TIMEOUT = 6000;              // 单个接口的超时上限
+    var PLAYLIST_CACHE_KEY = 'music-player-playlist-v2';
+    var PLAYLIST_CACHE_TTL = 30 * 60 * 1000; // 歌单缓存 30 分钟
+
+    // ── 工具函数 ─────────────────────────────────────────────
     function formatTime(seconds) {
-        if (!seconds || isNaN(seconds)) return '0:00';
+        if (!seconds || isNaN(seconds) || !isFinite(seconds)) return '0:00';
         var min = Math.floor(seconds / 60);
         var sec = Math.floor(seconds % 60);
         return min + ':' + (sec < 10 ? '0' : '') + sec;
@@ -82,9 +111,9 @@ const managerConfigStr = JSON.stringify({
                 var text = line.replace(timeReg, '').trim();
                 if (text) {
                     matches.forEach(function (match) {
-                        var m = parseInt(match[1]);
-                        var s = parseInt(match[2]);
-                        var ms = parseInt(match[3]);
+                        var m = parseInt(match[1], 10);
+                        var s = parseInt(match[2], 10);
+                        var ms = parseInt(match[3], 10);
                         var time = m * 60 + s + ms / (match[3].length === 3 ? 1000 : 100);
                         result.push({ time: time, text: text });
                     });
@@ -94,85 +123,213 @@ const managerConfigStr = JSON.stringify({
         return result.sort(function (a, b) { return a.time - b.time; });
     }
 
-    // ── Audio element (persistent, attached to body) ────────
+    function emit(name, detail) {
+        window.dispatchEvent(new CustomEvent(name, { detail: detail || {} }));
+    }
+
+    // 带超时的 fetch。
+    // 之前这里是裸的 await fetch()，上游一旦挂起不响应，就既不会成功也不会失败，
+    // 备用接口永远轮不到 —— 这是「一直转圈」最根本的原因。
+    // 注意超时是「双重保险」：既 abort 掉底层请求，也自己 reject。
+    // 只靠 AbortController 是不够的 —— 一旦它没被及时响应，promise 就仍然永不 settle。
+    function fetchWithTimeout(target, ms, options) {
+        var opts = options || {};
+        if (typeof AbortController === 'undefined') return fetch(target, opts);
+        var controller = new AbortController();
+        var merged = {};
+        Object.keys(opts).forEach(function (k) { merged[k] = opts[k]; });
+        merged.signal = controller.signal;
+
+        return new Promise(function (resolve, reject) {
+            var settled = false;
+            var timer = setTimeout(function () {
+                if (settled) return;
+                settled = true;
+                try { controller.abort(); } catch (e) { /* ignore */ }
+                reject(new Error('timeout after ' + ms + 'ms'));
+            }, ms);
+
+            fetch(target, merged).then(function (res) {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                resolve(res);
+            }, function (err) {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                reject(err);
+            });
+        });
+    }
+
+    // 多个接口并行竞速：谁先给出可用结果就用谁，全部失败才 reject
+    function firstSuccess(tasks) {
+        return new Promise(function (resolve, reject) {
+            var pending = tasks.length;
+            if (pending === 0) { reject(new Error('no endpoints')); return; }
+            var lastError = null;
+            tasks.forEach(function (task) {
+                task.then(resolve, function (err) {
+                    lastError = err;
+                    pending -= 1;
+                    if (pending === 0) reject(lastError || new Error('all endpoints failed'));
+                });
+            });
+        });
+    }
+
+    // ── 音频元素（常驻 body，Swup 转场不受影响）───────────────
     var audio = document.createElement('audio');
-    audio.crossOrigin = 'anonymous';
+    // 刻意不设 crossOrigin：代码从没读过音频数据，设了只会白白要求
+    // 302 跳转链上每一跳都带 CORS 头，纯粹增加播放失败的概率。
+    audio.preload = 'auto';
     audio.style.display = 'none';
     document.body.appendChild(audio);
 
-    // ── State ────────────────────────────────────────────────
+    // ── 状态 ─────────────────────────────────────────────────
     var state = {
         playlist: [],
         currentIndex: 0,
         isPlaying: false,
-        playMode: 0, // 0: list, 1: one, 2: random
-        volume: localStorage.getItem('music-player-volume') !== null
-            ? parseFloat(localStorage.getItem('music-player-volume'))
-            : (config.volume || 0.7),
+        playMode: 0, // 0: 列表循环, 1: 单曲循环, 2: 随机
+        volume: 0.7,
         isMuted: false,
         lyrics: [],
         currentLrcIndex: -1,
         initialized: false,
         initializing: false,
+        initPromise: null,
+        failed: false,
+        loading: false,
+        usingSnapshot: false,
+        recovering: false,
         error: null
     };
 
-    // Map config playMode string to number
+    try {
+        var storedVolume = localStorage.getItem('music-player-volume');
+        if (storedVolume !== null) state.volume = parseFloat(storedVolume);
+    } catch (e) { /* ignore */ }
+    if (isNaN(state.volume) || state.volume < 0 || state.volume > 1) {
+        state.volume = config.volume || 0.7;
+    }
+
     if (config.playMode === 'random') state.playMode = 2;
     else if (config.playMode === 'one') state.playMode = 1;
     else state.playMode = 0;
 
-    // ── Event helpers ────────────────────────────────────────
-    function emit(name, detail) {
-        window.dispatchEvent(new CustomEvent(name, { detail: detail || {} }));
-    }
+    // 用户在初始化完成前点了播放 / 点了某首歌，先记下来，init 一结束立刻兑现
+    var pendingPlay = false;
+    var pendingIndex = null;
 
-    // ── Meting fetch ─────────────────────────────────────────
-    async function fetchMetingData() {
-        if (!config.meting) return;
-        var m = config.meting;
-        var apis = [m.api].concat(m.fallbackApis || []);
-
-        for (var i = 0; i < apis.length; i++) {
-            var baseApi = apis[i];
-            if (!baseApi) continue;
-            try {
-                var fetchUrl = baseApi
-                    .replace(':server', m.server)
-                    .replace(':type', m.type)
-                    .replace(':id', m.id)
-                    .replace(':r', Math.random());
-                if (m.auth) fetchUrl += '&auth=' + m.auth;
-
-                var res = await fetch(fetchUrl);
-                if (!res.ok) throw new Error('HTTP ' + res.status);
-                var data = await res.json();
-
-                if (Array.isArray(data) && data.length > 0) {
-                    state.playlist = data.map(function (item) {
-                        return {
-                            name: item.title || item.name || 'Unknown',
-                            artist: item.author || item.artist || 'Unknown',
-                            url: item.url,
-                            pic: item.pic || item.cover || '',
-                            lrc: item.lrc
-                        };
-                    });
-                    return;
-                }
-            } catch (e) {
-                console.warn('Meting API failed for ' + baseApi, e);
-            }
+    // ── 歌单缓存（sessionStorage，只在本次标签页有效）──────────
+    function readPlaylistCache() {
+        try {
+            var raw = sessionStorage.getItem(PLAYLIST_CACHE_KEY);
+            if (!raw) return null;
+            var parsed = JSON.parse(raw);
+            if (!parsed || !Array.isArray(parsed.tracks) || parsed.tracks.length === 0) return null;
+            if (Date.now() - (parsed.at || 0) > PLAYLIST_CACHE_TTL) return null;
+            return parsed.tracks;
+        } catch (e) {
+            return null;
         }
-        throw new Error('All Meting APIs failed');
     }
 
-    // ── Lyrics ───────────────────────────────────────────────
+    function writePlaylistCache(tracks) {
+        try {
+            sessionStorage.setItem(PLAYLIST_CACHE_KEY, JSON.stringify({ at: Date.now(), tracks: tracks }));
+        } catch (e) { /* 超配额就算了，不影响播放 */ }
+    }
+
+    function clearPlaylistCache() {
+        try { sessionStorage.removeItem(PLAYLIST_CACHE_KEY); } catch (e) { /* ignore */ }
+    }
+
+    // ── Meting 数据拉取 ──────────────────────────────────────
+    function buildMetingUrl(baseApi, m) {
+        var target = baseApi
+            .replace(':server', m.server)
+            .replace(':type', m.type)
+            .replace(':id', m.id);
+        if (target.indexOf(':r') >= 0) target = target.replace(':r', Math.random());
+        if (m.auth) target += (target.indexOf('?') >= 0 ? '&' : '?') + 'auth=' + m.auth;
+        return target;
+    }
+
+    function normalizeTracks(data) {
+        return data.map(function (item) {
+            return {
+                name: item.title || item.name || 'Unknown',
+                artist: item.author || item.artist || 'Unknown',
+                url: item.url,
+                pic: item.pic || item.cover || '',
+                lrc: item.lrc
+            };
+        });
+    }
+
+    function fetchPlaylistFromNetwork() {
+        var m = config.meting;
+        if (!m) return Promise.reject(new Error('no meting config'));
+
+        var endpoints = [m.api].concat(m.fallbackApis || []).filter(Boolean);
+        var tasks = endpoints.map(function (baseApi) {
+            return fetchWithTimeout(buildMetingUrl(baseApi, m), NETWORK_TIMEOUT)
+                .then(function (res) {
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    return res.json();
+                })
+                .then(function (data) {
+                    if (!Array.isArray(data) || data.length === 0) throw new Error('empty playlist');
+                    return normalizeTracks(data);
+                });
+        });
+        // 结果带上来源：调用方据此判断该不该用网络数据覆盖快照
+        return firstSuccess(tasks.map(function (task, index) {
+            return task.then(function (tracks) {
+                return { tracks: tracks, fromSelfHosted: index === 0 };
+            });
+        }));
+    }
+
+    // ── 快照 → 可播放的歌单 ──────────────────────────────────
+    // 快照里没有 URL，只有歌曲 id。只有走自建接口时才能按 id 实时解析出直链，
+    // 所以仅在那种情况下用快照直接构列表。同域相对路径或指向自建端点的绝对地址都算。
+    function selfHostedEndpoint() {
+        if (config.mode !== 'meting' || !config.meting) return null;
+        var api = String(config.meting.api || '');
+        if (api.indexOf('/api/meting') < 0) return null;
+        return api.split('?')[0];
+    }
+
+    function snapshotToPlaylist() {
+        var endpoint = selfHostedEndpoint();
+        if (!endpoint || !config.snapshot || config.snapshot.length === 0) return [];
+        var server = config.meting.server;
+        var mediaUrl = function (kind, id) {
+            if (!id) return '';
+            return endpoint + '/media?server=' + encodeURIComponent(server) +
+                '&type=' + kind + '&id=' + encodeURIComponent(id);
+        };
+        return config.snapshot.map(function (t) {
+            return {
+                name: t.n || 'Unknown',
+                artist: t.a || 'Unknown',
+                url: mediaUrl('url', t.i),
+                pic: mediaUrl('pic', t.p),
+                lrc: mediaUrl('lrc', t.i)
+            };
+        });
+    }
+
+    // ── 歌词 ─────────────────────────────────────────────────
     function loadLyrics(track) {
         state.lyrics = [];
         state.currentLrcIndex = -1;
 
-        if (!track.lrc) {
+        if (!track || !track.lrc) {
             emit('fm:lyrics', { lyrics: [], status: 'none' });
             return;
         }
@@ -183,7 +340,7 @@ const managerConfigStr = JSON.stringify({
 
         if (isLrcUrl) {
             emit('fm:lyrics', { lyrics: [], status: 'loading' });
-            fetch(track.lrc)
+            fetchWithTimeout(track.lrc, NETWORK_TIMEOUT)
                 .then(function (r) { return r.text(); })
                 .then(function (text) {
                     state.lyrics = parseLRC(text);
@@ -195,65 +352,86 @@ const managerConfigStr = JSON.stringify({
                 });
         } else {
             state.lyrics = parseLRC(track.lrc);
-            emit('fm:lyrics', { lyrics: state.lyrics, status: state.lyrics.length > 0 ? 'loaded' : 'none' });
+            emit('fm:lyrics', {
+                lyrics: state.lyrics,
+                status: state.lyrics.length > 0 ? 'loaded' : 'none'
+            });
         }
     }
 
-    // ── Track loading ────────────────────────────────────────
+    // ── 进度存档 ─────────────────────────────────────────────
+    var saveTimer = null;
+
+    function saveProgress() {
+        if (state.playlist.length === 0) return;
+        try {
+            localStorage.setItem('music-player-current-index', state.currentIndex.toString());
+            localStorage.setItem('music-player-current-time', audio.currentTime.toString());
+        } catch (e) { /* ignore */ }
+    }
+
+    // ── 曲目加载 ─────────────────────────────────────────────
     function loadTrack(index, autoPlay) {
         if (index < 0 || index >= state.playlist.length) return;
-        // 只在已初始化后保存进度（避免在 init 恢复进度时覆盖 localStorage 的有效数据）
-        if (state.initialized) {
-            saveProgress();
-        }
+        // 只在初始化完成后存档，避免恢复进度时反过来把存档覆盖掉
+        if (state.initialized) saveProgress();
+
         state.currentIndex = index;
         var track = state.playlist[index];
+        if (!track || !track.url) {
+            emit('fm:error', { message: config.i18n.error });
+            return;
+        }
 
         audio.src = track.url;
-
         loadLyrics(track);
-
         emit('fm:track', { index: index, track: track, autoPlay: !!autoPlay });
 
         if (autoPlay) {
-            audio.play().then(function () {
-                state.isPlaying = true;
-                emit('fm:play-state', { isPlaying: true });
-            }).catch(function (e) {
-                console.warn('Autoplay blocked:', e);
-            });
+            attemptPlay();
         } else {
             state.isPlaying = false;
             emit('fm:play-state', { isPlaying: false });
         }
     }
 
-    // ── Playback controls ────────────────────────────────────
-    // 缓存用户请求，等初始化完成后自动播放
-    var pendingPlay = false;
+    // 统一的播放入口：成功才切状态，失败给出明确提示而不是静默
+    function attemptPlay() {
+        state.error = null;
+        var result = audio.play();
+        if (!result || typeof result.then !== 'function') return;
+        result.then(function () {
+            state.isPlaying = true;
+            emit('fm:play-state', { isPlaying: true });
+        }).catch(function (e) {
+            state.isPlaying = false;
+            emit('fm:play-state', { isPlaying: false });
+            // 浏览器自动播放策略会拦掉没有用户手势的 play()，
+            // 这时告诉用户「再点一下」，而不是让按钮看起来没反应。
+            if (e && e.name === 'NotAllowedError') {
+                emit('fm:hint', { message: config.i18n.play });
+            }
+        });
+    }
 
+    // ── 播放控制 ─────────────────────────────────────────────
     function togglePlay() {
-        // 如果还没初始化完成，标记为"等待播放"，用户点第二次时生效
+        // 还没初始化完：以前这里是静默 return，用户以为点坏了。
+        // 现在立刻给出加载反馈，并保证 init 一完成就自动补播。
         if (!state.initialized) {
             pendingPlay = true;
+            setLoading(true);
+            if (state.failed) {
+                state.failed = false;
+                state.initializing = false;
+                state.initPromise = null;
+            }
+            ensureInit();
             return;
         }
-        // 初始化期间点过播放 → 这次点击立即播放
-        if (pendingPlay) {
-            pendingPlay = false;
-            audio.play().then(function () {
-                state.isPlaying = true;
-                emit('fm:play-state', { isPlaying: true });
-            }).catch(function () {});
-            return;
-        }
+
         if (audio.paused) {
-            audio.play().then(function () {
-                state.isPlaying = true;
-                emit('fm:play-state', { isPlaying: true });
-            }).catch(function () {
-                // 播放失败，不要乱设状态
-            });
+            attemptPlay();
         } else {
             audio.pause();
             saveProgress();
@@ -263,9 +441,10 @@ const managerConfigStr = JSON.stringify({
     }
 
     function playNext(auto) {
+        if (state.playlist.length === 0) return;
         if (state.playMode === 1 && auto) {
             audio.currentTime = 0;
-            audio.play();
+            attemptPlay();
             return;
         }
         var nextIndex;
@@ -278,6 +457,7 @@ const managerConfigStr = JSON.stringify({
     }
 
     function playPrev() {
+        if (state.playlist.length === 0) return;
         var prevIndex;
         if (state.playMode === 2) {
             prevIndex = Math.floor(Math.random() * state.playlist.length);
@@ -302,7 +482,7 @@ const managerConfigStr = JSON.stringify({
         state.isMuted = false;
         audio.volume = val;
         audio.muted = false;
-        localStorage.setItem('music-player-volume', val.toString());
+        try { localStorage.setItem('music-player-volume', val.toString()); } catch (e) { /* ignore */ }
         emit('fm:volume', { volume: val, isMuted: false });
     }
 
@@ -313,23 +493,21 @@ const managerConfigStr = JSON.stringify({
     }
 
     function seek(percent) {
-        if (!audio.duration) return;
+        if (!audio.duration || !isFinite(audio.duration)) return;
         audio.currentTime = Math.max(0, Math.min(1, percent)) * audio.duration;
     }
 
     function seekToTime(time) {
-        if (!audio.duration) return;
+        if (!audio.duration || !isFinite(audio.duration)) return;
         audio.currentTime = Math.max(0, Math.min(time, audio.duration));
     }
 
     function playTrackByIndex(index) {
-        // 还没初始化完 → 标记 pendingPlay 并记下要播的曲目
         if (!state.initialized) {
             pendingPlay = true;
-            // 等 init 完成后 loadTrack 会自动加载 index 指向的曲目，
-            // 但 init 会先加载 savedIndex，所以这里把 savedIndex 改了
-            try { localStorage.setItem('music-player-current-index', index.toString()); } catch(e) {}
-            try { localStorage.setItem('music-player-current-time', '0'); } catch(e) {}
+            pendingIndex = index;
+            setLoading(true);
+            ensureInit();
             return;
         }
         if (index === state.currentIndex && !audio.paused) {
@@ -339,22 +517,14 @@ const managerConfigStr = JSON.stringify({
         }
     }
 
-    // ── Audio events → broadcast ─────────────────────────────
-    // ── 保存播放进度到 localStorage ──────────────────────
-    var saveTimer = null;
-
-    function saveProgress() {
-        if (state.playlist.length === 0) return;
-        try {
-            localStorage.setItem('music-player-current-index', state.currentIndex.toString());
-            localStorage.setItem('music-player-current-time', audio.currentTime.toString());
-        } catch (e) {
-            // ignore
-        }
+    function setLoading(bool) {
+        state.loading = !!bool;
+        emit('fm:loading', { loading: !!bool });
     }
 
+    // ── 音频事件 → 广播 ──────────────────────────────────────
     audio.addEventListener('timeupdate', function () {
-        if (isNaN(audio.duration)) return;
+        if (isNaN(audio.duration) || !isFinite(audio.duration)) return;
         var ct = audio.currentTime;
         var dur = audio.duration;
         var pct = (ct / dur) * 100;
@@ -367,7 +537,6 @@ const managerConfigStr = JSON.stringify({
             durationStr: formatTime(dur)
         });
 
-        // 每 5 秒保存一次进度
         if (!saveTimer) {
             saveTimer = setTimeout(function () {
                 saveTimer = null;
@@ -375,7 +544,6 @@ const managerConfigStr = JSON.stringify({
             }, 5000);
         }
 
-        // Lyrics sync
         if (state.lyrics.length > 0) {
             var idx = -1;
             for (var i = 0; i < state.lyrics.length; i++) {
@@ -394,101 +562,218 @@ const managerConfigStr = JSON.stringify({
     });
 
     audio.addEventListener('error', function () {
+        // 快照模式下音频加载失败，通常说明当前部署环境没有那个自建 Worker。
+        // 自动退回「运行时拉取」模式，不需要用户刷新页面。
+        if (state.usingSnapshot && !state.recovering) {
+            recoverFromSnapshotFailure();
+            return;
+        }
+        if (state.recovering) return;
         state.error = 'Audio playback error';
         emit('fm:error', { message: state.error });
     });
 
-    // ── Init (idempotent) ────────────────────────────────────
-    async function init() {
-        if (state.initialized || state.initializing) return;
-        state.initializing = true;
+    function recoverFromSnapshotFailure() {
+        state.recovering = true;
+        state.usingSnapshot = false;
+        clearPlaylistCache();
+        setLoading(true);
 
+        fetchPlaylistFromNetwork().then(function (result) {
+            writePlaylistCache(result.tracks);
+            state.recovering = false;
+            applyPlaylist(result.tracks);
+        }).catch(function () {
+            state.recovering = false;
+            state.error = config.i18n.error;
+            setLoading(false);
+            emit('fm:error', { message: state.error });
+        });
+    }
+
+    // ── 初始化 ───────────────────────────────────────────────
+    function applyPlaylist(tracks) {
+        state.playlist = tracks;
+        audio.volume = state.volume;
+
+        // 恢复上次播放位置
+        var startIndex = 0;
+        var savedTime = null;
         try {
-            if (config.mode === 'meting' && config.meting) {
-                await fetchMetingData();
-            } else if (config.mode === 'local') {
-                state.playlist = config.localPlaylist || [];
+            var si = localStorage.getItem('music-player-current-index');
+            var st = localStorage.getItem('music-player-current-time');
+            if (si !== null) {
+                var parsedIndex = parseInt(si, 10);
+                if (!isNaN(parsedIndex) && parsedIndex >= 0 && parsedIndex < tracks.length) {
+                    startIndex = parsedIndex;
+                }
+            }
+            if (st !== null) savedTime = parseFloat(st);
+        } catch (e) { /* ignore */ }
+
+        // 用户在初始化期间点过的曲目优先级最高
+        if (pendingIndex !== null && pendingIndex >= 0 && pendingIndex < tracks.length) {
+            startIndex = pendingIndex;
+        }
+        pendingIndex = null;
+
+        setLoading(false);
+        emit('fm:init', {
+            playlist: tracks,
+            currentIndex: startIndex,
+            playMode: state.playMode,
+            volume: state.volume,
+            isMuted: state.isMuted
+        });
+
+        // 先 loadTrack，此时 initialized 仍为 false，避免存档被覆盖
+        loadTrack(startIndex, false);
+        state.initialized = true;
+
+        // 恢复播放进度
+        if (savedTime !== null && isFinite(savedTime) && savedTime > 0) {
+            var restore = function () {
+                audio.removeEventListener('canplay', restore);
+                if (savedTime < (audio.duration || Infinity)) audio.currentTime = savedTime;
+            };
+            audio.addEventListener('canplay', restore);
+            if (audio.readyState >= 2) {
+                if (savedTime < (audio.duration || Infinity)) audio.currentTime = savedTime;
+            }
+        }
+
+        // 兑现初始化期间积压的播放请求
+        if (pendingPlay) {
+            pendingPlay = false;
+            attemptPlay();
+        }
+    }
+
+    function runInit() {
+        var tracks = [];
+
+        if (config.mode === 'meting' && config.meting) {
+            // ① 本次会话的缓存
+            tracks = readPlaylistCache() || [];
+            if (tracks.length === 0) {
+                // ② 快照：零网络，立即可播
+                tracks = snapshotToPlaylist();
+                state.usingSnapshot = tracks.length > 0;
+            }
+            if (tracks.length === 0) {
+                // ③ 网络兜底
+                return fetchPlaylistFromNetwork().then(function (result) {
+                    writePlaylistCache(result.tracks);
+                    state.usingSnapshot = false;
+                    applyPlaylist(result.tracks);
+                });
+            }
+            applyPlaylist(tracks);
+            // 命中缓存或快照时，在后台静默校准一次，不阻塞界面
+            refreshInBackground();
+            return Promise.resolve();
+        }
+
+        if (config.mode === 'local') {
+            tracks = config.localPlaylist || [];
+        }
+        applyPlaylist(tracks);
+        return Promise.resolve();
+    }
+
+    // 后台校准：拿到新歌单再决定要不要更新界面，失败就保持现状
+    function refreshInBackground() {
+        fetchPlaylistFromNetwork().then(function (result) {
+            var fresh = result.tracks;
+            writePlaylistCache(fresh);
+
+            var sameLength = fresh.length === state.playlist.length;
+            var sameFirst = fresh[0] && state.playlist[0] && fresh[0].name === state.playlist[0].name;
+            if (sameLength && sameFirst) {
+                // 内容没变：快照和自建接口两边 URL 等价，不必重建 181 项 DOM。
+                // 但若自建接口不可用（结果来自公共接口），就必须换掉快照里那批失效 URL。
+                if (!state.usingSnapshot || result.fromSelfHosted) {
+                    state.usingSnapshot = false;
+                    return;
+                }
             }
 
-            if (state.playlist.length > 0) {
-                // Apply volume
-                audio.volume = state.volume;
+            var keepIndex = state.currentIndex;
+            if (keepIndex >= fresh.length) keepIndex = 0;
+            state.playlist = fresh;
+            state.currentIndex = keepIndex;
+            state.usingSnapshot = false;
+            emit('fm:init', {
+                playlist: fresh,
+                currentIndex: keepIndex,
+                playMode: state.playMode,
+                volume: state.volume,
+                isMuted: state.isMuted
+            });
+        }).catch(function () { /* 后台失败无所谓，不动现有列表 */ });
+    }
 
-                // ── 恢复上次的播放位置 ──
-                var startIndex = 0;
-                var savedIndex = null;
-                var savedTime = null;
-                try {
-                    var si = localStorage.getItem('music-player-current-index');
-                    var st = localStorage.getItem('music-player-current-time');
-                    if (si !== null) savedIndex = parseInt(si, 10);
-                    if (st !== null) savedTime = parseFloat(st);
-                } catch (e) { /* ignore */ }
+    function init() {
+        if (state.initialized) return Promise.resolve();
+        if (state.initializing && state.initPromise) return state.initPromise;
 
-                if (savedIndex !== null && savedIndex >= 0 && savedIndex < state.playlist.length) {
-                    startIndex = savedIndex;
-                } else if (state.playMode === 2) {
-                    startIndex = Math.floor(Math.random() * state.playlist.length);
-                }
+        state.initializing = true;
+        state.failed = false;
 
-                emit('fm:init', {
-                    playlist: state.playlist,
-                    playMode: state.playMode,
-                    volume: state.volume,
-                    isMuted: state.isMuted
-                });
+        var finish = function () {
+            state.initializing = false;
+            state.initPromise = null;
+        };
 
-                // 先加载曲目（此时不标记初始化），避免 loadTrack 里的 saveProgress() 覆盖 localStorage
-                loadTrack(startIndex, false);
-
-                // 恢复进度：seek 到上次播放位置，但不自动播放（浏览器会阻止）
-                if (savedTime !== null && savedTime > 0) {
-                    audio.addEventListener('canplay', function seekTo() {
-                        audio.removeEventListener('canplay', seekTo);
-                        audio.currentTime = savedTime;
-                    });
-                    if (audio.readyState >= 2) {
-                        audio.currentTime = savedTime;
-                    }
-                }
-
-                // 标记初始化完成（必须在 loadTrack 之后！）
-                state.initialized = true;
-
-                // 如果用户在初始化期间点了播放，现在执行
-                if (pendingPlay) {
-                    pendingPlay = false;
-                    // 直接播放（此时已经在用户手势上下文之外，但 togglePlay 处理后续点击）
-                    // 这里不主动 play，让用户点击按钮触发（浏览器 autoplay 策略）
-                }
-            } else {
-                state.initialized = true;
-                emit('fm:init', {
-                    playlist: [],
-                    playMode: state.playMode,
-                    volume: state.volume,
-                    isMuted: state.isMuted
-                });
-                emit('fm:error', { message: config.i18n.noSongs });
-            }
-        } catch (e) {
+        state.initPromise = runInit().then(function () {
+            finish();
+        }, function (e) {
             console.error('Music Manager init error:', e);
-            state.initialized = true;
+            // 关键修复：失败不再把 initialized 永久锁死。
+            // 之前一旦失败就写死 initialized = true，列表为空且再无重试入口，
+            // 只能整页刷新。现在标记 failed，点播放按钮即可重新初始化。
+            state.failed = true;
+            state.playlist = [];
+            state.initialized = false;
+            state.usingSnapshot = false;
+            finish();
+            setLoading(false);
             emit('fm:init', {
                 playlist: [],
+                currentIndex: 0,
                 playMode: state.playMode,
                 volume: state.volume,
                 isMuted: state.isMuted
             });
             emit('fm:error', { message: config.i18n.error });
-        } finally {
-            state.initializing = false;
+        });
+
+        return state.initPromise;
+    }
+
+    function ensureInit() {
+        if (state.initialized) return Promise.resolve();
+        return init();
+    }
+
+    // ── 空闲预取 ─────────────────────────────────────────────
+    // 页面空闲时先把歌单备好，用户真正点开播放器时大概率已经就绪，
+    // 这也是「一点即播」最主要的来源。
+    function schedulePrefetch() {
+        var run = function () {
+            ensureInit().catch(function () { /* 失败留给用户点击时重试 */ });
+        };
+        if (typeof requestIdleCallback === 'function') {
+            requestIdleCallback(run, { timeout: 4000 });
+        } else {
+            setTimeout(run, 2000);
         }
     }
 
-    // ── Public API ───────────────────────────────────────────
+    // ── 对外 API ─────────────────────────────────────────────
     window.__fireflyMusic = {
         init: init,
+        ensureInit: ensureInit,
         getState: function () {
             var track = state.playlist[state.currentIndex] || null;
             return {
@@ -501,12 +786,16 @@ const managerConfigStr = JSON.stringify({
                 isMuted: state.isMuted,
                 currentTime: audio.currentTime,
                 duration: audio.duration || 0,
-                progress: audio.duration ? (audio.currentTime / audio.duration) * 100 : 0,
+                progress: audio.duration && isFinite(audio.duration)
+                    ? (audio.currentTime / audio.duration) * 100
+                    : 0,
                 currentTimeStr: formatTime(audio.currentTime),
                 durationStr: formatTime(audio.duration),
                 lyrics: state.lyrics,
                 currentLrcIndex: state.currentLrcIndex,
                 initialized: state.initialized,
+                loading: state.loading,
+                failed: state.failed,
                 error: state.error,
                 config: config
             };
@@ -522,5 +811,7 @@ const managerConfigStr = JSON.stringify({
         playTrackByIndex: playTrackByIndex,
         loadTrack: loadTrack
     };
+
+    schedulePrefetch();
 })();
 </script>

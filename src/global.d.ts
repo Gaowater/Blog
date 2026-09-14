@@ -21,6 +21,7 @@ declare global {
 		};
 		__fireflyMusic?: {
 			init: () => Promise<void>;
+			ensureInit: () => Promise<void>;
 			getState: () => {
 				playlist: Array<{
 					name: string;

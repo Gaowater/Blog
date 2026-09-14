@@ -207,11 +207,24 @@ function loadButtonScript() {
 
     let musicBtn = document.getElementById("music-player-switch");
     if (musicBtn) {
+        // 悬停即预取：鼠标移到按钮上就开始准备歌单，真正点开面板时大概率已就绪。
+        // 「一点即播」主要就是靠这个 + 空闲预取。
+        let musicPrefetched = false;
+        const prefetchMusic = () => {
+            if (musicPrefetched) return;
+            musicPrefetched = true;
+            if (window.__fireflyMusic) window.__fireflyMusic.ensureInit();
+        };
+        musicBtn.addEventListener("mouseenter", prefetchMusic, { passive: true });
+        musicBtn.addEventListener("touchstart", prefetchMusic, { passive: true });
+
         musicBtn.onclick = function () {
             let musicPanel = document.getElementById("music-nav-panel");
             if (musicPanel) {
                 musicPanel.classList.toggle("float-panel-closed");
             }
+            // 点开面板时兜底确保初始化完成
+            if (window.__fireflyMusic) window.__fireflyMusic.ensureInit();
         };
     }
 
