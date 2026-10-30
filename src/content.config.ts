@@ -76,6 +76,19 @@ const specCollection = defineCollection({
 						.boolean()
 						.optional()
 						.default(false), // 强制该页图片以竖图样式完整显示（不按横图裁切）
+					// 该页配乐（可选）：填了才渲染播放按钮，未填的页不受影响
+					audio: z
+						.object({
+							src: z.string(), // 音频路径，如 "/assets/music/xxx.mp3"
+							title: z.string().optional().default(""), // 显示名，缺省用「这一页的配乐」
+							artist: z.string().optional().default(""), // 副标题，可留空
+							// 插入位置：top=页头心情行下方 / notes=便签之后（默认）/ bottom=本页内容末尾（摘抄之后）
+							position: z
+								.enum(["top", "notes", "bottom"])
+								.optional()
+								.default("notes"),
+						})
+						.optional(),
 					notes: z
 						.array(
 							z.object({

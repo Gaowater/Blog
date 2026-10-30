@@ -1,0 +1,184 @@
+---
+// 手账页内配乐按钮
+// 一张「唱片贴纸」式的小卡片：左侧慢转的唱片图标 + 手写体曲名 + 播放进度细线。
+// 视觉沿用 .j-app 的纸张变量（--paper-bg / --paper-ink / --accent / --font-hand），
+// 因此横线、空白、牛皮纸、深色模式都会自动跟着变色。
+type Props = {
+	audio: {
+		src: string;
+		title?: string;
+		artist?: string;
+	};
+};
+
+const { audio } = Astro.props;
+const label = audio.title || "这一页的配乐";
+const artist = audio.artist || "";
+---
+<div class="j-audio" data-journal-audio>
+	<button
+		type="button"
+		class="j-audio-btn"
+		aria-pressed="false"
+		aria-label={`播放配乐：${label}`}
+		data-label={label}
+	>
+		<span class="j-audio-disc" aria-hidden="true">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+				<circle cx="12" cy="12" r="9"></circle>
+				<circle cx="12" cy="12" r="5" stroke-dasharray="3.2 2.6"></circle>
+				<circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"></circle>
+				<circle cx="16.6" cy="8.4" r="1" fill="currentColor" stroke="none"></circle>
+			</svg>
+		</span>
+
+		<span class="j-audio-meta">
+			<span class="j-audio-title">{label}</span>
+			{artist && <span class="j-audio-artist">{artist}</span>}
+			<span class="j-audio-track" aria-hidden="true">
+				<span class="j-audio-fill"></span>
+			</span>
+		</span>
+
+		<span class="j-audio-act" aria-hidden="true">
+			<svg class="j-audio-ico-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+				<path d="M9.2 6.4v11.2L18 12z" fill="currentColor" stroke="none"></path>
+			</svg>
+			<svg class="j-audio-ico-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round">
+				<path d="M9.6 6.6v10.8"></path>
+				<path d="M14.4 6.6v10.8"></path>
+			</svg>
+		</span>
+	</button>
+	<audio preload="metadata" src={audio.src}></audio>
+</div>
+
+<style>
+	.j-audio {
+		margin: 0.85rem 0 0.2rem;
+	}
+	.j-audio-btn {
+		display: flex;
+		align-items: center;
+		gap: 0.62rem;
+		width: 100%;
+		text-align: left;
+		font-family: var(--font-hand);
+		color: var(--paper-ink);
+		background: color-mix(in srgb, var(--paper-bg) 62%, #ffffff 38%);
+		border: 1px dashed color-mix(in srgb, var(--paper-ink) 24%, transparent);
+		border-radius: 3px 11px 6px 3px;
+		padding: 0.5rem 0.68rem 0.55rem;
+		cursor: pointer;
+		-webkit-tap-highlight-color: transparent;
+		transform: rotate(-0.5deg);
+		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 4px 10px rgba(0, 0, 0, 0.045);
+		transition:
+			transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+			box-shadow 0.3s ease,
+			border-color 0.25s ease;
+	}
+	.j-audio-btn:hover {
+		transform: rotate(0deg) translateY(-1px);
+		border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06), 0 8px 18px rgba(0, 0, 0, 0.07);
+	}
+	.j-audio-btn:active {
+		transform: rotate(0deg) scale(0.985);
+	}
+	.j-audio-btn:focus-visible {
+		outline: 2px solid color-mix(in srgb, var(--accent) 65%, transparent);
+		outline-offset: 2px;
+	}
+
+	/* 唱片：播放时慢速旋转（偏心小点提供转动视觉） */
+	.j-audio-disc {
+		flex: none;
+		width: 1.9rem;
+		height: 1.9rem;
+		display: grid;
+		place-items: center;
+		color: color-mix(in srgb, var(--accent) 85%, var(--paper-ink) 15%);
+	}
+	.j-audio-disc svg {
+		width: 1.9rem;
+		height: 1.9rem;
+		transform-origin: 50% 50%;
+	}
+	.j-audio.is-playing .j-audio-disc svg {
+		animation: j-audio-spin 4.5s linear infinite;
+	}
+	@keyframes j-audio-spin {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+
+	.j-audio-meta {
+		flex: 1 1 auto;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.1rem;
+	}
+	.j-audio-title {
+		font-size: 0.94rem;
+		line-height: 1.25;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.j-audio-artist {
+		font-size: 0.72rem;
+		line-height: 1.2;
+		color: var(--paper-ink-soft);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	/* 播放进度：一条压在曲名下方的手绘细线 */
+	.j-audio-track {
+		display: block;
+		height: 2px;
+		margin-top: 0.28rem;
+		border-radius: 2px;
+		background: color-mix(in srgb, var(--paper-ink) 14%, transparent);
+		overflow: hidden;
+	}
+	.j-audio-fill {
+		display: block;
+		width: 0;
+		height: 100%;
+		border-radius: 2px;
+		background: var(--accent);
+		transition: width 0.14s linear;
+	}
+
+	/* 右侧播放/暂停指示 */
+	.j-audio-act {
+		flex: none;
+		width: 1.1rem;
+		height: 1.1rem;
+		display: grid;
+		place-items: center;
+		color: color-mix(in srgb, var(--paper-ink) 55%, transparent);
+	}
+	.j-audio-act svg {
+		width: 1.05rem;
+		height: 1.05rem;
+	}
+	.j-audio-ico-pause {
+		display: none;
+	}
+	.j-audio.is-playing .j-audio-ico-play {
+		display: none;
+	}
+	.j-audio.is-playing .j-audio-ico-pause {
+		display: block;
+	}
+	/* 播放中：虚线转实线，像被「贴实」了一下 */
+	.j-audio.is-playing .j-audio-btn {
+		border-style: solid;
+		border-color: color-mix(in srgb, var(--accent) 38%, transparent);
+	}
+</style>

@@ -538,8 +538,8 @@ const firstMonthKey = books.flatMap((b) => b.monthly)[0]?.month ?? "";
 					} catch (e) {}
 				}
 
-				// 全屏壁纸模式定位：总结页被 data-no-swup 整页加载（绕过 Swup 的 scroll:top 钩子），
-				// 这里手动复刻 Layout.astro scroll:top 钩子的逻辑：
+				// 全屏壁纸模式定位：Swup 的 scroll:top 钩子在这里拿不到确定时机，
+				// 所以手动复刻一份同样逻辑（滚动到同一位置是幂等的）：
 				// 全屏壁纸模式 + 非首页 → 滚动到 #main-grid（正文容器顶部），避免停在壁纸顶部
 				function scrollToContentIfFullscreen() {
 					try {

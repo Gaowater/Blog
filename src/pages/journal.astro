@@ -2,6 +2,7 @@
 import MainGridLayout from "@/layouts/MainGridLayout.astro";
 import { Icon } from "astro-icon/components";
 import { getCollection, render } from "astro:content";
+import JournalAudio from "@/components/features/JournalAudio.astro";
 import { siteConfig } from "@/config";
 
 // 页面开关：siteConfig.pages.journal 为 false 时返回 404
@@ -392,6 +393,9 @@ const cover = (books.find((b) => b.year === activeYear) ?? books[books.length - 
 									);
 								})()}
 
+								{/* 页内配乐：position=top → 页头心情行下方 */}
+								{p.audio && p.audio.position === "top" && <JournalAudio audio={p.audio} />}
+
 								<!-- 正文内容区（内容少时垂直居中，头部与心情保持顶部） -->
 								<div class="j-content">
 								{p.images && p.images.length > 0 && (
@@ -432,6 +436,9 @@ const cover = (books.find((b) => b.year === activeYear) ?? books[books.length - 
 										</div>
 									</div>
 								)}
+
+								<!-- 页内配乐：position=notes（默认）→ 便签之后 -->
+								{p.audio && p.audio.position === "notes" && <JournalAudio audio={p.audio} />}
 
 								<!-- 待办 -->
 								{book.enable.todos && p.todos && p.todos.length > 0 && (
@@ -483,6 +490,8 @@ const cover = (books.find((b) => b.year === activeYear) ?? books[books.length - 
 										</div>
 									</div>
 								)}
+								<!-- 页内配乐：position=bottom → 本页内容末尾 -->
+								{p.audio && p.audio.position === "bottom" && <JournalAudio audio={p.audio} />}
 								</div>
 								<!-- 底部占位：把垂直居中的下界精确对齐到花印顶部（距底 3.65rem） -->
 								<div class="j-foot-spacer" aria-hidden="true"></div>
@@ -591,13 +600,25 @@ const cover = (books.find((b) => b.year === activeYear) ?? books[books.length - 
 			</div>
 		</div>
 	</div>
-</MainGridLayout>
 
-<script is:inline data-astro-rerun>
+<script is:inline data-astro-rerun data-journal-boot>
 function initJournal() {
+  // 全局引用兜底：旧手账 DOM 被 swup 换掉后，正在播的页面配乐也要停
+  // （元素脱离文档后浏览器不保证停止，这里主动收尾）
+  try {
+    const prev = window.__journalAudio && window.__journalAudio.current;
+    if (prev && !prev.paused && !document.contains(prev)) prev.pause();
+  } catch (e) {}
   const yearsEl = document.getElementById("j-years");
   if (!yearsEl || yearsEl.dataset.init === "1") return;
   yearsEl.dataset.init = "1";
+  // 上一次软导航留下的 document / window 级监听要清掉：它们闭包里握着已经销毁的旧 DOM，
+  // 不清就会随进出次数累积（切几轮以后明显变卡）。元素级监听随 DOM 一起销毁，不用管。
+  try {
+    if (window.__journalDocAbort) window.__journalDocAbort.abort();
+  } catch (e) {}
+  const docAbort = new AbortController();
+  window.__journalDocAbort = docAbort;
   const books = Array.from(yearsEl.querySelectorAll(".j-year-book")).map((el) => ({
     el,
     book: el.querySelector(".j-book"),
@@ -644,6 +665,20 @@ function initJournal() {
     });
   }
   const T = 550;
+  // 页内配乐：离开该页就停声（不重置进度，翻回来可续播）
+  function pauseSheetAudio(sheet) {
+    sheet.querySelectorAll("[data-journal-audio]").forEach((box) => {
+      const a = box.querySelector("audio");
+      if (a && !a.paused) a.pause();
+    });
+  }
+  function pauseBookAudio(bookEl) {
+    if (!bookEl) return;
+    bookEl.querySelectorAll("[data-journal-audio].is-playing").forEach((box) => {
+      const a = box.querySelector("audio");
+      if (a && !a.paused) a.pause();
+    });
+  }
   function renderBook(b, instant) {
     b.sheets.forEach((s, i) => {
       const dist = i - b.current;
@@ -652,6 +687,10 @@ function initJournal() {
       let ry = 0;
       let sc = 1;
       let op = 1;
+      // 翻走的页先停播放（只查带 .is-playing 的，无音频页零开销）
+      if (dist !== 0 && s.querySelector("[data-journal-audio].is-playing")) {
+        pauseSheetAudio(s);
+      }
       s.dataset.state = dist === 0 ? "active" : abs <= 1 ? "near" : "hidden";
       if (abs > 1) {
         tx = (dist > 0 ? 1 : -1) * (abs - 1) * 30;
@@ -707,7 +746,7 @@ function initJournal() {
     }
     if (e.key === "ArrowLeft") goTo(-1);
     if (e.key === "ArrowRight") goTo(1);
-  });
+  }, { signal: docAbort.signal });
   function bindTouch(b) {
     let startX = 0;
     let startY = 0;
@@ -789,6 +828,66 @@ function initJournal() {
         }
       });
     });
+    // 页内配乐：播放/暂停（每块只绑一次，DOM 复用时靠 data-bound 守卫）
+    b.book.querySelectorAll("[data-journal-audio]").forEach((box) => {
+      if (box.dataset.bound === "1") return;
+      box.dataset.bound = "1";
+      const btn = box.querySelector(".j-audio-btn");
+      const audio = box.querySelector("audio");
+      const fill = box.querySelector(".j-audio-fill");
+      if (!btn || !audio) return;
+      const label = btn.dataset.label || "";
+      const sync = () => {
+        const playing = !audio.paused && !audio.ended;
+        box.classList.toggle("is-playing", playing);
+        btn.setAttribute("aria-pressed", playing ? "true" : "false");
+        btn.setAttribute("aria-label", (playing ? "暂停配乐：" : "播放配乐：") + label);
+      };
+      const paint = () => {
+        if (!fill) return;
+        const d = audio.duration;
+        fill.style.width =
+          d && isFinite(d) && d > 0
+            ? ((audio.currentTime / d) * 100).toFixed(2) + "%"
+            : "0%";
+      };
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (audio.paused) {
+          // 同一时间只允许一条页面配乐在响：先停掉其他页已播的
+          document.querySelectorAll("[data-journal-audio] audio").forEach((other) => {
+            if (other !== audio && !other.paused) other.pause();
+          });
+          // 顺手停掉全站音乐播放器，避免两路声音叠在一起
+          try {
+            const fm = window.__fireflyMusic;
+            if (fm && typeof fm.getState === "function" && typeof fm.togglePlay === "function") {
+              const st = fm.getState();
+              if (st && st.isPlaying) fm.togglePlay();
+            }
+          } catch (err) {
+          }
+          const p = audio.play();
+          // 登记全局引用：软导航离开手账时靠它把声音收掉
+          window.__journalAudio = window.__journalAudio || {};
+          window.__journalAudio.current = audio;
+          // 播放被拒（文件缺失 / 浏览器策略）时回滚按钮态，不留在假播放状态
+          if (p && typeof p.catch === "function") p.catch(() => sync());
+        } else {
+          audio.pause();
+        }
+      });
+      audio.addEventListener("play", sync);
+      audio.addEventListener("pause", sync);
+      audio.addEventListener("ended", () => {
+        paint();
+        sync();
+      });
+      audio.addEventListener("timeupdate", paint);
+      audio.addEventListener("loadedmetadata", paint);
+      sync();
+    });
     b.book.querySelectorAll(".j-img:not([data-portrait-checked])").forEach((img) => {
       img.dataset.portraitChecked = "1";
       const mark = () => {
@@ -823,6 +922,8 @@ function initJournal() {
     books.forEach((b) => {
       const show = b.el.dataset.year === year;
       b.el.hidden = !show;
+      // 切走的年份别让上一本还在响
+      if (!show) pauseBookAudio(b.book);
       if (show) {
         prepareBook(b);
         // 每本书优先用该年记忆的纸张，没有则用书自己的（frontmatter paper）
@@ -1016,7 +1117,7 @@ function initJournal() {
         if (year) pushTodoState(year);
       }, 600);
     }
-  });
+  }, { signal: docAbort.signal });
   const SELECT_LOCK_MS = 350;
   let yearLockUntil = 0;
   let paperLockUntil = 0;
@@ -1534,8 +1635,8 @@ function initJournal() {
     }
   });
 
-  // 全屏壁纸模式定位：手账页被 data-no-swup 整页加载（绕过 Swup 的 scroll:top 钩子），
-  // 这里手动复刻 Layout.astro scroll:top 钩子的逻辑：
+  // 全屏壁纸模式定位：手账页原先走 data-no-swup 整页加载，绕过了 Swup 的 scroll:top 钩子，
+  // 所以这里手动复刻一份该钩子的逻辑。现在改成软导航，这段保留作兜底（滚动到同一位置是幂等的）：
   // 全屏壁纸模式 + 非首页 → 滚动到 #main-grid（正文容器顶部），避免停在壁纸顶部
   function scrollToContentIfFullscreen() {
     try {
@@ -1554,14 +1655,18 @@ function initJournal() {
   } else {
     scrollToContentIfFullscreen();
   }
-  window.addEventListener("load", scrollToContentIfFullscreen);
+  window.addEventListener("load", scrollToContentIfFullscreen, { signal: docAbort.signal });
 }
+// 暴露给 Layout.astro 的兜底逻辑：软导航后若脚本这一趟没跑起来（只剩封面），由它补一次初始化
+window.initJournal = initJournal;
 initJournal();
 if (!window.__journalSwupBound) {
   window.__journalSwupBound = true;
   document.addEventListener("swup:contentReplaced", () => initJournal());
 }
 </script>
+</MainGridLayout>
+
 
 <style>
 	/* ── 手写字体：站酷快乐体（在线）→ 系统楷体回退 ── */

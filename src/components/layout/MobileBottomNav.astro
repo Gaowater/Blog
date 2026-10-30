@@ -137,12 +137,16 @@ const navItems = [
         return;
       }
 
-      // 普通链接：先变色 → 延迟跳转
+      // 普通链接：先变色 → 延迟跳转（优先走 Swup 软导航，整页重载会直接掐断背景音乐）
       var href = item.getAttribute('href');
       if (href && !href.startsWith('#') && !href.startsWith('javascript:')) {
         e.preventDefault();
         setTimeout(function() {
-          window.location.href = href;
+          if (window.swup && typeof window.swup.navigate === 'function') {
+            window.swup.navigate(href);
+          } else {
+            window.location.href = href;
+          }
         }, 100);
       }
     });

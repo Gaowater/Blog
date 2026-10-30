@@ -600,19 +600,35 @@ const siteLang = lang.replace("_", "-");
     <!-- 移动端底部导航 -->
     <MobileBottomNav />
 
-    <!-- 手账/总结页：整页加载（Swup 转场下页面级脚本可能不执行导致只有封面，data-no-swup 保证脚本完整运行） -->
+    <!-- 手账/总结页：走 Swup 软导航。
+         以前这里给 /journal/ 链接强制加 data-no-swup 整页重载，整页重载会销毁当前文档里的
+         <audio> 和播放器单例，导致切到别处背景音乐直接断掉。
+         两个页面脚本本身是幂等的（dataset.init 守卫 + swup:contentReplaced 重绑），
+         这里只留一层兜底：万一转场后页面脚本没执行、手账只剩封面，就在内容替换后补一次初始化。 -->
     <script is:inline data-swup-ignore-script>
       (function() {
-        function markJournalLinks() {
-          document.querySelectorAll('a[href^="/journal/"]').forEach(function(a) {
-            if (!a.hasAttribute("data-no-swup")) {
-              a.setAttribute("data-no-swup", "");
-            }
-          });
+        function reviveJournal() {
+          var years = document.getElementById("j-years");
+          if (!years || years.dataset.init === "1") return;
+          // 一级：脚本跑过，入口还挂在 window 上，直接调
+          if (typeof window.initJournal === "function") {
+            try { window.initJournal(); } catch (e) {}
+            return;
+          }
+          // 二级：这一趟软导航页面脚本压根没执行（首次直接软导航进 /journal/ 就是这样），
+          // 把页面里那份标记了 data-journal-boot 的脚本按原样再插一次，让它自己初始化。
+          var boot = document.querySelector("script[data-journal-boot]");
+          if (!boot || boot.dataset.replayed === "1") return;
+          boot.dataset.replayed = "1";
+          try {
+            var s = document.createElement("script");
+            s.textContent = boot.textContent;
+            document.body.appendChild(s);
+          } catch (e) {}
         }
-        markJournalLinks();
         document.addEventListener("swup:contentReplaced", function() {
-          setTimeout(markJournalLinks, 50);
+          setTimeout(reviveJournal, 60);
+          setTimeout(reviveJournal, 400);
         });
       })();
     </script>
