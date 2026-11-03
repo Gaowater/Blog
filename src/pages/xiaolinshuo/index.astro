@@ -39,14 +39,14 @@ const latestDate = featured?.published ?? "";
 
 <MainGridLayout
   title="小琳说"
-  description="小琳写给我的信，一封一封收在这里。"
+  description="小琳写下的东西，信也好，日记也好，都收在这里。"
 >
   <div class="card-base xl-wrap">
     <!-- 栏目标识 -->
     <header class="xl-head onload-animation">
-      <div class="xl-mark">来信</div>
+      <div class="xl-mark">手记</div>
       <h1>小琳说</h1>
-      <p class="xl-sub">她写给我的信，我一封一封收着。</p>
+      <p class="xl-sub">她写下的东西，我一篇一篇收着。</p>
       <div class="xl-count">
         共 {items.length} 篇{latestDate && ` · 最近更新 ${latestDate}`}
       </div>
@@ -234,6 +234,10 @@ const latestDate = featured?.published ?? "";
   .xl-featured:hover h2 {
     color: var(--primary);
   }
+  /* 只有一篇文章、没有下方列表时，首篇大卡自己承担底部留白，避免贴住卡片边缘 */
+  .xl-wrap:not(:has(.xl-list)) .xl-featured {
+    margin-bottom: 2.2rem;
+  }
   .xl-featured-info p {
     margin: 0 0 0.95rem;
     font-size: 0.88rem;
@@ -272,19 +276,24 @@ const latestDate = featured?.published ?? "";
 
   /* ── 小卡列表 ── */
   .xl-list {
-    padding: 0.6rem 2.6rem 2.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    padding: 0.5rem 2.6rem 2.4rem;
   }
   .xl-card {
     display: flex;
     align-items: flex-start;
     gap: 1.1rem;
-    padding: 1.25rem 0;
-    border-bottom: 1px solid var(--line-divider);
+    padding: 1.15rem 1.3rem;
+    border-radius: 0.9rem;
+    background: var(--btn-card-bg-hover);
     text-decoration: none;
     color: inherit;
+    transition: background 0.25s ease;
   }
-  .xl-card:last-child {
-    border-bottom: none;
+  .xl-card:hover {
+    background: var(--btn-plain-bg-hover);
   }
   .xl-num {
     flex: none;

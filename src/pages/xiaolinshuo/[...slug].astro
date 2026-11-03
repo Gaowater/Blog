@@ -354,9 +354,14 @@ const dateText = formatXiaoDate(entry.data.published);
     text-decoration-color: var(--link-underline);
   }
 
-  /* 首字下沉：默认作用于每篇文章的第一段（保持不变） */
-  .xl-article .xl-prose > p:first-of-type::first-letter,
-  .xl-article .xl-prose > section:first-of-type > p:first-of-type::first-letter {
+  /* 首字下沉：只作用于「第一段且不是抬头」的段落 */
+  .xl-article
+    .xl-prose
+    > p:first-of-type:not(.xl-to)::first-letter,
+  .xl-article
+    .xl-prose
+    > section:first-of-type
+    > p:first-of-type:not(.xl-to)::first-letter {
     float: left;
     font-family: var(--xl-serif);
     font-size: 3.1rem;
@@ -365,7 +370,7 @@ const dateText = formatXiaoDate(entry.data.published);
     color: var(--primary);
   }
 
-  /* 这一篇独有的开头：To 两个字母整体下沉（颜色、尺寸、位置同首字下沉） */
+  /* 这一篇独有的开头：只有 To 两个字母做大字，汉字部分保持正文 */
   .xl-article .xl-prose .xl-to {
     display: flow-root;
     margin: 0.2rem 0 1.4rem;
@@ -380,15 +385,6 @@ const dateText = formatXiaoDate(entry.data.published);
     color: var(--primary);
   }
   /* 已有 To 下沉时，不再对 T 单独做一次首字下沉 */
-  .xl-article .xl-prose .xl-to::first-letter {
-    float: none;
-    font-size: inherit;
-    line-height: inherit;
-    padding: 0;
-    color: inherit;
-    font-family: inherit;
-  }
-
   /* 引用 → 抽句 */
   .xl-article .xl-prose blockquote {
     margin: 2rem 0;
