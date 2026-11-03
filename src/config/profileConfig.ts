@@ -12,7 +12,7 @@ export const profileConfig: ProfileConfig = {
 	name: "牧河伊琉",
 
 	// 个人签名
-	bio: "每日小确幸，从爱好自己开始！当然，爱你也是！",
+	bio: "原来想念再长，也长不过见面的那几天；而见面的那几天，足够撑起之后很久的日子！",
 
 	// 链接配置
 	// 已经预装的图标集：fa7-brands，fa7-regular，fa7-solid，material-symbols，simple-icons

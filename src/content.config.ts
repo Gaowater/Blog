@@ -33,6 +33,29 @@ const postsCollection = defineCollection({
 	}),
 });
 
+// ── 小琳说：独立栏目，与 posts 完全隔离 ──
+// 新文章直接放 src/content/xiaolinshuo/YYYY-MM-DD.md，文件名即 URL
+// 正文是标准 Markdown，可在任意位置插入 <img> / <video> / <audio> / <figure>
+const xiaolinshuoCollection = defineCollection({
+	loader: glob({ pattern: "**/*.{md,mdx}", base: "./src/content/xiaolinshuo" }),
+	schema: z.object({
+		title: z.string(),
+		published: z.date(),
+		updated: z.date().optional(),
+		draft: z.boolean().optional().default(false),
+		// 栏目页与列表卡上的引言（留空则自动取正文首段）
+		description: z.string().optional().default(""),
+		// 封面图：留空 = 这篇不要封面
+		cover: z.string().optional().default(""),
+		// 是否在文章内页顶部也显示封面（默认 false，内页只在正文里插图）
+		coverInPost: z.boolean().optional().default(false),
+		tags: z.array(z.string()).optional().default([]),
+		author: z.string().optional().default("牧河"),
+		// 置顶到列表最前
+		pinned: z.boolean().optional().default(false),
+	}),
+});
+
 const specCollection = defineCollection({
 	loader: glob({ pattern: "**/*.{md,mdx}", base: "./src/content/spec" }),
 	// 手账（journal.md）专用字段全部 optional，不影响 about/friends/guestbook
@@ -193,4 +216,5 @@ const specCollection = defineCollection({
 export const collections = {
 	posts: postsCollection,
 	spec: specCollection,
+	xiaolinshuo: xiaolinshuoCollection,
 };

@@ -1,0 +1,544 @@
+---
+import { render } from "astro:content";
+import { Icon } from "astro-icon/components";
+import Markdown from "@/components/common/Markdown.astro";
+import MainGridLayout from "@/layouts/MainGridLayout.astro";
+import {
+	formatXiaoDate,
+	getXiaoEntries,
+	getXiaoSlug,
+	getXiaoUrl,
+	type XiaoEntry,
+} from "@/utils/xiaolinshuo-utils";
+
+export async function getStaticPaths() {
+	const entries = await getXiaoEntries();
+	return entries.map((entry, index) => ({
+		params: { slug: getXiaoSlug(entry) },
+		props: {
+			entry,
+			// 列表按时间倒序：index-1 更新，index+1 更早
+			newer: index > 0 ? entries[index - 1] : null,
+			older: index < entries.length - 1 ? entries[index + 1] : null,
+		},
+	}));
+}
+
+interface Props {
+	entry: XiaoEntry;
+	newer: XiaoEntry | null;
+	older: XiaoEntry | null;
+}
+
+const { entry, newer, older } = Astro.props as Props;
+
+const { Content, headings } = await render(entry);
+const { remarkPluginFrontmatter } = await render(entry);
+const fm = remarkPluginFrontmatter as { words?: number; minutes?: number };
+
+const toc = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
+const dek = entry.data.description;
+const cover = entry.data.cover;
+const showCover = Boolean(cover) && entry.data.coverInPost;
+const words = Number(fm.words ?? 0);
+const minutes = Number(fm.minutes ?? 0);
+const dateText = formatXiaoDate(entry.data.published);
+---
+
+<MainGridLayout
+  title={`${entry.data.title} | 小琳说`}
+  description={dek || entry.data.title}
+  setOGTypeArticle={true}
+>
+  <article class="card-base xl-article">
+    <!-- 返回栏目 -->
+    <a class="xl-back onload-animation" href="/xiaolinshuo/">
+      <Icon name="material-symbols:arrow-back" class="text-base" />
+      <span>小琳说</span>
+    </a>
+
+    <header class="xl-head onload-animation">
+      <h1 class="xl-title">{entry.data.title}</h1>
+      {dek && <p class="xl-dek">{dek}</p>}
+    </header>
+
+    <div class="xl-cols">
+      <!-- 左：信息栏 + 目录 -->
+      <aside class="xl-side">
+        <dl class="xl-facts">
+          <div>
+            <dt>日期</dt>
+            <dd>{dateText}</dd>
+          </div>
+          {
+            words > 0 && (
+              <div>
+                <dt>字数</dt>
+                <dd>{words}</dd>
+              </div>
+            )
+          }
+          {
+            minutes > 0 && (
+              <div>
+                <dt>阅读</dt>
+                <dd>约 {minutes} 分钟</dd>
+              </div>
+            )
+          }
+        </dl>
+
+        {
+          toc.length >= 2 && (
+            <nav class="xl-toc">
+              <p class="xl-side-k">目录</p>
+              <ol>
+                {toc.map((h) => (
+                  <li class:list={[`d${h.depth}`]}>
+                    <a href={`#${h.slug}`}>{h.text}</a>
+                  </li>
+                ))}
+              </ol>
+            </nav>
+          )
+        }
+
+        {
+          newer && (
+            <div class="xl-side-next">
+              <p class="xl-side-k">下一篇</p>
+              <a href={getXiaoUrl(newer)}>{newer.data.title}</a>
+            </div>
+          )
+        }
+      </aside>
+
+      <!-- 右：正文 -->
+      <div class="xl-main">
+        {
+          showCover && (
+            <figure class="xl-cover">
+              <img src={cover} alt={entry.data.title} loading="eager" />
+            </figure>
+          )
+        }
+        <Markdown class="mb-0 xl-prose">
+          <Content />
+        </Markdown>
+      </div>
+    </div>
+
+    <footer class="xl-foot">
+      {
+        older ? (
+          <a class="xl-foot-item" href={getXiaoUrl(older)}>
+            <span>上一篇</span>
+            <strong>{older.data.title}</strong>
+          </a>
+        ) : (
+          <div class="xl-foot-item is-empty">
+            <span>上一篇</span>
+            <strong>没有更早的了</strong>
+          </div>
+        )
+      }
+      {
+        newer ? (
+          <a class="xl-foot-item is-right" href={getXiaoUrl(newer)}>
+            <span>下一篇</span>
+            <strong>{newer.data.title}</strong>
+          </a>
+        ) : (
+          <div class="xl-foot-item is-right is-empty">
+            <span>下一篇</span>
+            <strong>已经是最新一篇</strong>
+          </div>
+        )
+      }
+    </footer>
+  </article>
+</MainGridLayout>
+
+<style is:global>
+  body:has(.xl-article) #category-bar-wrapper {
+    display: none;
+  }
+
+  .xl-article {
+    --xl-serif: "Songti SC", "Source Han Serif SC", "Noto Serif SC",
+      "STSong", "SimSun", serif;
+    /* 正文字体：想换成宋体就改成 var(--xl-serif) */
+    --xl-body-font: inherit;
+    padding: 2rem 2.6rem 2.2rem;
+    /* card-base 自带 overflow:hidden，会让左侧信息栏的 sticky 失效 */
+    overflow: visible;
+  }
+
+  /* ── 返回 ── */
+  .xl-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.18em;
+    color: var(--primary);
+    text-decoration: none;
+    transition: opacity 0.2s ease;
+  }
+  .xl-back:hover {
+    opacity: 0.72;
+  }
+
+  /* ── 标题区 ── */
+  .xl-head {
+    margin: 1.4rem 0 0;
+  }
+  .xl-title {
+    font-family: var(--xl-serif);
+    font-size: clamp(1.85rem, 3.2vw, 2.6rem);
+    font-weight: 500;
+    line-height: 1.42;
+    letter-spacing: 0.02em;
+    color: var(--deep-text);
+    margin: 0 0 0.85rem;
+    max-width: 22em;
+  }
+  .xl-dek {
+    font-family: var(--xl-serif);
+    font-size: 0.98rem;
+    line-height: 1.95;
+    color: var(--content-meta);
+    margin: 0 0 1.6rem;
+    max-width: 32em;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--line-divider);
+  }
+
+  /* ── 双栏 ── */
+  .xl-cols {
+    display: flex;
+    align-items: flex-start;
+    gap: 3rem;
+    margin-top: 1.9rem;
+  }
+  .xl-side {
+    width: 150px;
+    flex: none;
+    position: sticky;
+    top: 5.2rem;
+    font-size: 0.78rem;
+    color: var(--content-meta);
+  }
+  .xl-facts {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+  .xl-facts dt,
+  .xl-side-k {
+    font-size: 0.68rem;
+    letter-spacing: 0.16em;
+    color: var(--content-meta);
+    opacity: 0.72;
+    margin: 0 0 0.2rem;
+  }
+  .xl-facts dd {
+    margin: 0;
+    font-size: 0.84rem;
+    color: var(--deep-text);
+    letter-spacing: 0.04em;
+  }
+
+  .xl-toc {
+    margin-top: 1.8rem;
+    padding-top: 1.4rem;
+    border-top: 1px solid var(--line-divider);
+  }
+  .xl-toc ol {
+    list-style: none;
+    margin: 0.5rem 0 0;
+    padding: 0;
+    border-left: 1px solid var(--line-divider);
+  }
+  .xl-toc li {
+    margin-left: -1px;
+    border-left: 1px solid transparent;
+    padding: 0.22rem 0 0.22rem 0.7rem;
+    transition: border-color 0.2s ease;
+  }
+  .xl-toc li.d3 {
+    padding-left: 1.35rem;
+    opacity: 0.82;
+  }
+  .xl-toc li:hover {
+    border-left-color: var(--primary);
+  }
+  .xl-toc a {
+    display: block;
+    font-size: 0.76rem;
+    line-height: 1.55;
+    color: var(--content-meta);
+    text-decoration: none;
+    transition: color 0.2s ease;
+  }
+  .xl-toc a:hover {
+    color: var(--primary);
+  }
+
+  .xl-side-next {
+    margin-top: 1.8rem;
+    padding-top: 1.4rem;
+    border-top: 1px solid var(--line-divider);
+  }
+  .xl-side-next a {
+    font-size: 0.8rem;
+    line-height: 1.6;
+    color: var(--deep-text);
+    text-decoration: none;
+    transition: color 0.2s ease;
+  }
+  .xl-side-next a:hover {
+    color: var(--primary);
+  }
+
+  .xl-main {
+    min-width: 0;
+    flex: 1;
+    max-width: 640px;
+  }
+
+  .xl-cover {
+    margin: 0 0 1.8rem;
+    border-radius: 0.9rem;
+    overflow: hidden;
+    border: 1px solid var(--line-divider);
+  }
+  .xl-cover img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  /* ── 正文排版 ── */
+  .xl-article .xl-prose {
+    font-family: var(--xl-body-font);
+    font-size: 1rem;
+    line-height: 2.02;
+    color: var(--deep-text);
+  }
+  .xl-article .xl-prose p {
+    margin: 0 0 1.45em;
+    text-align: justify;
+    word-break: break-word;
+  }
+  .xl-article .xl-prose h2,
+  .xl-article .xl-prose h3 {
+    font-family: var(--xl-serif);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    margin: 2.2em 0 0.8em;
+    color: var(--deep-text);
+  }
+  .xl-article .xl-prose h2 {
+    font-size: 1.35rem;
+  }
+  .xl-article .xl-prose h3 {
+    font-size: 1.12rem;
+  }
+  .xl-article .xl-prose a {
+    color: var(--primary);
+    text-decoration: underline;
+    text-decoration-style: dashed;
+    text-underline-offset: 4px;
+    text-decoration-color: var(--link-underline);
+  }
+
+  /* 首字下沉：默认作用于每篇文章的第一段（保持不变） */
+  .xl-article .xl-prose > p:first-of-type::first-letter,
+  .xl-article .xl-prose > section:first-of-type > p:first-of-type::first-letter {
+    float: left;
+    font-family: var(--xl-serif);
+    font-size: 3.1rem;
+    line-height: 1;
+    padding: 0.28rem 0.55rem 0 0;
+    color: var(--primary);
+  }
+
+  /* 这一篇独有的开头：To 两个字母整体下沉（颜色、尺寸、位置同首字下沉） */
+  .xl-article .xl-prose .xl-to {
+    display: flow-root;
+    margin: 0.2rem 0 1.4rem;
+    color: var(--deep-text);
+  }
+  .xl-article .xl-prose .xl-to-cap {
+    float: left;
+    font-family: var(--xl-serif);
+    font-size: 3.1rem;
+    line-height: 1;
+    padding: 0.28rem 0.55rem 0 0;
+    color: var(--primary);
+  }
+  /* 已有 To 下沉时，不再对 T 单独做一次首字下沉 */
+  .xl-article .xl-prose .xl-to::first-letter {
+    float: none;
+    font-size: inherit;
+    line-height: inherit;
+    padding: 0;
+    color: inherit;
+    font-family: inherit;
+  }
+
+  /* 引用 → 抽句 */
+  .xl-article .xl-prose blockquote {
+    margin: 2rem 0;
+    padding: 0.35rem 0 0.35rem 1.3rem;
+    border-left: 2px solid var(--primary);
+    font-family: var(--xl-serif);
+    font-size: 1.22rem;
+    line-height: 1.8;
+    font-style: normal;
+    color: var(--deep-text);
+  }
+  .xl-article .xl-prose blockquote::before {
+    display: none;
+  }
+  .xl-article .xl-prose blockquote p {
+    margin: 0;
+    font-size: inherit;
+  }
+
+  /* ── 正文内媒体：图片 / 视频 / 音频 ── */
+  .xl-article .xl-prose img {
+    display: block;
+    width: auto;
+    max-width: 100%;
+    height: auto;
+    margin: 1.9rem auto;
+    border-radius: 0.85rem;
+    border: 1px solid var(--line-divider);
+  }
+  .xl-article .xl-prose figure {
+    margin: 1.9rem 0;
+  }
+  .xl-article .xl-prose figure img {
+    margin: 0 auto;
+  }
+  .xl-article .xl-prose figure video {
+    margin: 0;
+  }
+  .xl-article .xl-prose figcaption {
+    margin-top: 0.65rem;
+    text-align: center;
+    font-size: 0.76rem;
+    letter-spacing: 0.04em;
+    color: var(--content-meta);
+  }
+  .xl-article .xl-prose video {
+    display: block;
+    width: 100%;
+    margin: 1.9rem 0;
+    border-radius: 0.85rem;
+    border: 1px solid var(--line-divider);
+    background: #000;
+  }
+  .xl-article .xl-prose audio {
+    display: block;
+    width: 100%;
+    margin: 1.5rem 0;
+    border-radius: 0.6rem;
+  }
+  .xl-article .xl-prose iframe {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    margin: 1.9rem 0;
+    border: 1px solid var(--line-divider);
+    border-radius: 0.85rem;
+  }
+
+  /* ── 文末上下篇 ── */
+  .xl-foot {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2.6rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line-divider);
+  }
+  .xl-foot-item {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.85rem 1rem;
+    border-radius: 0.8rem;
+    text-decoration: none;
+    color: inherit;
+    transition: background 0.2s ease;
+  }
+  .xl-foot-item:hover {
+    background: var(--btn-plain-bg-hover);
+  }
+  .xl-foot-item span {
+    font-size: 0.68rem;
+    letter-spacing: 0.16em;
+    color: var(--content-meta);
+  }
+  .xl-foot-item strong {
+    font-weight: 500;
+    font-size: 0.92rem;
+    line-height: 1.55;
+    color: var(--deep-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .xl-foot-item.is-right {
+    text-align: right;
+    align-items: flex-end;
+  }
+  .xl-foot-item.is-empty {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+
+  /* ── 移动端：单栏，信息横向排 ── */
+  @media (max-width: 900px) {
+    .xl-article {
+      padding: 1.4rem 1.15rem 1.6rem;
+    }
+    .xl-cols {
+      flex-direction: column;
+      gap: 1.5rem;
+      margin-top: 1.4rem;
+    }
+    .xl-side {
+      position: static;
+      width: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1.8rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--line-divider);
+    }
+    .xl-facts {
+      flex-direction: row;
+      gap: 1.8rem;
+    }
+    .xl-toc,
+    .xl-side-next {
+      display: none;
+    }
+    .xl-main {
+      max-width: none;
+    }
+    .xl-foot {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .xl-foot-item.is-right {
+      text-align: left;
+      align-items: flex-start;
+    }
+  }
+</style>

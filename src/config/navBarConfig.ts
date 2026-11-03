@@ -28,6 +28,13 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 		});
 	}
 
+	// 小琳说（暂定路径 /xiaolinshuo/，页面后续再做）
+	links.push({
+		name: "小琳说",
+		url: "/xiaolinshuo/",
+		icon: "material-symbols:forum",
+	});
+
 	// 根据配置决定是否添加友链，在siteConfig关闭pages.friends时导航栏不显示友链
 	if (siteConfig.pages.friends) {
 		links.push(LinkPreset.Friends);
