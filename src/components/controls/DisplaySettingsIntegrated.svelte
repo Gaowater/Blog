@@ -89,6 +89,16 @@ const defaultLayout = siteConfig.postListLayout.defaultMode;
 const mobileDefaultLayout =
 	siteConfig.postListLayout.mobileDefaultMode || defaultLayout;
 let mounted = $state(false);
+// 轻提示：手机端点网格时给一句说明
+let toastText = $state("");
+let toastTimer: ReturnType<typeof setTimeout> | undefined;
+function showToast(message: string) {
+	toastText = message;
+	if (toastTimer) clearTimeout(toastTimer);
+	toastTimer = setTimeout(() => {
+		toastText = "";
+	}, 1800);
+}
 let isSmallScreen = $state(
 	typeof window !== "undefined" ? window.innerWidth < 1200 : false,
 );
@@ -367,28 +377,32 @@ function switchWallpaperMode(newMode: WALLPAPER_MODE) {
 function checkScreenSize() {
 	isSmallScreen = window.innerWidth < 1200;
 	isMobileWidth = window.innerWidth < 780;
-	// 低于380px强制网格模式
-	if (window.innerWidth < 380 && currentLayout === "list") {
-		currentLayout = "grid";
-		const event = new CustomEvent("layoutChange", {
-			detail: { layout: "grid" },
-		});
-		window.dispatchEvent(event);
+	// 手机端不支持网格：窗口缩到手机宽度时自动回列表
+	if (isMobileWidth && currentLayout === "grid") {
+		currentLayout = "list";
+		window.dispatchEvent(
+			new CustomEvent("layoutChange", { detail: { layout: "list" } }),
+		);
 	}
 }
 
-function switchLayout() {
-	if (!mounted || isSwitching) return;
+function setLayout(layout: "list" | "grid") {
+	if (!mounted || isSwitching || layout === currentLayout) return;
+
+	// 手机端不支持网格：给提示并保持列表
+	if (layout === "grid" && isMobileWidth) {
+		showToast("手机端不可改为网格样式");
+		return;
+	}
 
 	isSwitching = true;
-	currentLayout = currentLayout === "list" ? "grid" : "list";
-	localStorage.setItem("postListLayout", currentLayout);
+	currentLayout = layout;
+	localStorage.setItem("postListLayout", layout);
 
 	// 触发自定义事件，通知页面布局已改变
-	const event = new CustomEvent("layoutChange", {
-		detail: { layout: currentLayout },
-	});
-	window.dispatchEvent(event);
+	window.dispatchEvent(
+		new CustomEvent("layoutChange", { detail: { layout } }),
+	);
 
 	// 动画完成后重置状态
 	setTimeout(() => {
@@ -478,7 +492,7 @@ onMount(() => {
 		currentLayout = savedLayout;
 	} else {
 		currentLayout =
-			window.innerWidth < 780 ? mobileDefaultLayout : defaultLayout;
+			window.innerWidth < 780 ? "list" : defaultLayout;
 	}
 
 	// 监听窗口大小变化
@@ -847,11 +861,11 @@ $effect(() => {
         {#if allowLayoutSwitch}
         <div class="ds-group">{i18n(I18nKey.postListLayout)}</div>
         <div class="ds-seg mb-3">
-            <button class:on={currentLayout === "list"} disabled={isSwitching} onclick={switchLayout}>
+            <button class:on={currentLayout === "list"} disabled={isSwitching} onclick={() => setLayout("list")}>
                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg>
                 <span>{i18n(I18nKey.postListLayoutList)}</span>
             </button>
-            <button class:on={currentLayout === "grid"} disabled={isSwitching} onclick={switchLayout}>
+            <button class:on={currentLayout === "grid"} disabled={isSwitching} onclick={() => setLayout("grid")}>
                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M3 3h7v7H3V3zm0 11h7v7H3v-7zm11-11h7v7h-7V3zm0 11h7v7h-7v-7z"/></svg>
                 <span>{i18n(I18nKey.postListLayoutGrid)}</span>
             </button>
@@ -881,6 +895,10 @@ $effect(() => {
         {/if}
         {/if}
     </div>
+
+    {#if toastText}
+        <div class="ds-toast" role="status">{toastText}</div>
+    {/if}
 </div>
 {/if}
 
@@ -1269,6 +1287,21 @@ $effect(() => {
 
         .sub
             height 0.7rem
+
+    .ds-toast
+        position fixed
+        left 50%
+        bottom 2.5rem
+        transform translateX(-50%)
+        z-index 2147483000
+        padding 0.5rem 0.9rem
+        border-radius 0.5rem
+        background unquote("color-mix(in oklab, var(--deep-text) 88%, transparent)")
+        color #fff
+        font-size 0.8rem
+        line-height 1.5
+        white-space nowrap
+        pointer-events none
 
     .ds-hint
         font-size 0.66rem

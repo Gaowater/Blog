@@ -577,7 +577,7 @@
   }
   #left-sidebar::-webkit-scrollbar-thumb,
   #right-sidebar::-webkit-scrollbar-thumb {
-    background: var(--scrollbar-bg);
-    border-radius: 4px;
+    background: color-mix(in oklab, var(--primary) 30%, transparent);
+    border-radius: 999px;
   }
 }

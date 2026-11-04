@@ -260,20 +260,53 @@ function loadButtonScript() {
         };
     }
 
-    document.addEventListener("click", function(event) {
-        const panels = ["display-setting", "nav-menu-panel", "music-nav-panel", "theme-mode-panel"];
-        const buttons = ["display-settings-switch", "nav-menu-switch", "music-player-switch", "scheme-switch"];
+    // 面板打开时点外部：第一次点击只负责关面板，不再触发被点元素的动作（手机上尤其重要，
+    // 否则会一边关面板一边跳转到刚点到的链接）。用 pointerdown 捕获 + 吞掉随后的 click。
+    if (!(window as any).__panelOutsideBound) {
+        (window as any).__panelOutsideBound = true;
 
-        panels.forEach((id, index) => {
-            const panel = document.getElementById(id);
-            const button = document.getElementById(buttons[index]);
-            if (panel && button && !panel.classList.contains("float-panel-closed")) {
-                if (event.target instanceof Node && !panel.contains(event.target) && !button.contains(event.target)) {
+        const panelPairs = () =>
+            [
+                ["display-setting", "display-settings-switch"],
+                ["nav-menu-panel", "nav-menu-switch"],
+                ["music-nav-panel", "music-player-switch"],
+                ["theme-mode-panel", "scheme-switch"],
+            ] as Array<[string, string]>;
+
+        let swallowClickUntil = 0;
+
+        document.addEventListener(
+            "pointerdown",
+            function (event) {
+                const target = event.target as Node | null;
+                if (!target) return;
+
+                for (const [panelId, buttonId] of panelPairs()) {
+                    const panel = document.getElementById(panelId);
+                    const button = document.getElementById(buttonId);
+                    if (!panel || !button) continue;
+                    if (panel.classList.contains("float-panel-closed")) continue;
+                    if (panel.contains(target) || button.contains(target)) continue;
+
                     panel.classList.add("float-panel-closed");
+                    swallowClickUntil = Date.now() + 600;
+                    return;
                 }
-            }
-        });
-    });
+            },
+            true,
+        );
+
+        document.addEventListener(
+            "click",
+            function (event) {
+                if (Date.now() < swallowClickUntil) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+            },
+            true,
+        );
+    }
 }
 
 loadButtonScript();

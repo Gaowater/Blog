@@ -102,10 +102,10 @@ const cardProps = (entry: PostEntry, index: number) => ({
 <script is:inline define:vars={{ defaultLayout, mobileDefaultLayout, columnWidth }}>
   (function() {
     const savedLayout = localStorage.getItem('postListLayout');
-    // 根据视口宽度确定有效的默认布局
-    const effectiveDefault = window.innerWidth < 780 ? mobileDefaultLayout : defaultLayout;
-    // 低于380px强制网格模式
-    const effectiveLayout = window.innerWidth < 380 ? 'grid' : (savedLayout || effectiveDefault);
+    // 手机端固定列表，忽略历史偏好与配置里的网格默认值
+    const isMobile = window.innerWidth < 780;
+    const effectiveDefault = isMobile ? 'list' : defaultLayout;
+    const effectiveLayout = isMobile ? 'list' : (savedLayout || effectiveDefault);
 
     if (effectiveLayout !== defaultLayout) {
       const container = document.getElementById('post-list-container');
@@ -144,14 +144,10 @@ const cardProps = (entry: PostEntry, index: number) => ({
     const mobileDefaultLayout =
       postListContainer.getAttribute("data-mobile-default-layout") || defaultLayout;
 
-    // 根据视口宽度确定有效的默认布局
-    const effectiveDefault = window.innerWidth < 780 ? mobileDefaultLayout : defaultLayout;
-    let currentLayout = savedLayout || effectiveDefault;
-
-    // 低于380px强制网格模式
-    if (window.innerWidth < 380) {
-      currentLayout = "grid";
-    }
+    // 手机端固定列表；桌面端用保存的偏好或配置默认值
+    const isMobile = window.innerWidth < 780;
+    const effectiveDefault = isMobile ? "list" : defaultLayout;
+    let currentLayout = isMobile ? "list" : (savedLayout || effectiveDefault);
 
     // 应用布局
     updatePostListLayout(currentLayout);
@@ -575,14 +571,13 @@ const cardProps = (entry: PostEntry, index: number) => ({
     #post-list-container.pin-book .pin-seam {
       padding: 0.5rem 1rem;
     }
-    #post-list-container.pin-book.grid-mode .pin-subs {
-      grid-template-columns: minmax(0, 1fr);
+    /* 手机上的网格同样是两列，只是卡片更紧凑 */
+    #post-list-container.pin-book.grid-mode .pin-sub .post-card-content {
+      padding: 0.7rem 0.2rem 0.7rem 0.8rem !important;
     }
-    #post-list-container.pin-book.grid-mode .pin-sub:nth-child(odd) {
-      border-right: none !important;
-    }
-    #post-list-container.pin-book.grid-mode .pin-sub:last-child:nth-child(odd) {
-      grid-column: auto;
+    #post-list-container.pin-book.grid-mode .pin-sub .post-card-title {
+      font-size: 0.95rem !important;
+      line-height: 1.4rem !important;
     }
     #post-list-container.pin-book.list-mode .pin-sub .post-card-content {
       padding: 0.9rem 0.5rem 0.9rem 1rem !important;
