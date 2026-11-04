@@ -945,6 +945,25 @@ $effect(() => {
         padding 0.85rem 1rem 1.1rem
         height 22.5rem
         overflow-y auto
+        scrollbar-width thin
+        scrollbar-color unquote("color-mix(in oklab, var(--primary) 38%, transparent)") transparent
+
+        &::-webkit-scrollbar
+            width 4px
+
+        &::-webkit-scrollbar-track
+            background transparent
+
+        &::-webkit-scrollbar-thumb
+            background unquote("color-mix(in oklab, var(--primary) 30%, transparent)")
+            border-radius 999px
+
+        &:hover
+            &::-webkit-scrollbar-thumb
+                background unquote("color-mix(in oklab, var(--primary) 55%, transparent)")
+
+        &::-webkit-scrollbar-thumb:hover
+            background var(--primary)
 
     .ds-group
         font-size 0.7rem
