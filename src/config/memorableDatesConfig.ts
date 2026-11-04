@@ -36,5 +36,7 @@ export const memorableDates: MemorableDate[] = [
   { date: "2026-08-13", label: "手帐诞生" },
   { date: "2026-08-25", label: "两百天纪念日" },
   { date: "2026-09-07", label: "第一次去健身房健身" },
+  { date: "2026-09-29", label: "第一次和你一起去旅行（青岛）" },
+  { date: "2026-10-04", label: "第一次体会到和你旅行结束的不舍" },
   // { date: "2026-XX-XX", label: "纪念日" },
 ];

@@ -1,0 +1,24 @@
+---
+// 显示偏好的早期应用：在任何绘制之前把 localStorage 里的偏好落到
+// <html> 的类名与 CSS 变量上，避免首屏出现「先默认再跳变」。
+// 与 src/utils/setting-utils.ts 中的 applyDisplayPrefsToDocument 保持一致。
+---
+
+<script is:inline>
+	(function () {
+		try {
+			var root = document.documentElement;
+
+			root.classList.toggle(
+				"motion-off",
+				localStorage.getItem("reduceMotion") === "true",
+			);
+			root.classList.toggle(
+				"post-density-compact",
+				localStorage.getItem("postDensity") === "compact",
+			);
+		} catch (e) {
+			// 隐私模式等场景下 localStorage 不可用，忽略即可
+		}
+	})();
+</script>

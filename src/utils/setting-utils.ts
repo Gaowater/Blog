@@ -1366,3 +1366,100 @@ export function applyBannerCarouselEnabledToDocument(enabled: boolean): void {
 		String(enabled),
 	);
 }
+
+// ─────────────────────────────────────────────────────────────
+// 显示设置面板新增偏好：横幅暗度 / 樱花密度 / 减弱动效 / 信息密度 / 置顶独占一行
+// 全部存 localStorage，落到 documentElement 的类名或 CSS 变量上
+// ─────────────────────────────────────────────────────────────
+
+export type SakuraDensity = "low" | "mid" | "high";
+export type PostDensity = "comfortable" | "compact";
+
+const SAKURA_DENSITY_KEY = "sakuraDensity";
+const REDUCE_MOTION_KEY = "reduceMotion";
+const POST_DENSITY_KEY = "postDensity";
+
+export const SAKURA_DENSITY_FACTOR: Record<SakuraDensity, number> = {
+	low: 0.45,
+	mid: 1,
+	high: 2,
+};
+
+export function getStoredSakuraDensity(): SakuraDensity {
+	if (typeof localStorage === "undefined") {
+		return "mid";
+	}
+	const raw = localStorage.getItem(SAKURA_DENSITY_KEY);
+	return raw === "low" || raw === "high" ? raw : "mid";
+}
+
+export function setSakuraDensity(density: SakuraDensity): void {
+	if (typeof localStorage !== "undefined") {
+		localStorage.setItem(SAKURA_DENSITY_KEY, density);
+	}
+	if (typeof window !== "undefined") {
+		window.dispatchEvent(
+			new CustomEvent("sakuraDensityChange", { detail: { density } }),
+		);
+	}
+}
+
+export function getDefaultReduceMotion(): boolean {
+	return false;
+}
+
+export function getStoredReduceMotion(): boolean {
+	if (typeof localStorage === "undefined") {
+		return false;
+	}
+	return localStorage.getItem(REDUCE_MOTION_KEY) === "true";
+}
+
+export function applyReduceMotionToDocument(enabled: boolean): void {
+	if (typeof document === "undefined") {
+		return;
+	}
+	document.documentElement.classList.toggle("motion-off", enabled);
+}
+
+export function setReduceMotion(enabled: boolean): void {
+	if (typeof localStorage !== "undefined") {
+		localStorage.setItem(REDUCE_MOTION_KEY, String(enabled));
+	}
+	applyReduceMotionToDocument(enabled);
+}
+
+export function getDefaultPostDensity(): PostDensity {
+	return "comfortable";
+}
+
+export function getStoredPostDensity(): PostDensity {
+	if (typeof localStorage === "undefined") {
+		return "comfortable";
+	}
+	return localStorage.getItem(POST_DENSITY_KEY) === "compact"
+		? "compact"
+		: "comfortable";
+}
+
+export function applyPostDensityToDocument(density: PostDensity): void {
+	if (typeof document === "undefined") {
+		return;
+	}
+	document.documentElement.classList.toggle(
+		"post-density-compact",
+		density === "compact",
+	);
+}
+
+export function setPostDensity(density: PostDensity): void {
+	if (typeof localStorage !== "undefined") {
+		localStorage.setItem(POST_DENSITY_KEY, density);
+	}
+	applyPostDensityToDocument(density);
+}
+
+export function applyDisplayPrefsToDocument(): void {
+	applyReduceMotionToDocument(getStoredReduceMotion());
+	applyPostDensityToDocument(getStoredPostDensity());
+}

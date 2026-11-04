@@ -310,6 +310,27 @@ enum I18nKey {
 	passwordSubmit = "passwordSubmit",
 	passwordError = "passwordError",
 	passwordProtectedRss = "passwordProtectedRss",
+
+	// 显示设置面板（标签页版）
+	displaySettings = "displaySettings",
+	appearanceTab = "appearanceTab",
+	backgroundTab = "backgroundTab",
+	motionTab = "motionTab",
+	layoutTab = "layoutTab",
+	resetAll = "resetAll",
+	colorPreview = "colorPreview",
+	bannerDim = "bannerDim",
+	overlayGroup = "overlayGroup",
+	sakuraDensity = "sakuraDensity",
+	densityLow = "densityLow",
+	densityMid = "densityMid",
+	densityHigh = "densityHigh",
+	reduceMotion = "reduceMotion",
+	postDensity = "postDensity",
+	densityComfortable = "densityComfortable",
+	densityCompact = "densityCompact",
+	pinnedOwnRow = "pinnedOwnRow",
+	previewLabel = "previewLabel",
 }
 
 export default I18nKey;

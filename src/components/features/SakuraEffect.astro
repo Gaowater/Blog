@@ -349,8 +349,12 @@ const config = sakuraConfig;
 				// 检查用户是否在设置中关闭了樱花特效
 				var storedEnabled = localStorage.getItem("sakuraEnabled");
 				var isEnabled = storedEnabled !== null ? storedEnabled === "true" : sakuraConfig.enable;
+				// 樱花密度：设置在面板里可选 少 / 中 / 多
+				var density = localStorage.getItem("sakuraDensity");
+				var factor = density === "low" ? 0.45 : density === "high" ? 2 : 1;
+				var count = Math.max(6, Math.round(sakuraConfig.sakuraNum * factor));
 				// 创建管理器并根据用户偏好决定是否启动
-				var cfg = Object.assign({}, sakuraConfig, { enable: isEnabled });
+				var cfg = Object.assign({}, sakuraConfig, { enable: isEnabled, sakuraNum: count });
 				initSakura(cfg);
 				window.sakuraInitialized = true;
 			};
@@ -362,6 +366,19 @@ const config = sakuraConfig;
 				setupSakura();
 			}
 		})();
+
+		// 监听设置面板的樱花密度变化事件
+		window.addEventListener('sakuraDensityChange', function() {
+			var mgr = window.sakuraManager;
+			if (!mgr) return;
+			var density = localStorage.getItem("sakuraDensity");
+			var factor = density === "low" ? 0.45 : density === "high" ? 2 : 1;
+			var count = Math.max(6, Math.round(sakuraConfig.sakuraNum * factor));
+			var wasRunning = mgr.getIsRunning();
+			if (wasRunning) mgr.stop();
+			mgr.config.sakuraNum = count;
+			if (wasRunning) mgr.init();
+		});
 
 		// 监听设置面板的樱花特效切换事件
 		window.addEventListener('sakuraToggle', function(e) {

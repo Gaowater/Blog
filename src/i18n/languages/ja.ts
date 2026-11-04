@@ -325,4 +325,25 @@ export const ja: Translation = {
 	[Key.passwordError]: "パスワードが間違っています。もう一度お試しください。",
 	[Key.passwordProtectedRss]:
 		"この記事は暗号化されています。ウェブサイトにアクセスしてご覧ください。",
+
+	// 表示設定パネル
+	[Key.displaySettings]: "表示設定",
+	[Key.appearanceTab]: "外観",
+	[Key.backgroundTab]: "背景",
+	[Key.motionTab]: "モーション",
+	[Key.layoutTab]: "レイアウト",
+	[Key.resetAll]: "すべてリセット",
+	[Key.colorPreview]: "カラープレビュー",
+	[Key.bannerDim]: "バナーの暗さ",
+	[Key.overlayGroup]: "オーバーレイ",
+	[Key.sakuraDensity]: "桜の密度",
+	[Key.densityLow]: "少",
+	[Key.densityMid]: "中",
+	[Key.densityHigh]: "多",
+	[Key.reduceMotion]: "モーションを減らす",
+	[Key.postDensity]: "情報密度",
+	[Key.densityComfortable]: "ゆったり",
+	[Key.densityCompact]: "コンパクト",
+	[Key.pinnedOwnRow]: "ピン留めは1行占有",
+	[Key.previewLabel]: "プレビュー",
 };

@@ -327,4 +327,25 @@ export const ru: Translation = {
 	[Key.passwordError]: "Неверный пароль, попробуйте снова.",
 	[Key.passwordProtectedRss]:
 		"Эта статья зашифрована. Пожалуйста, посетите сайт для просмотра.",
+
+	// Панель настроек отображения
+	[Key.displaySettings]: "Настройки отображения",
+	[Key.appearanceTab]: "Внешний вид",
+	[Key.backgroundTab]: "Фон",
+	[Key.motionTab]: "Анимация",
+	[Key.layoutTab]: "Макет",
+	[Key.resetAll]: "Сбросить всё",
+	[Key.colorPreview]: "Предпросмотр цвета",
+	[Key.bannerDim]: "Затемнение баннера",
+	[Key.overlayGroup]: "Оверлей",
+	[Key.sakuraDensity]: "Плотность сакуры",
+	[Key.densityLow]: "Мало",
+	[Key.densityMid]: "Средне",
+	[Key.densityHigh]: "Много",
+	[Key.reduceMotion]: "Меньше анимации",
+	[Key.postDensity]: "Плотность списка",
+	[Key.densityComfortable]: "Свободно",
+	[Key.densityCompact]: "Компактно",
+	[Key.pinnedOwnRow]: "Закреплённые занимают строку",
+	[Key.previewLabel]: "Предпросмотр",
 };

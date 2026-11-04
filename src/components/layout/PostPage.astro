@@ -33,11 +33,34 @@ const initialLayoutClass =
 	defaultLayout === "grid"
 		? "post-grid-auto grid-mode"
 		: "flex flex-col gap-4 md:gap-4 list-mode";
+
+// ── 置顶优先：置顶文章独占整行，其余文章收进同一册 ──
+// 排序已在 getRawSortedPosts 中保证置顶在前，这里只做分流，不改变顺序
+const pinnedEntries = page.data.filter((entry: PostEntry) => entry.data.pinned);
+const restEntries = page.data.filter((entry: PostEntry) => !entry.data.pinned);
+
+// 统一的卡片属性，避免置顶与其余两处重复写一遍
+const cardProps = (entry: PostEntry, index: number) => ({
+	entry,
+	title: entry.data.title,
+	tags: entry.data.tags,
+	category: entry.data.category,
+	published: entry.data.published,
+	updated: entryUpdatedMap.get(entry.id) || entry.data.updated,
+	url: getPostUrlBySlug(entry.id),
+	image: entry.data.image,
+	description: entry.data.description,
+	draft: entry.data.draft,
+	pinned: entry.data.pinned,
+	password: !!entry.data.password,
+	loading: (index < 2 ? "eager" : "lazy") as "eager" | "lazy",
+	style: `animation-delay: calc(var(--content-delay) + ${delay++ * interval}ms);`,
+});
 ---
 
 <div
   id="post-list-container"
-  class={`transition-all duration-500 ease-in-out mb-4 ${initialLayoutClass}`}
+  class={`pin-book transition-all duration-500 ease-in-out mb-4 ${initialLayoutClass}`}
   data-default-layout={defaultLayout}
   data-mobile-default-layout={mobileDefaultLayout}
   data-masonry-enabled={masonryEnabled}
@@ -45,26 +68,34 @@ const initialLayoutClass =
   style={`--post-card-min-width: ${columnWidth}px;`}
 >
   {
-    page.data.map((entry: PostEntry, index: number) => (
+    pinnedEntries.map((entry: PostEntry, index: number) => (
       <PostCard
-        entry={entry}
-        title={entry.data.title}
-        tags={entry.data.tags}
-        category={entry.data.category}
-        published={entry.data.published}
-        updated={entryUpdatedMap.get(entry.id) || entry.data.updated}
-        url={getPostUrlBySlug(entry.id)}
-        image={entry.data.image}
-        description={entry.data.description}
-        draft={entry.data.draft}
-        pinned={entry.data.pinned}
-        password={!!entry.data.password}
-        loading={index < 2 ? "eager" : "lazy"}
-        class:list="onload-animation post-card-item"
-        style={`animation-delay: calc(var(--content-delay) + ${delay++ * interval}ms);`}
+        {...cardProps(entry, index)}
+        class="onload-animation post-card-item pin-main"
       />
     ))
   }
+
+  {
+    pinnedEntries.length > 0 && restEntries.length > 0 && (
+      <div class="pin-seam">
+        <i />
+        <span>其余 {restEntries.length} 篇</span>
+        <i />
+      </div>
+    )
+  }
+
+  <div class="pin-subs">
+    {
+      restEntries.map((entry: PostEntry, index: number) => (
+        <PostCard
+          {...cardProps(entry, pinnedEntries.length + index)}
+          class="onload-animation post-card-item pin-sub"
+        />
+      ))
+    }
+  </div>
 </div>
 
 <!-- 立即执行脚本：防止刷新时的布局闪烁 -->
@@ -352,6 +383,238 @@ const initialLayoutClass =
       gap: 0.25rem !important;
     }
   }
+
+  /* ══════════ 置顶优先：一册式文章列表 ══════════ */
+  /* 置顶文章与其余文章同处一张卡内，靠底色与连接带区分层级，不用间隔 */
+  #post-list-container.pin-book {
+    display: block !important;
+    background: var(--card-bg);
+    border: 1px solid var(--line-divider);
+    border-radius: var(--radius-large);
+    overflow: hidden;
+  }
+  body.wallpaper-transparent #post-list-container.pin-book {
+    background: var(--card-bg-transparent);
+  }
+
+  /* 置顶卡：整宽一行，封面固定在右侧 30% 区域 */
+  #post-list-container.pin-book .pin-main {
+    flex-direction: row !important;
+    background: color-mix(in oklab, var(--primary) 5%, var(--card-bg)) !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    border-bottom: 1px solid var(--line-divider) !important;
+  }
+  #post-list-container.pin-book .pin-main .post-card-content {
+    width: calc(100% - 30% - 2.25rem) !important;
+    padding: 1.5rem 0.75rem 1.5rem 2.25rem !important;
+  }
+  #post-list-container.pin-book .pin-main.no-cover .post-card-content {
+    width: calc(100% - 52px - 1.5rem) !important;
+  }
+  #post-list-container.pin-book .pin-main.has-cover .post-card-image {
+    position: absolute !important;
+    top: 1.25rem !important;
+    bottom: 1.25rem !important;
+    right: 1.25rem !important;
+    width: 30% !important;
+    aspect-ratio: auto !important;
+    margin: 0 !important;
+    border-radius: 0.75rem !important;
+  }
+  #post-list-container.pin-book .pin-main .post-card-title {
+    font-size: 1.6rem !important;
+    line-height: 2.15rem !important;
+    margin-bottom: 0.6rem !important;
+  }
+  #post-list-container.pin-book .pin-main .post-card-title::before {
+    display: block !important;
+    top: 2rem !important;
+    height: 1.1rem !important;
+  }
+  #post-list-container.pin-book .pin-main:hover {
+    background: color-mix(in oklab, var(--primary) 8%, var(--card-bg)) !important;
+  }
+
+  /* 连接带：两侧细线夹一行字数，把置顶与其余缝在一起 */
+  #post-list-container.pin-book .pin-seam {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.55rem 1.5rem;
+    background: var(--btn-plain-bg-hover);
+    border-bottom: 1px solid var(--line-divider);
+  }
+  #post-list-container.pin-book .pin-seam i {
+    flex: 1;
+    height: 1px;
+    background: var(--line-divider);
+  }
+  #post-list-container.pin-book .pin-seam span {
+    font-size: 0.68rem;
+    letter-spacing: 0.2em;
+    color: var(--content-meta);
+    white-space: nowrap;
+  }
+
+  /* 其余文章：不再是独立卡片 */
+  #post-list-container.pin-book .pin-sub {
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    transition: background 0.2s ease !important;
+  }
+  #post-list-container.pin-book .pin-sub:hover {
+    background: var(--btn-plain-bg-hover) !important;
+    transform: none !important;
+  }
+
+  /* 网格模式：容器内两列，发丝线当格线，落单的一条自动通栏 */
+  #post-list-container.pin-book.grid-mode .pin-subs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  #post-list-container.pin-book.grid-mode .pin-sub {
+    flex-direction: row !important;
+    border-bottom: 1px solid var(--line-divider) !important;
+  }
+  #post-list-container.pin-book.grid-mode .pin-sub:nth-child(odd) {
+    border-right: 1px solid var(--line-divider) !important;
+  }
+  #post-list-container.pin-book.grid-mode .pin-sub:last-child {
+    border-bottom: none !important;
+  }
+  #post-list-container.pin-book.grid-mode .pin-sub:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+    border-right: none !important;
+  }
+  #post-list-container.pin-book.grid-mode .pin-sub .post-card-content {
+    width: calc(100% - 4.5rem) !important;
+    padding: 1rem 0.25rem 1rem 1.15rem !important;
+  }
+  #post-list-container.pin-book.grid-mode .pin-sub .post-card-title {
+    font-size: 1.05rem !important;
+    line-height: 1.55rem !important;
+    margin-bottom: 0.4rem !important;
+  }
+  #post-list-container.pin-book.grid-mode .pin-sub .post-card-title::before {
+    display: none !important;
+  }
+  #post-list-container.pin-book.grid-mode .pin-sub.has-cover .post-card-image {
+    position: absolute !important;
+    top: 0.85rem !important;
+    bottom: 0.85rem !important;
+    right: 0.85rem !important;
+    width: 3.5rem !important;
+    aspect-ratio: auto !important;
+    margin: 0 !important;
+    border-radius: 0.5rem !important;
+  }
+
+  /* 列表模式：整宽通栏，逐行发丝线，封面与置顶卡同处右侧 */
+  #post-list-container.pin-book.list-mode .pin-subs {
+    display: block;
+  }
+  #post-list-container.pin-book.list-mode .pin-sub {
+    flex-direction: row !important;
+    border-bottom: 1px solid var(--line-divider) !important;
+  }
+  #post-list-container.pin-book.list-mode .pin-sub:last-child {
+    border-bottom: none !important;
+  }
+  #post-list-container.pin-book.list-mode .pin-sub .post-card-content {
+    width: calc(100% - 6rem - 1.5rem) !important;
+    padding: 1.1rem 0.5rem 1.1rem 1.75rem !important;
+  }
+  #post-list-container.pin-book.list-mode .pin-sub.no-cover .post-card-content {
+    width: calc(100% - 52px - 1.5rem) !important;
+  }
+  #post-list-container.pin-book.list-mode .pin-sub .post-card-title {
+    font-size: 1.02rem !important;
+    line-height: 1.6rem !important;
+    margin-bottom: 0.35rem !important;
+  }
+  #post-list-container.pin-book.list-mode .pin-sub .post-card-title::before {
+    display: none !important;
+  }
+  #post-list-container.pin-book.list-mode .pin-sub.has-cover .post-card-image {
+    position: absolute !important;
+    top: 0.85rem !important;
+    bottom: 0.85rem !important;
+    right: 1rem !important;
+    width: 6rem !important;
+    aspect-ratio: auto !important;
+    margin: 0 !important;
+    border-radius: 0.5rem !important;
+  }
+
+  /* 窄屏：置顶卡改为封面在上，其余单列 */
+  @media (max-width: 767px) {    #post-list-container.pin-book .pin-main {
+      flex-direction: column-reverse !important;
+    }
+    #post-list-container.pin-book .pin-main .post-card-content,
+    #post-list-container.pin-book .pin-main.no-cover .post-card-content {
+      width: 100% !important;
+      padding: 1rem !important;
+    }
+    #post-list-container.pin-book .pin-main .post-card-title {
+      font-size: 1.25rem !important;
+      line-height: 1.75rem !important;
+    }
+    #post-list-container.pin-book .pin-main.has-cover .post-card-image {
+      position: relative !important;
+      top: auto !important;
+      right: auto !important;
+      bottom: auto !important;
+      width: 100% !important;
+      aspect-ratio: 2 / 1 !important;
+      border-radius: var(--radius-large) var(--radius-large) 0 0 !important;
+    }
+    #post-list-container.pin-book .pin-seam {
+      padding: 0.5rem 1rem;
+    }
+    #post-list-container.pin-book.grid-mode .pin-subs {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    #post-list-container.pin-book.grid-mode .pin-sub:nth-child(odd) {
+      border-right: none !important;
+    }
+    #post-list-container.pin-book.grid-mode .pin-sub:last-child:nth-child(odd) {
+      grid-column: auto;
+    }
+    #post-list-container.pin-book.list-mode .pin-sub .post-card-content {
+      padding: 0.9rem 0.5rem 0.9rem 1rem !important;
+    }
+  }
+  /* ══════════ 信息密度：紧凑（挂在 html 上，全站生效） ══════════ */
+  html.post-density-compact #post-list-container.pin-book .pin-main .post-card-content {
+    padding-top: 1.05rem !important;
+    padding-bottom: 1.05rem !important;
+  }
+  html.post-density-compact #post-list-container.pin-book .pin-main .post-card-title {
+    font-size: 1.35rem !important;
+    line-height: 1.85rem !important;
+  }
+  html.post-density-compact #post-list-container.pin-book .pin-main .description {
+    -webkit-line-clamp: 1 !important;
+    line-clamp: 1 !important;
+  }
+  html.post-density-compact #post-list-container.pin-book .pin-sub .post-card-content {
+    padding-top: 0.6rem !important;
+    padding-bottom: 0.6rem !important;
+  }
+  html.post-density-compact #post-list-container.pin-book .pin-sub .post-card-title {
+    font-size: 0.98rem !important;
+    line-height: 1.45rem !important;
+  }
+  html.post-density-compact #post-list-container.pin-book .pin-sub .description {
+    -webkit-line-clamp: 1 !important;
+    line-clamp: 1 !important;
+    margin-bottom: 0.25rem !important;
+  }
+
 </style>
 
 <style>

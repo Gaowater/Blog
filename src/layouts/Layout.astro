@@ -8,6 +8,7 @@ import FontManager from "@components/features/FontManager.astro";
 import MusicManager from "@components/features/MusicManager.astro";
 import MobileBottomNav from "@components/layout/MobileBottomNav.astro";
 import SakuraEffect from "@components/features/SakuraEffect.astro";
+import DisplayPrefs from "@components/features/DisplayPrefs.astro";
 import ConfigCarrier from "@components/layout/ConfigCarrier.astro";
 
 import {
@@ -590,6 +591,9 @@ const siteLang = lang.replace("_", "-");
     <slot />
 
 
+
+    <!-- 显示偏好早期应用（暗度 / 动效 / 密度 / 置顶独占行） -->
+    <DisplayPrefs />
 
     <!-- Sakura Effect -->
     <SakuraEffect />

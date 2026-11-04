@@ -325,4 +325,25 @@ export const en: Translation = {
 	[Key.passwordError]: "Incorrect password, please try again.",
 	[Key.passwordProtectedRss]:
 		"This article is encrypted. Please visit the website to view it.",
+
+	// Display settings panel
+	[Key.displaySettings]: "Display settings",
+	[Key.appearanceTab]: "Appearance",
+	[Key.backgroundTab]: "Background",
+	[Key.motionTab]: "Motion",
+	[Key.layoutTab]: "Layout",
+	[Key.resetAll]: "Reset all",
+	[Key.colorPreview]: "Color preview",
+	[Key.bannerDim]: "Banner dim",
+	[Key.overlayGroup]: "Overlay",
+	[Key.sakuraDensity]: "Sakura density",
+	[Key.densityLow]: "Low",
+	[Key.densityMid]: "Mid",
+	[Key.densityHigh]: "High",
+	[Key.reduceMotion]: "Reduce motion",
+	[Key.postDensity]: "Post density",
+	[Key.densityComfortable]: "Comfortable",
+	[Key.densityCompact]: "Compact",
+	[Key.pinnedOwnRow]: "Pinned takes a full row",
+	[Key.previewLabel]: "Preview",
 };
