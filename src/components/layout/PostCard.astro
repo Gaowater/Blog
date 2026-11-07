@@ -365,4 +365,20 @@ const descriptionText = description || remarkPluginFrontmatter.excerpt || "";
   :global(.grid-mode) .post-card-enter-btn {
     display: flex !important;
   }
+
+  /* ══ 整张卡片可点击 ══
+     标题链拉出一层透明覆盖层盖满内容区，点卡片任意位置都能进文章；
+     卡片内的分类/标签链接抬到覆盖层之上，仍然可以单独点。 */
+  .post-card-title::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+  }
+
+  .post-card-wrapper :global(.post-meta a),
+  .post-card-wrapper :global(.stats a) {
+    position: relative;
+    z-index: 1;
+  }
 </style>
