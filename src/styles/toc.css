@@ -151,3 +151,47 @@
 		padding-left: 1.34rem;
 	}
 }
+
+/* ── 子级折叠箭头 ── */
+.toc-toggle {
+	flex: none;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.15rem;
+	height: 1.15rem;
+	padding: 0;
+	border: none;
+	border-radius: 0.35rem;
+	background: transparent;
+	color: color-mix(in oklab, var(--content-meta) 85%, transparent);
+	cursor: pointer;
+	transition:
+		color 0.15s ease,
+		background-color 0.15s ease;
+}
+
+.toc-toggle:hover {
+	color: var(--primary);
+	background: color-mix(in oklab, var(--primary) 12%, transparent);
+}
+
+.toc-toggle svg {
+	width: 0.72rem;
+	height: 0.72rem;
+	transition: transform 0.18s ease;
+}
+
+.toc-toggle.is-open svg {
+	transform: rotate(90deg);
+}
+
+/* 收起状态：该条目及其所有后代隐藏 */
+.toc-item.toc-collapsed-item {
+	display: none;
+}
+
+/* 有箭头时给标签让出右侧空间 */
+.toc-item:has(.toc-toggle) .toc-label {
+	max-width: calc(100% - 3.1rem);
+}

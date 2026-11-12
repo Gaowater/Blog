@@ -171,7 +171,13 @@ export class TOCManager {
 			return this.getEmptyStateHTML();
 		}
 
-		let tocHTML = "";
+		const rows: Array<{
+			id: string;
+			level: number;
+			badge: string;
+			text: string;
+			escaped: string;
+		}> = [];
 		let heading1Count = 1;
 
 		filteredHeadings.forEach((heading) => {
@@ -212,20 +218,50 @@ export class TOCManager {
 						: heading.id || "Heading";
 			}
 
-			const escapedHeadingText = this.escapeHtmlAttr(headingText);
+			rows.push({
+				id: heading.id,
+				level: depthLevel,
+				badge: badgeContent,
+				text: headingText,
+				escaped: this.escapeHtmlAttr(headingText),
+			});
+		});
+
+		let tocHTML = "";
+		rows.forEach((row, index) => {
+			// 最近一个层级更小的条目即父级；下一项层级更大即有子项
+			let parentIndex = -1;
+			for (let i = index - 1; i >= 0; i--) {
+				if (rows[i].level < row.level) {
+					parentIndex = i;
+					break;
+				}
+			}
+			const hasChildren =
+				index + 1 < rows.length && rows[index + 1].level > row.level;
+
+			const toggle = hasChildren
+				? `<button type="button" class="toc-toggle" aria-expanded="false" aria-label="展开或收起"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 5 7 7-7 7" /></svg></button>`
+				: "";
+			const collapsed = parentIndex >= 0 ? " toc-collapsed-item" : "";
 
 			tocHTML += `
         <a 
-          href="#${heading.id}" 
-			  class="toc-item toc-level-${depthLevel}"
-          data-heading-id="${heading.id}"
-		  aria-label="${escapedHeadingText}"
-		  title="${escapedHeadingText}"
+          href="#${row.id}" 
+			  class="toc-item toc-level-${row.level}${collapsed}"
+          data-heading-id="${row.id}"
+          data-level="${row.level}"
+          data-index="${index}"
+          data-parent="${parentIndex}"
+          data-expanded="false"
+		  aria-label="${row.escaped}"
+		  title="${row.escaped}"
         >
-			  <div class="toc-badge ${depth === this.minDepth ? "toc-badge-index" : ""}">
-            ${badgeContent}
+			  <div class="toc-badge ${row.level === 0 ? "toc-badge-index" : ""}">
+            ${row.badge}
           </div>
-			  <div class="toc-label ${depth <= this.minDepth + 1 ? "toc-label-primary" : "toc-label-secondary"}">${headingText}</div>
+			  <div class="toc-label ${row.level <= 1 ? "toc-label-primary" : "toc-label-secondary"}">${row.text}</div>
+			  ${toggle}
         </a>
       `;
 		});
@@ -246,6 +282,83 @@ export class TOCManager {
 		this.tocItems = Array.from(
 			document.querySelectorAll(`#${this.contentId} a`),
 		);
+		this.bindTocToggles();
+		this.refreshTocVisibility();
+	}
+
+	/**
+	 * 绑定折叠箭头的点击（事件委托，一次即可）
+	 */
+	private bindTocToggles(): void {
+		const tocContent = document.getElementById(this.contentId);
+		if (!tocContent || tocContent.dataset.toggleBound === "true") return;
+		tocContent.dataset.toggleBound = "true";
+
+		tocContent.addEventListener("click", (event) => {
+			const target = event.target as HTMLElement | null;
+			const toggle = target?.closest(".toc-toggle") as HTMLElement | null;
+			if (!toggle) return;
+
+			// 箭头在 <a> 内部，拦掉默认跳转
+			event.preventDefault();
+			event.stopPropagation();
+
+			const item = toggle.closest("a.toc-item") as HTMLElement | null;
+			if (!item) return;
+
+			const open = item.dataset.expanded !== "true";
+			item.dataset.expanded = String(open);
+			toggle.setAttribute("aria-expanded", String(open));
+			toggle.classList.toggle("is-open", open);
+
+			this.refreshTocVisibility();
+			this.updateActiveState();
+		});
+	}
+
+	/**
+	 * 按父级展开状态刷新可见性：父级收起，其所有后代一并隐藏
+	 */
+	private refreshTocVisibility(): void {
+		const items = Array.from(
+			document.querySelectorAll<HTMLElement>(`#${this.contentId} a.toc-item`),
+		);
+		const visible: boolean[] = [];
+
+		items.forEach((item, position) => {
+			const index = Number(item.dataset.index);
+			const parent = Number(item.dataset.parent);
+			const selfVisible =
+				!Number.isFinite(parent) || parent < 0
+					? true
+					: visible[parent] === true &&
+						items[parent]?.dataset.expanded === "true";
+
+			visible[Number.isFinite(index) ? index : position] = selfVisible;
+			item.classList.toggle("toc-collapsed-item", !selfVisible);
+		});
+	}
+
+	/**
+	 * 找到最近一个当前可见的条目（活动项被折叠时，指示器落到父级上）
+	 */
+	private resolveVisibleItem(item: HTMLElement): HTMLElement {
+		let current = item;
+		let guard = 0;
+
+		while (current.classList.contains("toc-collapsed-item") && guard < 10) {
+			guard++;
+			const parent = Number(current.dataset.parent);
+			if (!Number.isFinite(parent) || parent < 0) break;
+
+			const parentEl = document.querySelector<HTMLElement>(
+				`#${this.contentId} a.toc-item[data-index="${parent}"]`,
+			);
+			if (!parentEl) break;
+			current = parentEl;
+		}
+
+		return current;
 	}
 
 	/**
@@ -315,8 +428,19 @@ export class TOCManager {
 			item.classList.add("visible");
 		});
 
-		// 更新活动指示器
-		this.updateActiveIndicator(activeItems);
+		// 更新活动指示器：若活动项被折叠隐藏，落到最近一个可见的祖先上
+		const indicatorItems: HTMLElement[] = [];
+		activeItems.forEach((item) => {
+			const resolved = this.resolveVisibleItem(item);
+			if (!indicatorItems.includes(resolved)) {
+				indicatorItems.push(resolved);
+			}
+		});
+		indicatorItems.sort(
+			(a, b) => Number(a.dataset.index) - Number(b.dataset.index),
+		);
+
+		this.updateActiveIndicator(indicatorItems);
 	}
 
 	/**
