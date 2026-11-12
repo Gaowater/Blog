@@ -116,13 +116,17 @@ const memorableDatesJson = JSON.stringify(memorableDates);
         <div class="text-xs font-semibold text-(--primary)">
           <span id="memorable-title">{memorableTitle}</span>
         </div>
-        <span id="memorable-arrow" class="text-(--primary) transition-transform duration-200 inline-flex items-center">
+        <span id="memorable-arrow" class="text-(--primary) transition-transform duration-200 inline-flex items-center" style="transform: rotate(90deg);">
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M3.5 1.5L7 5L3.5 8.5"/>
           </svg>
         </span>
       </div>
-      <div id="memorable-dates-list" class="flex-col gap-1 max-h-32 overflow-y-auto custom-scrollbar mt-2 hidden">
+      <!-- 下一个纪念日：常显，不随列表折叠 -->
+      <div id="memorable-next" class="mt-2 items-center gap-2.5 px-2.5 py-2 rounded-lg" style="display:none; background: color-mix(in oklab, var(--primary) 15%, transparent);">
+        <!-- 将由 JavaScript 填充 -->
+      </div>
+      <div id="memorable-dates-list" class="flex flex-col gap-0.5 mt-2">
         <!-- 将由 JavaScript 填充 -->
       </div>
     </div>
@@ -437,64 +441,135 @@ const memorableDatesJson = JSON.stringify(memorableDates);
     }
   }
   
-  // 渲染纪念日卡片
+  // ── 纪念日：日期解析与距今计算 ──
+  function parseMemorableDate(date) {
+    var p = String(date).split('-');
+    return { y: p[0], m: parseInt(p[1], 10), d: parseInt(p[2], 10) };
+  }
+
+  // 周年（0000-XX-XX）按今年/明年循环；一次性日期若还没到，也算「即将到来」
+  function memorableRelDays(date) {
+    var p = parseMemorableDate(date);
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (p.y === '0000') {
+      var dt = new Date(today.getFullYear(), p.m - 1, p.d);
+      if (dt < today) dt = new Date(today.getFullYear() + 1, p.m - 1, p.d);
+      return { days: Math.round((dt - today) / 86400000), upcoming: true };
+    }
+
+    var once = new Date(parseInt(p.y, 10), p.m - 1, p.d);
+    var diff = Math.round((today - once) / 86400000);
+    if (diff < 0) return { days: -diff, upcoming: true };
+    return { days: diff, upcoming: false };
+  }
+
+  function memorableRelText(rel) {
+    if (rel.days === 0) return '今天';
+    return rel.upcoming ? rel.days + ' 天后' : rel.days + ' 天前';
+  }
+
+  function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+
+  // 「全部 22 条」的展开状态，跨 render 保留
+  var memorableShowAll = false;
+
+  // 渲染纪念日卡片：顶部下一个纪念日 + 最近几条 + 全部
   function renderMemorableDates() {
     var card = qs('memorable-dates-card');
     var list = qs('memorable-dates-list');
-    if (!card || !list) return;
+    var nextBox = qs('memorable-next');
+    if (!card || !list || !nextBox) return;
 
-    // 显示所有配置的纪念日，按日期排序
-    var visibleDates = memorableDateList.slice().sort(function(a, b) {
-      return a.date.localeCompare(b.date);
-    });
-
-    if (visibleDates.length === 0) {
+    if (!memorableDateList.length) {
       card.classList.add('hidden');
       return;
     }
-
     card.classList.remove('hidden');
 
-    // 按年份分组
-    var groups = {};
-    visibleDates.forEach(function(item) {
-      var year = item.date.split('-')[0];
-      if (!groups[year]) groups[year] = [];
-      groups[year].push(item);
+    var rows = memorableDateList.map(function(item) {
+      return {
+        item: item,
+        rel: memorableRelDays(item.date),
+        annual: String(item.date).indexOf('0000') === 0,
+      };
     });
 
-    // 渲染分组（每年排前，然后其他年份）
-    var html = '';
-    var yearOrder = Object.keys(groups).sort(function(a, b) {
-      // 0000（每年）排最前
-      if (a === '0000') return -1;
-      if (b === '0000') return 1;
-      return a.localeCompare(b);
-    });
+    var upcoming = rows.filter(function(r) { return r.rel.upcoming; })
+      .sort(function(a, b) { return a.rel.days - b.rel.days; });
+    var past = rows.filter(function(r) { return !r.rel.upcoming; })
+      .sort(function(a, b) { return a.rel.days - b.rel.days; });
 
-    yearOrder.forEach(function(year) {
-      var displayYear = year === '0000' ? '每年' : year + '年';
-      html += '<div class="text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 px-2 pt-2 pb-1">' + displayYear + '</div>';
-      groups[year].forEach(function(item) {
-        var parts = item.date.split('-');
-        var displayDate = parseInt(parts[1], 10) + '月' + parseInt(parts[2], 10) + '日';
-        html += '<div class="flex items-center justify-between text-xs text-neutral-600 dark:text-neutral-400 px-2 py-0.5">' +
-          '<span>' + item.label + '</span>' +
-          '<span class="text-neutral-400 dark:text-neutral-500">' + displayDate + '</span>' +
+    // ── 顶部：下一个纪念日（常显，不随列表折叠） ──
+    var nx = upcoming[0];
+    if (nx) {
+      var np = parseMemorableDate(nx.item.date);
+      nextBox.innerHTML =
+        '<span class="shrink-0 text-[1.35rem] font-extrabold leading-none tracking-tight text-(--primary)">' +
+          nx.rel.days +
+          '<span class="text-[0.65rem] font-semibold ml-0.5">天</span>' +
+        '</span>' +
+        '<span class="min-w-0 flex-1">' +
+          '<b class="block text-xs font-semibold truncate">' + nx.item.label + '</b>' +
+          '<i class="block not-italic text-[0.65rem] mt-0.5 opacity-60">' +
+            np.m + '月' + np.d + '日 · 下一个纪念日' +
+          '</i>' +
+        '</span>';
+      nextBox.style.display = 'flex';
+    } else {
+      nextBox.innerHTML = '';
+      nextBox.style.display = 'none';
+    }
+
+    // ── 列表 ──
+    function renderRow(r) {
+      var p = parseMemorableDate(r.item.date);
+      var relCls = r.rel.days <= 30
+        ? 'text-(--primary) font-semibold'
+        : 'text-neutral-400 dark:text-neutral-500';
+      var annualTag = r.annual
+        ? '<span class="inline-block text-[0.6rem] leading-[0.85rem] px-1 mr-1 rounded-[3px] align-[1px] text-(--primary)" style="border:1px solid color-mix(in oklab, var(--primary) 42%, transparent);">每年</span>'
+        : '';
+
+      return '<div class="flex items-center gap-2 h-6 px-1 rounded-md transition-colors hover:bg-(--btn-regular-bg)"' +
+          ' title="' + r.item.label + ' · ' + p.m + '月' + p.d + '日">' +
+          '<span class="flex-1 min-w-0 truncate text-xs">' + annualTag + r.item.label + '</span>' +
+          '<span class="shrink-0 text-[0.66rem] tabular-nums text-neutral-400 dark:text-neutral-500">' +
+            pad2(p.m) + '·' + pad2(p.d) +
+          '</span>' +
+          '<span class="shrink-0 text-[0.66rem] tabular-nums text-right ' + relCls + '" style="min-width:2.9rem;">' +
+            memorableRelText(r.rel) +
+          '</span>' +
         '</div>';
-      });
+    }
+
+    var shown = memorableShowAll ? upcoming.concat(past) : past.slice(0, 4);
+    list.innerHTML = shown.map(renderRow).join('');
+
+    // 展开 / 收起按钮
+    var more = document.createElement('button');
+    more.type = 'button';
+    more.className = 'flex items-center justify-center gap-1 w-full h-7 mt-1 rounded-md text-[0.68rem] ' +
+      'text-neutral-400 dark:text-neutral-500 transition-colors ' +
+      'hover:bg-(--btn-regular-bg) hover:text-neutral-600 dark:hover:text-neutral-300';
+    more.textContent = memorableShowAll ? '收起' : '全部 ' + rows.length + ' 条';
+    more.addEventListener('click', function() {
+      memorableShowAll = !memorableShowAll;
+      renderMemorableDates();
     });
+    list.appendChild(more);
 
-    list.innerHTML = html;
+    // 展开全部时才滚动
+    list.classList.toggle('max-h-64', memorableShowAll);
+    list.classList.toggle('overflow-y-auto', memorableShowAll);
+    list.classList.toggle('custom-scrollbar', memorableShowAll);
+    list.classList.toggle('pr-1', memorableShowAll);
 
-    // 默认折叠
-    list.classList.add('hidden');
-
-    // 点击标题展开/折叠
+    // 点击标题折叠 / 展开整个列表（顶部强调条不受影响）
     var header = qs('memorable-header');
     var arrow = qs('memorable-arrow');
     if (header && arrow) {
-      // 清除之前绑定的（防止重复），用 replace 方式
       header.onclick = function() {
         var isHidden = list.classList.contains('hidden');
         list.classList.toggle('hidden');
